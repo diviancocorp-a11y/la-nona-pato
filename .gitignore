@@ -31,3 +31,10 @@ dist-ssr
 test-results/
 coverage/
 *.docx
+
+# Vercel CLI: link del proyecto + VERCEL_OIDC_TOKEN en .env.local
+.vercel
+.env*
+# Reafirmado DESPUES de `.env*`: la regla de arriba lo volvia a ignorar y
+# el .env.example es justamente el que SI tiene que estar en el repo.
+!.env.example

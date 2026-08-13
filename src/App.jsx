@@ -11,7 +11,9 @@ import OfflineBanner from './components/ui/OfflineBanner'
 import UpdateBanner from './components/ui/UpdateBanner'
 import useTheme from './hooks/useTheme'
 import Catalog from './pages/Catalog'
+import PlatformLanding from './pages/PlatformLanding'
 import NotFound from './pages/NotFound'
+import { isPlatformRoot } from './lib/tenantHost'
 import { useEffect } from 'react'
 import { fetchSettings } from './services/settings'
 import { supabase } from './lib/supabase'
@@ -122,7 +124,10 @@ export default function App() {
           <Suspense fallback={<Loading />}>
             <main id="main-content">
             <Routes>
-              <Route path="/" element={<Catalog />} />
+              {/* La raiz de la plataforma (divianco.app) no es el catalogo de
+                  nadie: ahi va la landing. Cualquier otro host —subdominio de
+                  tenant, dominio propio, local— sigue entrando al catalogo. */}
+              <Route path="/" element={isPlatformRoot(window.location.hostname) ? <PlatformLanding /> : <Catalog />} />
               <Route path="/q/:slug" element={<QrRedirect />} />
               <Route path="/info/:slug" element={<InfoPage />} />
               <Route path="/admin" element={<Admin />} />

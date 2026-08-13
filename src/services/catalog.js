@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { OrderInputSchema, CouponValidateSchema, validateInput } from '../lib/schemas/index.js';
 import { setGuestUser } from '../lib/guestUser.js';
+import { resolveTenantSlug } from '../lib/activeTenant.js';
 import business from '@business';
 
 /**
@@ -19,6 +20,30 @@ import business from '@business';
  */
 export async function fetchCatalog() {
   try {
+    // Plataforma multi-tenant (edificio): un solo RPC devuelve settings+products
+    // ya con el shape que espera catalog-pro. El resto del archivo (modelo viejo
+    // single-tenant sobre `recipes`) queda intacto para los clients legacy.
+    if (business.platform) {
+      // El tenant sale del HOSTNAME, no del build: un mismo bundle sirve a
+      // todos. business.slug queda solo como fallback de dev/preview.
+      const slug = await resolveTenantSlug();
+      if (!slug) {
+        // Raiz de la plataforma (divianco.app): no hay catalogo que mostrar,
+        // va la landing. No es un error.
+        return null;
+      }
+      const { data, error } = await supabase.rpc('get_catalog', { p_tenant_slug: slug });
+      if (error || !data) {
+        console.error('get_catalog RPC error:', error?.message);
+        return null;
+      }
+      return {
+        settings: data.settings || {},
+        products: data.products || [],
+        serverNow: data.serverNow || new Date().toISOString(),
+      };
+    }
+
     const { data: settingsRows, error: settErr } = await supabase
       .from('settings')
       .select('*')
@@ -123,9 +148,16 @@ export async function submitOrder(orderData) {
     }
     const validated = validation.data;
 
+    // Edificio multi-tenant: sin tenant_slug la function rechaza el pedido
+    // (400). Sale del hostname igual que el catalogo — si el pedido se armo
+    // mirando cochi.divianco.app, tiene que entrar en cochi. Los clients
+    // legacy no lo mandan y su submit-order lo ignora.
+    const tenantSlug = business.platform ? await resolveTenantSlug() : null;
+
     // Llamar a la Edge Function que calcula todo server-side
     const { data, error } = await supabase.functions.invoke('submit-order', {
       body: {
+        ...(tenantSlug ? { tenant_slug: tenantSlug } : {}),
         customer: validated.customer,
         phone: validated.phone,
         email: validated.email,
