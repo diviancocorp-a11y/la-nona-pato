@@ -39,6 +39,8 @@ import {
 } from "../constants/catalogConstants";
 import { fetchCategoryGroups, toClientFormat, buildSubToParent } from "../services/categories";
 import { computeAvailability } from "../lib/stockAvailability";
+import { applyTenantHead } from "../lib/tenantHead";
+import { resolveTenantSlug } from "../lib/activeTenant";
 import useFeature from "../hooks/useFeature";
 
 export default function Catalog() {
@@ -307,6 +309,10 @@ export default function Catalog() {
 
       if (data) {
         setSett(data.settings);
+        // Identidad en el <head>: index.html se arma en build time, asi que
+        // sin esto TODOS los tenants muestran el titulo, el theme-color y el
+        // favicon del client con el que se compilo.
+        applyTenantHead({ ...data.settings, __slug: await resolveTenantSlug() });
         // Cache de identidad para la proxima carga (anti-flash de logo/tema)
         try {
           const s = data.settings || {};
