@@ -6,9 +6,9 @@
 // y el catalogo lo interpreta como "Supabase caido" (setError('offline')) —
 // un error de conexion que no existe.
 //
-// PROVISORIA: el signup self-service (elegir rubro, slug y crear la cuenta con
-// provision_owner) va aca. Hasta entonces esto no promete nada que no exista:
-// no hay formulario falso ni boton que no haga nada.
+// El CTA lleva a /registro (Signup.jsx), que es el alta self-service real:
+// elegir rubro y slug, crear la cuenta, confirmar el email y quedarse con
+// <slug>.divianco.app.
 
 import { useEffect } from 'react';
 
@@ -69,10 +69,20 @@ export default function PlatformLanding() {
         ))}
       </div>
 
-      <div style={{ fontSize: 14, opacity: 0.55, maxWidth: 420, lineHeight: 1.5 }}>
-        El alta de cuentas todavía no está abierta.
-        <br />
-        Si querés Hermes para tu local, escribinos.
+      <div>
+        <a
+          href="/registro"
+          style={{
+            display: 'inline-block', padding: '13px 28px', borderRadius: 11,
+            background: '#e8b947', color: '#1a1408', textDecoration: 'none',
+            fontWeight: 700, fontSize: 16,
+          }}
+        >
+          Crear mi negocio
+        </a>
+        <div style={{ marginTop: 12, fontSize: 13, opacity: 0.5 }}>
+          Gratis. Tu local online en un minuto.
+        </div>
       </div>
 
       <footer style={{ marginTop: 8, fontSize: 12, opacity: 0.35 }}>

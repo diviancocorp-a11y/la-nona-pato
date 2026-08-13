@@ -12,6 +12,8 @@ import UpdateBanner from './components/ui/UpdateBanner'
 import useTheme from './hooks/useTheme'
 import Catalog from './pages/Catalog'
 import PlatformLanding from './pages/PlatformLanding'
+import Signup from './pages/Signup'
+import Bienvenido from './pages/Bienvenido'
 import NotFound from './pages/NotFound'
 import { isPlatformRoot } from './lib/tenantHost'
 import { useEffect } from 'react'
@@ -128,6 +130,10 @@ export default function App() {
                   nadie: ahi va la landing. Cualquier otro host —subdominio de
                   tenant, dominio propio, local— sigue entrando al catalogo. */}
               <Route path="/" element={isPlatformRoot(window.location.hostname) ? <PlatformLanding /> : <Catalog />} />
+              {/* Alta self-service: solo tiene sentido en la raiz. En el
+                  subdominio de un tenant el local ya es de alguien. */}
+              <Route path="/registro" element={<Signup />} />
+              <Route path="/bienvenido" element={<Bienvenido />} />
               <Route path="/q/:slug" element={<QrRedirect />} />
               <Route path="/info/:slug" element={<InfoPage />} />
               <Route path="/admin" element={<Admin />} />
