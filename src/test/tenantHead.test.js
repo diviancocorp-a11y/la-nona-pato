@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { contrastOn, letterFavicon, applyTenantHead } from '../lib/tenantHead';
+import { contrastOn, letterFavicon, applyTenantHead, applyCatalogTheme } from '../lib/tenantHead';
 
 describe('tenantHead', () => {
   describe('contrastOn', () => {
@@ -84,6 +84,28 @@ describe('tenantHead', () => {
 
     it('no explota sin settings', () => {
       expect(() => applyTenantHead(null)).not.toThrow();
+    });
+
+    it('aplica el tema del tenant al body', () => {
+      applyTenantHead({ biz_name: 'X', catalog_theme: 'noche' });
+      expect(document.body.getAttribute('data-cp-theme')).toBe('noche');
+    });
+  });
+
+  describe('applyCatalogTheme', () => {
+    it('acepta los 3 temas validos', () => {
+      for (const t of ['ambar', 'noche', 'carbon']) {
+        expect(applyCatalogTheme(t)).toBe(t);
+        expect(document.body.getAttribute('data-cp-theme')).toBe(t);
+      }
+    });
+
+    it('cae a ambar con un tema invalido', () => {
+      // El tema sale de un jsonb: un valor basura no puede dejar el
+      // catalogo sin tokens de color.
+      expect(applyCatalogTheme('neon')).toBe('ambar');
+      expect(applyCatalogTheme(null)).toBe('ambar');
+      expect(applyCatalogTheme(undefined)).toBe('ambar');
     });
   });
 });

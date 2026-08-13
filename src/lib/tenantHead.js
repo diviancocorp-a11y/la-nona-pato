@@ -1,10 +1,3 @@
-// @no-jsx-check
-// Este archivo arma SVG como string, no JSX. check-file-integrity.mjs despoja
-// los comentarios `//` ANTES que los template literals, y el xmlns del SVG
-// (http://www.w3.org/2000/svg) lleva un `//` que se come el resto de la linea
-// —backtick de cierre incluido—, dejando las etiquetas al descubierto y
-// disparando un falso positivo de "JSX en .js".
-//
 // src/lib/tenantHead.js
 // El <head> segun el tenant, en runtime.
 //
@@ -18,11 +11,16 @@
 // las og: tags para compartir en WhatsApp/redes: los crawlers no ejecutan JS,
 // leen el HTML crudo. Eso necesita render en el edge y queda pendiente.
 
-/** Escapa texto para meterlo en un atributo/SVG sin romperlo. */
+const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+/**
+ * Escapa texto para meterlo en un atributo/SVG sin romperlo.
+ * Una sola pasada y con clase de caracteres a proposito: escrito como
+ * `.replace(/</g, ...)` encadenado, la secuencia `</g` matchea el patron de
+ * etiqueta de cierre de check-file-integrity.mjs y da falso positivo de JSX.
+ */
 function esc(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ESC_MAP[c]);
 }
 
 /** Color de texto legible sobre un fondo dado (luminancia relativa). */
@@ -83,8 +81,30 @@ function setLink(rel, href, extra = {}) {
  * Aplica la identidad del tenant al <head>.
  * @param {Object} settings - el bloque settings que devuelve get_catalog
  */
+export const CATALOG_THEMES = ['ambar', 'noche', 'carbon'];
+
+/**
+ * Tema del catalogo (paleta de superficie). ACOTADO a 3 opciones a proposito
+ * — no confundir con logo_color, que es hex libre y es el acento de marca.
+ *
+ * En el edificio esto no llegaba nunca: quien lo aplicaba (App.jsx) lo saca
+ * de fetchSettings(), que apunta a la tabla `settings` inexistente aca. Los
+ * 5 tenants quedaban forzados a 'ambar'.
+ */
+export function applyCatalogTheme(theme) {
+  if (typeof document === 'undefined') return;
+  const t = CATALOG_THEMES.includes(theme) ? theme : 'ambar';
+  document.body.setAttribute('data-cp-theme', t);
+  // Cache para el anti-flash de index.html: la proxima carga pinta el tema
+  // correcto antes de que vuelva el RPC.
+  try { localStorage.setItem('cp_theme', t); } catch { /* empty */ }
+  return t;
+}
+
 export function applyTenantHead(settings) {
   if (typeof document === 'undefined' || !settings) return;
+
+  applyCatalogTheme(settings.catalog_theme);
 
   const name = settings.biz_name || 'Hermes';
   const color = settings.logo_color || '#111111';

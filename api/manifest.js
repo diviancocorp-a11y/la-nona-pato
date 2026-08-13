@@ -1,8 +1,3 @@
-// @no-jsx-check
-// Arma SVG como string, no JSX. check-file-integrity.mjs despoja los
-// comentarios `//` antes que los template literals, y el `//` del xmlns del
-// SVG se lleva puesto el backtick de cierre -> falso positivo de "JSX en .js".
-//
 // api/manifest.js — manifest PWA por tenant (Vercel serverless).
 //
 // El manifest estatico que emite vite (/manifest.json) lleva el nombre y el

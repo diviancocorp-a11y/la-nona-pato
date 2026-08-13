@@ -80,8 +80,15 @@ for (const file of files) {
   if (ext === '.js') {
     const src = buf.toString('utf-8');
     if (/^\s*\/\/\s*@no-jsx-check/m.test(src.slice(0, 200))) continue;
+    // El `//` de un protocolo (http://, https://) NO abre un comentario. Sin
+    // ese guard, una URL dentro de un template literal se comia el resto de
+    // la linea —backtick de cierre incluido—, el despojado quedaba
+    // desbalanceado y cualquier SVG en string daba falso positivo de JSX.
+    // Se despoja en este orden a proposito: hay 8 archivos con backticks
+    // dentro de comentarios `//` y solo 2 con URLs dentro de backticks, asi
+    // que sacar los backticks primero romperia mas de lo que arregla.
     const stripped = src
-      .replace(/\/\/.*$/gm, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/`[\s\S]*?`/g, '');
     const jsxPatterns = [
