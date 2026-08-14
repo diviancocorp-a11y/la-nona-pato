@@ -40,7 +40,7 @@ export function contrastOn(hex) {
  * propia sin subir ningun archivo. Si despues carga un logo, gana el logo.
  */
 export function letterFavicon(letter, bgColor) {
-  const ch = esc(String(letter || 'H').trim().charAt(0).toUpperCase() || 'H');
+  const ch = esc(String(letter || 'D').trim().charAt(0).toUpperCase() || 'D');
   const bg = /^#[0-9a-f]{6}$/i.test(bgColor || '') ? bgColor : '#111111';
   const fg = contrastOn(bg);
   // El SVG va en template literals a proposito: check-file-integrity.mjs
@@ -106,7 +106,7 @@ export function applyTenantHead(settings) {
 
   applyCatalogTheme(settings.catalog_theme);
 
-  const name = settings.biz_name || 'Hermes';
+  const name = settings.biz_name || 'Dico';
   const color = settings.logo_color || '#111111';
   const letter = settings.logo_letter || name.charAt(0);
 

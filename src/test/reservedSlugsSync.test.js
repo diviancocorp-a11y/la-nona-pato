@@ -13,7 +13,9 @@ import { RESERVED } from '../lib/slugify';
 // se registra un slug que el resolver de hostname no reconoce como tenant y
 // el local queda inaccesible.
 
-const MIGRACION = resolve(__dirname, '../../platform/migrations/0020_reserved_slugs_unificado.sql');
+// Apunta SIEMPRE a la ultima migracion que redefine is_reserved_slug: es la
+// que esta aplicada en la DB. Al agregar un reservado hay que mover esto.
+const MIGRACION = resolve(__dirname, '../../platform/migrations/0021_reservar_dico.sql');
 
 function reservadosDelSql() {
   // Los comentarios se despojan PRIMERO: el archivo menciona la funcion en su
@@ -49,6 +51,12 @@ describe('slugs reservados: JS vs SQL', () => {
 
   it('reserva las rutas propias de la plataforma', () => {
     for (const s of ['registro', 'bienvenido', 'admin', 'api']) {
+      expect(RESERVED_SUBDOMAINS.has(s)).toBe(true);
+    }
+  });
+
+  it('reserva los nombres de marca (nadie se queda con dico.divianco.app)', () => {
+    for (const s of ['dico', 'divianco', 'grupodivianco', 'hermes']) {
       expect(RESERVED_SUBDOMAINS.has(s)).toBe(true);
     }
   });

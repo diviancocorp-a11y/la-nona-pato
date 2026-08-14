@@ -55,7 +55,7 @@ export default function Signup() {
 
   const debounce = useRef(null);
 
-  useEffect(() => { document.title = 'Crear mi negocio — Hermes'; }, []);
+  useEffect(() => { document.title = 'Crear mi negocio — Dico'; }, []);
 
   // Sugerencia de slug mientras el dueño no lo haya editado a mano.
   useEffect(() => {
@@ -122,7 +122,7 @@ export default function Signup() {
     <main style={wrap}>
       <form onSubmit={enviar} style={{ width: '100%', maxWidth: 440 }}>
         <div style={{ marginBottom: 26 }}>
-          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>Hermes</div>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>Dico</div>
           <p style={{ color: C.t2, fontSize: 15, marginTop: 6 }}>
             Creá tu negocio. Es gratis y toma un minuto.
           </p>

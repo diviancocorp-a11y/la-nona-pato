@@ -6,9 +6,9 @@
 // (toma la identidad de auth.uid(), nunca del caller). Recien al volver del
 // mail hay con que.
 //
-// Es idempotente en la practica: si el usuario recarga o vuelve a entrar al
-// link, signup_tenant falla con "esta cuenta ya tiene un negocio" y en vez de
-// mostrar un error se lo manda a su local, que es lo que queria.
+// Es idempotente: signup_tenant (0019) devuelve el tenant existente con
+// already_existed=true en vez de fallar, asi que recargar o volver a tocar el
+// link del mail lleva al local igual, sin ramas por texto de error.
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -33,7 +33,7 @@ export default function Bienvenido() {
   const yaCorrio = useRef(false);
 
   useEffect(() => {
-    document.title = 'Activando tu negocio — Hermes';
+    document.title = 'Activando tu negocio — Dico';
     // StrictMode monta dos veces en dev: sin esto se dispara el alta dos
     // veces y la segunda choca contra "ya tiene un negocio".
     if (yaCorrio.current) return;

@@ -39,7 +39,7 @@ export const RESERVED_SUBDOMAINS = new Set([
   'noreply', 'no-reply', 'bounces', 'feedback', 'notificaciones',
   // Producto y marca
   'blog', 'docs', 'help', 'support', 'status',
-  'hermes', 'divianco', 'grupodivianco',
+  'dico', 'hermes', 'divianco', 'grupodivianco',
   // Rutas de la plataforma
   'panel', 'dashboard', 'login', 'signup', 'register', 'registro',
   'bienvenido', 'account', 'billing', 'pay', 'checkout',

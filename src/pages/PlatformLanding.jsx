@@ -20,7 +20,7 @@ const VERTICALES = [
 
 export default function PlatformLanding() {
   useEffect(() => {
-    document.title = 'Hermes — el sistema para tu negocio';
+    document.title = 'Dico — el sistema para tu negocio';
   }, []);
 
   return (
@@ -40,7 +40,7 @@ export default function PlatformLanding() {
       }}
     >
       <div>
-        <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-0.02em' }}>Hermes</div>
+        <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-0.02em' }}>Dico</div>
         <p style={{ margin: '12px auto 0', maxWidth: 460, fontSize: 17, lineHeight: 1.5, opacity: 0.75 }}>
           Catálogo online, pedidos, stock y reportes para tu negocio.
           Un link propio para tus clientes, un panel para vos.

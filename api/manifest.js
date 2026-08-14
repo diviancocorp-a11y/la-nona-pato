@@ -46,10 +46,10 @@ export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host}`);
   const slug = url.searchParams.get('slug') || slugFromHost(req.headers.host);
 
-  // Sin tenant (raiz de la plataforma): manifest de Hermes, no de un local.
-  let name = 'Hermes';
+  // Sin tenant (raiz de la plataforma): manifest de Dico, no de un local.
+  let name = 'Dico';
   let color = '#0f0e0d';
-  let letter = 'H';
+  let letter = 'D';
 
   if (slug) {
     try {

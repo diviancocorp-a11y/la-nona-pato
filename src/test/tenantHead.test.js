@@ -25,8 +25,9 @@ describe('tenantHead', () => {
     it('usa la primera letra en mayuscula', () => {
       expect(decodeURIComponent(letterFavicon('cochi', '#c91b14'))).toContain('>C<');
     });
-    it('cae a H sin letra', () => {
-      expect(decodeURIComponent(letterFavicon('', '#111111'))).toContain('>H<');
+    it('cae a la inicial del producto (Dico) sin letra', () => {
+      expect(decodeURIComponent(letterFavicon('', '#111111'))).toContain('>D<');
+      expect(decodeURIComponent(letterFavicon(null, '#111111'))).toContain('>D<');
     });
     it('ignora un color invalido en vez de romper el SVG', () => {
       const svg = decodeURIComponent(letterFavicon('M', 'javascript:alert(1)'));
