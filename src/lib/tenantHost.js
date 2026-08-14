@@ -20,15 +20,29 @@
 // tiene UNA etiqueta adelante es un subdominio de tenant.
 export const PLATFORM_ROOTS = ['divianco.app'];
 
-// Subdominios que nunca son un tenant aunque matcheen la forma. Espeja la
-// lista de tenants_slug_reserved en la migracion 0014: si divergen, alguien
-// podria registrar un slug que el front despues no resuelve.
+// Subdominios que nunca son un tenant aunque matcheen la forma.
+//
+// UNICA fuente del lado JS: slugify.js la reexporta en vez de tener su propia
+// copia. Del lado SQL la fuente es public.is_reserved_slug() (migracion 0020),
+// que usan tanto el CHECK de tenants como slug_available.
+//
+// Las dos listas TIENEN que decir lo mismo. Si el front acepta un slug que el
+// server reserva, el alta muere contra el constraint despues de que el dueño
+// completo todo el formulario. Hay un test que compara ambas.
 export const RESERVED_SUBDOMAINS = new Set([
-  'www', 'admin', 'api', 'app', 'mail', 'smtp', 'imap', 'pop', 'ftp',
-  'blog', 'docs', 'help', 'support', 'status', 'cdn', 'static', 'assets',
-  'dev', 'test', 'staging', 'demo', 'preview', 'localhost',
-  'hermes', 'divianco', 'grupodivianco', 'panel', 'dashboard',
-  'login', 'signup', 'register', 'account', 'billing', 'pay', 'checkout',
+  // Infra y protocolos
+  'www', 'admin', 'api', 'app', 'cdn', 'static', 'assets', 'ftp',
+  'localhost', 'dev', 'test', 'staging', 'preview', 'demo',
+  // Correo: el dominio de envio (Resend) vive en un subdominio de
+  // divianco.app, y con el wildcard cualquiera de estos seria registrable.
+  'mail', 'email', 'smtp', 'imap', 'pop', 'send', 'mailer', 'correo',
+  'noreply', 'no-reply', 'bounces', 'feedback', 'notificaciones',
+  // Producto y marca
+  'blog', 'docs', 'help', 'support', 'status',
+  'hermes', 'divianco', 'grupodivianco',
+  // Rutas de la plataforma
+  'panel', 'dashboard', 'login', 'signup', 'register', 'registro',
+  'bienvenido', 'account', 'billing', 'pay', 'checkout',
 ]);
 
 /** Saca el puerto y normaliza a minusculas. */

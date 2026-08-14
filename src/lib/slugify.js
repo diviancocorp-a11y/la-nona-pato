@@ -11,15 +11,11 @@
 
 export const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])$/;
 
-// Espeja tenants_slug_reserved (0014) y RESERVED_SUBDOMAINS (tenantHost.js).
-// Si divergen, el form aceptaria un slug que el server rechaza al final.
-export const RESERVED = new Set([
-  'www', 'admin', 'api', 'app', 'mail', 'smtp', 'imap', 'pop', 'ftp',
-  'blog', 'docs', 'help', 'support', 'status', 'cdn', 'static', 'assets',
-  'dev', 'test', 'staging', 'demo', 'preview', 'localhost',
-  'hermes', 'divianco', 'grupodivianco', 'panel', 'dashboard',
-  'login', 'signup', 'register', 'account', 'billing', 'pay', 'checkout',
-]);
+// Reexportada, NO duplicada: la fuente del lado JS es tenantHost.js. Tener
+// dos copias significaba que el form podia aceptar un slug que el resolver
+// de hostname despues no reconoce como tenant.
+export { RESERVED_SUBDOMAINS as RESERVED } from './tenantHost';
+import { RESERVED_SUBDOMAINS as RESERVED } from './tenantHost';
 
 /**
  * "Pizzería Doña Rosa" -> "pizzeria-dona-rosa"
