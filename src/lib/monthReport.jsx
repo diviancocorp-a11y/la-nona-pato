@@ -338,7 +338,7 @@ export function printMonthReport(data) {
 </section>
 
 <footer class="footer">
-  Hermes Gastro · Informe generado el ${todayISO()}
+  Dico · Informe generado el ${todayISO()}
 </footer>
 
 <script>setTimeout(() => window.focus(), 100);</script>

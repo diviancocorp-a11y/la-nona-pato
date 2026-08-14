@@ -258,7 +258,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
           )}
 
           <p style={{ textAlign: "center", color: "var(--ag-ink-3)", fontSize: 11, margin: "18px 0 0" }}>
-            Hermes Gastro
+            Dico
           </p>
         </div>
       </div>

@@ -1,8 +1,8 @@
 // src/hooks/useTheme.js
-// Theme hook — el admin usa la paleta Hermes (terracotta unificado).
+// Theme hook — el admin usa la paleta de Dico (terracotta unificado).
 // Cada cliente tiene su identidad en el catálogo (vía catalogBg / catalogCardBg
 // / etc. en business.js → Catalog.jsx), pero el panel de gestión se queda
-// con los colores de plataforma para reforzar la marca Hermes.
+// con los colores de plataforma para reforzar la marca Dico.
 import { useState, useEffect, useCallback } from 'react';
 
 const THEME = 'light';

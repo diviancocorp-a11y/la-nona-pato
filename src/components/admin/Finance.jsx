@@ -843,7 +843,7 @@ function ExpensesExportModal({ expenses, settings, onClose, showToast }) {
       if (format === "csv")  downloadCSV(`${baseName}.csv`, headers, rows);
       if (format === "xlsx") downloadXLSX(`${baseName}.xlsx`, headers, rows, "Gastos");
       if (format === "pdf")  printAsPDF("Reporte de gastos", headers, rows, {
-        bizName: settings?.biz_name || "Hermes Gastro",
+        bizName: settings?.biz_name || "Dico",
         subtitle,
       });
       showToast?.(`${filtered.length} gastos exportados ✓`);

@@ -199,7 +199,7 @@ export default function MonthSummary({
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     printMonthReport({
-      monthLabel, bizName: settings?.biz_name || 'Hermes Gastro',
+      monthLabel, bizName: settings?.biz_name || 'Dico',
       totalIngresos, totalEgresos, totalGastos, totalCostMP, mermaCost,
       ganancia, margenPct, fixedExp, varExp, ordersCount, ticketAvg,
       byPayment, salesRows, expensesRows, wasteRows,

@@ -430,7 +430,7 @@ function BrandModal({ open, onClose, settings, setSettings, showToast, asPage = 
                         {/* Mini preview real del tema */}
                         <div style={{ background: t.bg, color: t.tx, padding: '10px 8px 8px', textAlign: 'left' }}>
                           <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, lineHeight: 1, marginBottom: 4 }}>
-                            Hermes
+                            Dico
                           </div>
                           <div style={{ fontSize: 9, color: t.t2, marginBottom: 6 }}>
                             Cocina italiana

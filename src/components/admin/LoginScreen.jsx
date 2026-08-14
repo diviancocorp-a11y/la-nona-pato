@@ -1,6 +1,6 @@
 // src/components/admin/LoginScreen.jsx
 // Login del admin. Layout:
-//   - Esquina sup. izq.: chip Hermes (firma del sistema)
+//   - Esquina sup. izq.: chip Dico (firma del sistema)
 //   - Centro: identidad del negocio (logo real desde settings + nombre)
 //   - Form: caja muy traslúcida, botón ámbar del sistema
 //
@@ -214,7 +214,7 @@ export default function LoginScreen({ onLogin }) {
             opacity: stage === "intro" ? 0 : 1,
             transition:"opacity 0.6s ease 0.4s",
           }}>
-            {business.legal?.copyrightYear ? `© ${business.legal.copyrightYear}` : ""} Hermes Gastro
+            {business.legal?.copyrightYear ? `© ${business.legal.copyrightYear}` : ""} Divianco
           </div>
         </div>
       </div>

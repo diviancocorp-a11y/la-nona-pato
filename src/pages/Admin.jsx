@@ -60,7 +60,7 @@ export default function Admin() {
     try { return localStorage.getItem('ag-theme') || 'light' } catch { return 'light' }
   });
 
-  // ── PWA: ícono Hermes cuando estás en /admin (manifest + apple-touch + theme-color) ──
+  // ── PWA: ícono de Dico cuando estás en /admin (manifest + apple-touch + theme-color) ──
   useEffect(() => {
     const q = (sel) => document.querySelector(sel);
     const manifestEl = q('link[rel="manifest"]');

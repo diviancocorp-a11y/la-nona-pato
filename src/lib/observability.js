@@ -1,5 +1,5 @@
 /**
- * Observability layer for the Hermes Gastro platform.
+ * Observability layer for the Dico platform.
  *
  * Provides error tracking and analytics without requiring Sentry SDK in the bundle.
  * When VITE_SENTRY_DSN is set, errors are reported via the Sentry Envelope API.

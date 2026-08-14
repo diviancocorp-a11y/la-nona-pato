@@ -2,15 +2,15 @@
 // Footer corporativo del catálogo público.
 //
 // Estructura:
-//   1. Bloque del NEGOCIO (cliente de Hermes): FAQ, T&C, cookies,
+//   1. Bloque del NEGOCIO (cliente de Dico): FAQ, T&C, cookies,
 //      libro de quejas, contacto, trabajá con nosotros.
-//   2. Banda Hermes (logo + CTA "para tu negocio") — pequeño y claro
+//   2. Banda Dico (logo + CTA "para tu negocio") — pequeño y claro
 //      de que es la plataforma, no el negocio.
 
 import { useState } from "react";
 import HermesMark from "../components/HermesMark";
 
-// Datos de contacto de Hermes (la plataforma). Mientras sean null, los botones
+// Datos de contacto de Dico (la plataforma). Mientras sean null, los botones
 // de contacto del modal "para tu negocio" NO se muestran — antes habia un
 // WhatsApp falso (5491100000000) en produccion. Ver TAREAS-MANUALES.md.
 const HERMES = {
@@ -42,7 +42,7 @@ Al hacer un pedido aceptás que tus datos (nombre, teléfono, dirección, email)
 
 ${bizName} es responsable por la calidad, entrega y condiciones del producto/servicio ofrecido. Para reclamos contactanos por WhatsApp o email.
 
-La plataforma técnica del catálogo está provista por Hermes Gastro, que actúa como proveedor de infraestructura y no es parte de la relación comercial entre vos y ${bizName}.
+La plataforma técnica del catálogo está provista por Divianco, que actúa como proveedor de infraestructura y no es parte de la relación comercial entre vos y ${bizName}.
 
 Última actualización: 2026`,
 
@@ -85,13 +85,13 @@ Los datos se almacenan en servidores seguros (Supabase) con acceso restringido a
 Podés pedir acceso, rectificación o eliminación de tus datos contactando a ${bizName} por WhatsApp o email. La Agencia de Acceso a la Información Pública (www.argentina.gob.ar/aaip) es el órgano de control de la Ley 25.326 y atiende denuncias por incumplimiento.
 
 5. Plataforma
-La infraestructura técnica está provista por Hermes Gastro, que procesa los datos únicamente por cuenta y orden de ${bizName}.
+La infraestructura técnica está provista por Divianco, que procesa los datos únicamente por cuenta y orden de ${bizName}.
 
 Última actualización: 2026`,
   };
 }
 
-const HERMES_BUSINESS_COPY = `Hermes Gastro es la plataforma todo-en-uno para tu local gastronómico. Catálogo público, gestión de pedidos, stock, gastos, recetas, reportes USAR P&L y mucho más. Sin instalaciones, sin servidores, sin dolor de cabeza.
+const HERMES_BUSINESS_COPY = `Dico es la plataforma todo-en-uno para tu local gastronómico. Catálogo público, gestión de pedidos, stock, gastos, recetas, reportes USAR P&L y mucho más. Sin instalaciones, sin servidores, sin dolor de cabeza.
 
 Escribinos por WhatsApp o email y agendamos una demo gratuita para tu negocio.`;
 
@@ -182,7 +182,7 @@ export default function CatalogFooter({ settings = {} }) {
   const bizYoutube = settings.youtube || "";
   const bizTwitter = settings.twitter || "";
   const bizLinkedin = settings.linkedin || "";
-  // Color de marca del tenant — si no está, cae al ámbar Hermes
+  // Color de marca del tenant — si no está, cae al ámbar de Dico
   const accentColor = settings.logo_color || "#F59E0B";
 
   return (
@@ -268,13 +268,13 @@ export default function CatalogFooter({ settings = {} }) {
             cursor: "pointer",
           }}
         >
-          {/* Logo Hermes a la izquierda, fondo claro */}
+          {/* Logo de Dico a la izquierda, fondo claro */}
           <div style={{ flexShrink: 0 }}>
             <HermesMark as="logo" size={56} fallback="H" theme="light" color="#000" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--tx, #2D1B0E)", lineHeight: 1.3 }}>
-              ¿Tenés un negocio? Hermes Gastro para tu local
+              ¿Tenés un negocio? Dico para tu local
             </div>
             <div style={{ fontSize: 11, color: "var(--t2, #5B5552)", marginTop: 2, lineHeight: 1.35 }}>
               Catálogo, pedidos, stock, recetas y reportes. Tocá para conocer más.
@@ -291,12 +291,12 @@ export default function CatalogFooter({ settings = {} }) {
       {modal === "faq" && <Modal title="Preguntas frecuentes" onClose={close}><FaqList items={copy.faq} /></Modal>}
       {modal === "worksWithUs" && <Modal title="Trabajá con nosotros" onClose={close}>{copy.worksWithUs}</Modal>}
       {modal === "forBusiness" && (
-        <Modal title="Hermes para tu negocio" onClose={close}>
+        <Modal title="Dico para tu negocio" onClose={close}>
           <div style={{ whiteSpace: "pre-line", marginBottom: 18 }}>{HERMES_BUSINESS_COPY}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {HERMES.whatsapp && (
               <a
-                href={`https://wa.me/${HERMES.whatsapp}?text=${encodeURIComponent("Hola! Tengo un local gastronómico y me interesa Hermes Gastro.")}`}
+                href={`https://wa.me/${HERMES.whatsapp}?text=${encodeURIComponent("Hola! Tengo un local gastronómico y me interesa Dico.")}`}
                 target="_blank" rel="noopener noreferrer"
                 style={{
                   padding: "12px 16px", background: "#25D366", color: "#fff",
@@ -307,7 +307,7 @@ export default function CatalogFooter({ settings = {} }) {
             )}
             {HERMES.email && (
               <a
-                href={`mailto:${HERMES.email}?subject=${encodeURIComponent("Hermes para mi negocio")}`}
+                href={`mailto:${HERMES.email}?subject=${encodeURIComponent("Dico para mi negocio")}`}
                 style={{
                   padding: "12px 16px", background: "#F59E0B", color: "#000",
                   borderRadius: 12, textDecoration: "none", fontWeight: 700, fontSize: 14,
