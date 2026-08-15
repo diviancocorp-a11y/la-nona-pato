@@ -37,6 +37,14 @@ npm run check:integrity --silent
 echo "→ Columnas Supabase vs schema snapshot..."
 node scripts/check-supabase-columns.mjs --all
 
+# Frescura del snapshot del edificio: no compara contra la base (eso necesita
+# service role y no puede pedirse para commitear), compara hasta que migracion
+# dice estar al dia contra cual es la ultima que existe en el repo. Atrapa el
+# caso "aplique una migracion y me olvide del snapshot", que no falla solo:
+# simplemente deja de proteger.
+echo "→ Frescura del snapshot del edificio..."
+node scripts/check-schema-freshness.mjs
+
 echo "→ Schema ↔ DB sync..."
 node scripts/check-schema-sync.mjs
 

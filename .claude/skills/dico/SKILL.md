@@ -93,9 +93,11 @@ renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
   `scripts/supabase-schema.json` (legacy) y `scripts/platform-schema.json`
   (edificio). Cuál se aplica lo decide `PLATFORM_PATHS` en
   `scripts/check-supabase-columns.mjs`: **archivo nuevo que le hable al
-  edificio, sumalo ahí** o se valida contra el schema equivocado. Los
-  snapshots se mantienen a mano — al aplicar una migración que agregue o
-  saque columnas, actualizá el que corresponda.
+  edificio, sumalo ahí** o se valida contra el schema equivocado.
+  Los snapshots se regeneran con `npm run schema:sync` (necesita service role
+  exportada; sin credenciales saltea sin fallar). Un guard offline en el
+  pre-commit avisa si aplicaste una migración y no volviste a mirar el
+  snapshot.
 
 ### Lo que NO funciona todavía (no lo reportes como roto)
 - **El panel del edificio es sólo productos y pedidos.** `PlatformAdmin` cubre

@@ -37,7 +37,7 @@ Cada tenant = 1 proyecto Supabase + 1 proyecto Vercel + 1 dominio. Mismo codigo,
 - **Si agregas una columna a DB y la usas en `set(...)` desde la UI pero olvidas agregarla al Zod → el upsert NO la persiste y NO da error**
 - Bug recurrente: paso ya 4 veces (#54, #56, #96, ultimo). Ahora hay pre-commit que lo agarra
 - Manifest: `scripts/db-columns-manifest.json` lista las cols que el Zod DEBE conocer. Pre-commit corre `scripts/check-schema-sync.mjs`
-- **Para agregar col nueva:** 1) ALTER TABLE en 3 tenants (MCP apply_migration) + archivo en supabase/migrations/, 2) agregar al Zod schema, 3) agregar al manifest, 4) actualizar `scripts/supabase-schema.json` A MANO si la tabla esta en el snapshot (`npm run schema:sync` NO existe)
+- **Para agregar col nueva:** 1) ALTER TABLE en 3 tenants (MCP apply_migration) + archivo en supabase/migrations/, 2) agregar al Zod schema, 3) agregar al manifest, 4) actualizar `scripts/supabase-schema.json` — con `npm run schema:sync -- --target=legacy` si tenes la service role y el proyecto despausado, o a mano si no
 
 ### Phone-only auth (guestUser)
 - Catalogo permite hacer pedidos sin signup via `localStorage.guestUser` + RPCs SECURITY DEFINER
@@ -113,6 +113,9 @@ python3 -c "open('FILE','rb').read().decode('utf-8','strict')"
 
 - `check-file-integrity.mjs` — EOF, NULL bytes, lineas truncadas
 - `check-schema-sync.mjs` — Zod schemas vs DB manifest
+- `check-schema-freshness.mjs` — el snapshot del edificio declara hasta que
+  migracion esta al dia (`_migrations_through`); si hay una posterior, falla y
+  te dice las dos salidas validas (regenerar o subir el marcador).
 - `check-supabase-columns.mjs` — cols en `.select()` existen en el schema snapshot.
   Hay DOS snapshots porque hay dos bases: `scripts/supabase-schema.json` (legacy)
   y `scripts/platform-schema.json` (edificio). Cual se usa lo decide
@@ -128,7 +131,14 @@ python3 -c "open('FILE','rb').read().decode('utf-8','strict')"
 CLIENT=la-nona-pato vite build  # build de un tenant (Windows: set CLIENT=x&& npx vite build)
 set NODE_ENV=test&& npm test    # suite completa en la maquina de Ricky
 ```
-(`npm run schema:sync` NO existe — el snapshot scripts/supabase-schema.json se mantiene a mano)
+```bash
+npm run schema:sync              # regenera los snapshots desde la base
+npm run schema:sync -- --check   # no escribe: falla si el disco difiere
+```
+Necesita `PLATFORM_SUPABASE_URL` + `PLATFORM_SUPABASE_SERVICE_ROLE_KEY` (o los
+`LEGACY_*`) exportados; sin credenciales saltea sin fallar. Los 3 proyectos
+legacy estan pausados: ese lado hay que despausarlo y aplicarle la funcion
+`schema_snapshot()` (platform/migrations/0023) antes de poder sincronizarlo.
 
 ## MCPs conectados
 
