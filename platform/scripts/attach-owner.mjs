@@ -22,6 +22,9 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { pathToFileURL } from 'node:url'
+import { cargarEnvDeArchivo, faltanCredenciales } from './_env.mjs'
+
+cargarEnvDeArchivo()
 
 const ROLES = ['owner', 'staff']
 const PER_PAGE = 200
@@ -44,7 +47,7 @@ async function findUserByEmail(admin, email) {
 export async function attachOwner({ email, slug, role = 'owner' }) {
   const url = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) throw new Error('Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !serviceKey) throw new Error(faltanCredenciales(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']))
   if (!email || !slug) throw new Error('Faltan campos: email, slug')
   if (!ROLES.includes(role)) throw new Error(`rol invalido: ${role} (usar ${ROLES.join('|')})`)
 

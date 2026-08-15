@@ -20,13 +20,16 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
 import { pathToFileURL } from 'node:url'
+import { cargarEnvDeArchivo, faltanCredenciales } from './_env.mjs'
+
+cargarEnvDeArchivo()
 
 const VERTICALS = ['gastro', 'barber', 'retail']
 
 export async function createOwner({ email, name, vertical, slug, password }) {
   const url = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) throw new Error('Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !serviceKey) throw new Error(faltanCredenciales(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']))
   if (!email || !name || !vertical || !slug) throw new Error('Faltan campos: email, name, vertical, slug')
   if (!VERTICALS.includes(vertical)) throw new Error(`vertical invalido: ${vertical} (usar ${VERTICALS.join('|')})`)
 
