@@ -110,10 +110,9 @@ export async function fetchMyTenant() {
 
 const PRODUCT_COLS = 'id, type, name, price, active, category, description, image_url, requires_age_gate, duration_min, stock, created_at';
 
-/** Tipo por defecto segun el rubro. Un servicio de barberia no es un producto. */
-export function defaultProductType(vertical) {
-  return vertical === 'barber' ? 'service' : 'simple';
-}
+// El tipo por defecto segun el rubro vivia aca; se mudo a
+// src/modules/registry.js (tipoPorDefecto), que es donde vive todo lo que
+// depende del rubro.
 
 export async function fetchProducts(tenantId) {
   exigirTenant(tenantId, 'fetchProducts');

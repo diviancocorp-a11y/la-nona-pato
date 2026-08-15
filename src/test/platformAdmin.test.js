@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
-  validateProduct, defaultProductType, categoriesFrom,
+  validateProduct, categoriesFrom,
   nextOrderStatus, PlatformOrderStatus, PLATFORM_ORDER_STATUSES, OPEN_ORDER_STATUSES,
 } from '../services/platformAdmin';
 
@@ -41,18 +41,6 @@ describe('validateProduct', () => {
 
   it('no explota con undefined', () => {
     expect(validateProduct(undefined).length).toBeGreaterThan(0);
-  });
-});
-
-describe('defaultProductType', () => {
-  it('una barberia vende servicios, no productos', () => {
-    expect(defaultProductType('barber')).toBe('service');
-  });
-
-  it('el resto arranca en simple', () => {
-    for (const v of ['gastro', 'retail', undefined]) {
-      expect(defaultProductType(v)).toBe('simple');
-    }
   });
 });
 

@@ -1,14 +1,15 @@
 /**
  * ProductEditor — alta y edicion de un producto del edificio.
  *
- * Los campos que se muestran dependen del rubro del tenant: una barberia
- * carga duracion, una tienda carga stock, una cocina no carga ninguno de los
- * dos. Es el primer lugar donde la UI deja de asumir gastro; cuando exista el
- * module registry por vertical, esta logica se muda ahi.
+ * Que campos se muestran y como se llaman las cosas lo decide el registry de
+ * rubros (src/modules/registry.js), no este archivo: aca no hay ningun
+ * `vertical === 'barber'`. Una barberia carga duracion, una tienda carga
+ * stock, y ninguna de las dos ve campos que no le sirven.
  */
 import { useState } from 'react';
 import ToggleSwitch from '../shared/forms/ToggleSwitch';
-import { validateProduct, defaultProductType } from '../../../services/platformAdmin';
+import { validateProduct } from '../../../services/platformAdmin';
+import { usaCampo, terminologia, tipoPorDefecto } from '../../../modules/registry';
 
 const EMPTY = {
   name: '', price: '', category: '', description: '', image_url: '',
@@ -40,8 +41,10 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const isService = vertical === 'barber';
-  const isRetail = vertical === 'retail';
+  const t = terminologia(vertical);
+  const usaDuracion = usaCampo(vertical, 'duration_min');
+  const usaStock = usaCampo(vertical, 'stock');
+  const usaEdad = usaCampo(vertical, 'requires_age_gate');
 
   const submit = async (e) => {
     e.preventDefault();
@@ -49,7 +52,7 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
     if (problems.length) { setErrs(problems); return; }
     setErrs([]);
     setSaving(true);
-    await onSave({ ...form, type: product?.type || defaultProductType(vertical) });
+    await onSave({ ...form, type: product?.type || tipoPorDefecto(vertical) });
     setSaving(false);
   };
 
@@ -70,7 +73,7 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
         <input
           id="pe-name" style={input} type="text" value={form.name}
           onChange={e => set('name', e.target.value)}
-          placeholder={isService ? 'Corte de pelo' : 'Milanesa napolitana'}
+          placeholder={t.ejemplo}
           autoFocus
         />
       </div>
@@ -83,16 +86,16 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
             value={form.price} onChange={e => set('price', e.target.value)} placeholder="0"
           />
         </div>
-        {isService && (
+        {usaDuracion && (
           <div style={{ flex: 1 }}>
-            <label style={lbl} htmlFor="pe-dur">Duracion (min)</label>
+            <label style={lbl} htmlFor="pe-dur">Duración (min)</label>
             <input
               id="pe-dur" style={input} type="number" inputMode="numeric" min="1" step="5"
               value={form.duration_min} onChange={e => set('duration_min', e.target.value)} placeholder="30"
             />
           </div>
         )}
-        {isRetail && (
+        {usaStock && (
           <div style={{ flex: 1 }}>
             <label style={lbl} htmlFor="pe-stock">Stock</label>
             <input
@@ -104,11 +107,11 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
       </div>
 
       <div style={row}>
-        <label style={lbl} htmlFor="pe-cat">Categoria</label>
+        <label style={lbl} htmlFor="pe-cat">Categoría</label>
         <input
           id="pe-cat" style={input} type="text" list="pe-cats" value={form.category}
           onChange={e => set('category', e.target.value)}
-          placeholder={isService ? 'Cortes' : 'Principales'}
+          placeholder={t.ejemploCategoria}
         />
         <datalist id="pe-cats">
           {categories.map(c => <option key={c} value={c} />)}
@@ -146,16 +149,20 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
         <ToggleSwitch checked={form.active !== false} onChange={v => set('active', v)} label="Visible en el catalogo" />
       </div>
 
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 0', borderTop: '1px solid var(--ag-line)', marginBottom: 18,
-      }}>
-        <div>
-          <div style={{ fontSize: 14, color: 'var(--ag-ink)' }}>Requiere +18</div>
-          <div style={{ fontSize: 11, color: 'var(--ag-ink-3)' }}>Pide confirmacion de edad antes de mostrarlo</div>
+      {usaEdad && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 0', borderTop: '1px solid var(--ag-line)',
+        }}>
+          <div>
+            <div style={{ fontSize: 14, color: 'var(--ag-ink)' }}>Requiere +18</div>
+            <div style={{ fontSize: 11, color: 'var(--ag-ink-3)' }}>Pide confirmación de edad antes de mostrarlo</div>
+          </div>
+          <ToggleSwitch checked={!!form.requires_age_gate} onChange={v => set('requires_age_gate', v)} label="Requiere +18" />
         </div>
-        <ToggleSwitch checked={!!form.requires_age_gate} onChange={v => set('requires_age_gate', v)} label="Requiere +18" />
-      </div>
+      )}
+
+      <div style={{ height: 18 }} />
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button type="button" className="ag-btn-ghost" onClick={onCancel} style={{ flex: 1 }} disabled={saving}>

@@ -12,6 +12,7 @@ import { useState, useMemo } from 'react';
 import { useConfirm } from '../../ConfirmSlideProvider';
 import ProductEditor from './ProductEditor';
 import { categoriesFrom } from '../../../services/platformAdmin';
+import { terminologia } from '../../../modules/registry';
 
 function money(n) {
   return `$${Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
@@ -24,6 +25,9 @@ export default function ProductsPanel({
   const [editing, setEditing] = useState(null); // objeto producto | 'new' | null
   const [search, setSearch] = useState('');
 
+  // Como se llama lo que vende este negocio. Un corte de pelo no es un
+  // "producto": la palabra cambia toda la pantalla.
+  const t = terminologia(vertical);
   const categories = useMemo(() => categoriesFrom(products), [products]);
 
   const filtered = useMemo(() => {
@@ -76,7 +80,7 @@ export default function ProductsPanel({
             </svg>
             <span>Atrás</span>
           </button>
-          <h2 className="ag-page-over-title">{isNew ? 'Nuevo producto' : 'Editar producto'}</h2>
+          <h2 className="ag-page-over-title">{isNew ? t.nuevo : `Editar ${t.singular}`}</h2>
         </div>
         <div className="ag-page-over-body">
           <ProductEditor
@@ -95,7 +99,7 @@ export default function ProductsPanel({
   return (
     <div className="ag-page-over">
       <div className="ag-page-over-head">
-        <h2 className="ag-page-over-title">Productos</h2>
+        <h2 className="ag-page-over-title">{t.plural}</h2>
       </div>
 
       <div className="ag-page-over-body">
@@ -111,8 +115,8 @@ export default function ProductsPanel({
             </svg>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar producto..."
-              aria-label="Buscar producto"
+              placeholder={t.buscar}
+              aria-label={t.buscar}
               style={{
                 flex: 1, border: 0, outline: 'none', background: 'transparent',
                 color: 'var(--ag-ink)', fontFamily: 'inherit', fontSize: 13,
@@ -123,7 +127,7 @@ export default function ProductsPanel({
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
           <button type="button" className="ag-cta" onClick={() => setEditing('new')}>
-            + Agregar producto
+            + Agregar {t.singular}
           </button>
         </div>
 
@@ -134,9 +138,9 @@ export default function ProductsPanel({
             textAlign: 'center', padding: '28px 20px',
             background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)', borderRadius: 14,
           }}>
-            <div style={{ fontSize: 15, color: 'var(--ag-ink)', marginBottom: 6 }}>Todavia no cargaste nada</div>
+            <div style={{ fontSize: 15, color: 'var(--ag-ink)', marginBottom: 6 }}>Todavía no cargaste nada</div>
             <div style={{ fontSize: 13, color: 'var(--ag-ink-3)' }}>
-              Tu catalogo esta vacio. Agregá el primer producto y ya queda publicado.
+              Tu catálogo está vacío. Agregá el primer {t.singular} y ya queda publicado.
             </div>
           </div>
         )}

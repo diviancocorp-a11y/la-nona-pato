@@ -25,6 +25,7 @@ import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
 } from '../services/platformAdmin';
+import { modulosDe, terminologia } from '../modules/registry';
 
 import '../styles/admin-tokens.css';
 import '../styles/admin-bg.css';
@@ -33,10 +34,12 @@ import '../styles/admin-bottomnav.css';
 import '../styles/admin-cards.css';
 import '../styles/admin-shared.css';
 
-const TABS = [
-  { id: 'products', label: 'Productos', Icon: BoxIcon },
-  { id: 'orders', label: 'Pedidos', Icon: BagIcon },
-];
+// El registry es data pura (sin JSX) para poder leerlo desde services y tests.
+// Los iconos se mapean aca, por id de modulo.
+const ICONOS = {
+  products: BoxIcon,
+  orders: BagIcon,
+};
 
 function Centered({ children }) {
   return (
@@ -160,6 +163,18 @@ export default function PlatformAdmin() {
   const openCount = orders.filter(o => OPEN_ORDER_STATUSES.includes(o.status)).length;
   const themeClass = theme === 'dark' ? 'ag-theme-dark' : 'ag-theme-light';
 
+  // Que secciones ve este negocio segun su rubro. modulosDe() ya descarta las
+  // que todavia no estan implementadas, asi que declarar "agenda" para
+  // barberia no ensucia la nav hasta que exista.
+  const tabs = modulosDe(tenant?.vertical)
+    .filter(m => ICONOS[m.id])
+    .map(m => ({
+      id: m.id,
+      // El modulo de catalogo se llama distinto en cada rubro.
+      label: m.id === 'products' ? terminologia(tenant?.vertical).plural : m.label,
+      Icon: ICONOS[m.id],
+    }));
+
   return (
     <ConfirmSlideProvider>
       <div className={`ag-root ${themeClass}`} style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -216,7 +231,7 @@ export default function PlatformAdmin() {
         </main>
 
         <nav className="ag-bottom-nav" aria-label="Navegación principal">
-          {TABS.map(({ id, label, Icon }) => {
+          {tabs.map(({ id, label, Icon }) => {
             const isActive = tab === id;
             const badge = id === 'orders' ? openCount : 0;
             return (
