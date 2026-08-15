@@ -87,6 +87,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     })
     .catch((e) => {
       console.error('ERROR:', e.message)
-      process.exit(1)
+      // exitCode y no process.exit(): ver la nota en attach-owner.mjs.
+      process.exitCode = 1
     })
 }

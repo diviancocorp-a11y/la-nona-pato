@@ -95,6 +95,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     })
     .catch((e) => {
       console.error('ERROR:', e.message)
-      process.exit(1)
+      // exitCode y no process.exit(): forzar la salida con el cliente de
+      // supabase todavia abierto dispara un "Assertion failed ... async.c"
+      // de libuv en Windows, y ese ruido hace que un error de validacion
+      // parezca un crash.
+      process.exitCode = 1
     })
 }
