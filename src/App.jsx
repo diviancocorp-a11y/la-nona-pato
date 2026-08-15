@@ -17,6 +17,7 @@ import Bienvenido from './pages/Bienvenido'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import { isPlatformRoot } from './lib/tenantHost'
+import business from '@business'
 import { useEffect } from 'react'
 import { fetchSettings } from './services/settings'
 import { supabase } from './lib/supabase'
@@ -45,6 +46,9 @@ function lazyReload(importer) {
 }
 
 const Admin = lazyReload(() => import('./pages/Admin'))
+// Panel del edificio: chunk aparte del admin legacy, para que un build de
+// plataforma no se traiga las pantallas del ERP viejo (ni al reves).
+const PlatformAdmin = lazyReload(() => import('./pages/PlatformAdmin'))
 const Personalizacion = lazyReload(() => import('./pages/Personalizacion'))
 const InfoPagesAdmin = lazyReload(() => import('./pages/admin/InfoPages'))
 const OrderTracker = lazyReload(() => import('./pages/OrderTracker'))
@@ -138,7 +142,11 @@ export default function App() {
               <Route path="/entrar" element={<Login />} />
               <Route path="/q/:slug" element={<QrRedirect />} />
               <Route path="/info/:slug" element={<InfoPage />} />
-              <Route path="/admin" element={<Admin />} />
+              {/* /admin sirve dos paneles distintos, no uno con ifs adentro:
+                  el del edificio (products/orders con RLS por tenant) y el ERP
+                  legacy (recipes/ingredients/settings). Los decide el build,
+                  igual que fetchCatalog. */}
+              <Route path="/admin" element={business.platform ? <PlatformAdmin /> : <Admin />} />
               <Route path="/admin/personalizacion" element={<Personalizacion />} />
               <Route path="/admin/paginas" element={<InfoPagesAdmin />} />
               <Route path="/order/:id" element={<OrderTracker />} />
