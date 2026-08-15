@@ -89,16 +89,28 @@ renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
 - **`check-file-integrity.mjs` da falsos positivos de "JSX en .js"** con SVG
   en strings. Ya se arregló el caso de las URLs (`//` de protocolo), pero los
   literales de regex con `<` siguen disparándolo: escribí `/[<]/g`, no `/</g`.
-- **El pre-commit valida columnas contra `scripts/supabase-schema.json`**, que
-  describe el schema LEGACY. Si consultás una tabla del edificio con columnas
-  que el legacy no tiene, falla. Suele convenir rediseñar la consulta antes
-  que tocar el snapshot.
+- **El pre-commit valida columnas contra DOS snapshots**, uno por base:
+  `scripts/supabase-schema.json` (legacy) y `scripts/platform-schema.json`
+  (edificio). Cuál se aplica lo decide `PLATFORM_PATHS` en
+  `scripts/check-supabase-columns.mjs`: **archivo nuevo que le hable al
+  edificio, sumalo ahí** o se valida contra el schema equivocado. Los
+  snapshots se mantienen a mano — al aplicar una migración que agregue o
+  saque columnas, actualizá el que corresponda.
 
 ### Lo que NO funciona todavía (no lo reportes como roto)
-- **El panel del admin no está conectado al edificio**: un tenant nuevo se
-  registra y no tiene dónde cargar productos. Es el próximo bloque grande.
+- **El panel del edificio es sólo productos y pedidos.** `PlatformAdmin` cubre
+  el mínimo que desbloquea a un tenant nuevo; todo el resto del ERP (recetas,
+  stock, compras, gastos, CRM, P&L) sigue siendo exclusivo del legacy. Los dos
+  paneles conviven y los decide `business.platform` en la ruta `/admin`: no
+  intentes unificarlos, no comparten ni una tabla.
+- **Un tenant sin fila en `tenant_members` no tiene panel.** Los 5 tenants
+  demo/portados (cochi, mala-miga, la-nona-pato, barberia-demo, tienda-demo)
+  tienen productos pero ningún dueño, así que nadie puede entrar a
+  administrarlos. Falta `attach_owner(user, slug)`.
 - **No hay module registry por rubro**: una barbería ve "Recetas" y el filtro
-  "Vegetariano". La UI sigue siendo la gastronómica.
+  "Vegetariano" en el catálogo. `ProductEditor` ya ramifica por
+  `tenant.vertical` (duración vs stock) y es el lugar del que sale ese
+  registry cuando se haga.
 - **Las `og:` tags son las del build** para todos los tenants: compartir por
   WhatsApp muestra la marca equivocada. Necesita render en el edge.
 - **`unit_cost` va en 0**: el edificio no tiene modelo de costos, así que el

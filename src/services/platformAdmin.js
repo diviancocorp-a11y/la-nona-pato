@@ -10,13 +10,11 @@
 // Aca el tenant_id se manda solo porque el INSERT lo necesita para pasar el
 // with_check; si alguien mandara otro, la policy lo rechaza.
 //
-// Nota sobre el pre-commit: `check-supabase-columns.mjs` valida las columnas
-// contra scripts/supabase-schema.json, que describe el schema LEGACY. Las
-// tablas del edificio que el legacy no conoce (products, tenants,
-// tenant_members) el checker las saltea solo. `orders` SI existe en el legacy,
-// asi que las columnas que se piden abajo son a proposito el subconjunto que
-// ambos comparten. `order_items` diverge (name_snapshot, product_id), por eso
-// va con select('*').
+// Este archivo esta en PLATFORM_PATHS (scripts/check-supabase-columns.mjs),
+// asi que el pre-commit valida sus columnas contra scripts/platform-schema.json
+// —el snapshot del edificio— y no contra el legacy. Si agregas una consulta a
+// una tabla del edificio en OTRO archivo, sumalo a esa lista o el check va a
+// medirlo contra el schema equivocado.
 
 import { supabase } from '../lib/supabase';
 import { resolveTenantSlug } from '../lib/activeTenant';
@@ -192,8 +190,7 @@ export function categoriesFrom(products) {
 
 /* ──────────────────────────── Pedidos ──────────────────────────── */
 
-// Subconjunto compartido con el schema legacy (ver nota de arriba).
-const ORDER_COLS = 'id, created_at, status, customer_name, customer_phone, customer_email, total, subtotal, discount, delivery, delivery_address, delivery_cost, delivery_date, payment, note, is_gift, gift_note, tip_amount';
+const ORDER_COLS = 'id, created_at, status, channel, customer_name, customer_phone, customer_email, total, subtotal, discount, delivery, delivery_address, delivery_cost, delivery_date, payment, note, is_gift, gift_note, tip_amount';
 
 export async function fetchOrders({ limit = 100 } = {}) {
   const { data, error } = await supabase
@@ -205,11 +202,11 @@ export async function fetchOrders({ limit = 100 } = {}) {
   return data || [];
 }
 
-/** Items de un pedido. select('*') porque el shape diverge del legacy. */
+/** Items de un pedido. */
 export async function fetchOrderItems(orderId) {
   const { data, error } = await supabase
     .from('order_items')
-    .select('*')
+    .select('id, order_id, product_id, name_snapshot, qty, unit_price, subtotal')
     .eq('order_id', orderId);
   if (error) { console.error('fetchOrderItems:', error.message); return []; }
   return data || [];

@@ -113,7 +113,12 @@ python3 -c "open('FILE','rb').read().decode('utf-8','strict')"
 
 - `check-file-integrity.mjs` — EOF, NULL bytes, lineas truncadas
 - `check-schema-sync.mjs` — Zod schemas vs DB manifest
-- `check-supabase-columns.mjs` — cols en `.select()` existen en schema snapshot
+- `check-supabase-columns.mjs` — cols en `.select()` existen en el schema snapshot.
+  Hay DOS snapshots porque hay dos bases: `scripts/supabase-schema.json` (legacy)
+  y `scripts/platform-schema.json` (edificio). Cual se usa lo decide
+  `PLATFORM_PATHS` dentro del script — archivo nuevo que le hable al edificio,
+  sumalo ahi. Si un archivo consulta una tabla que solo existe del otro lado,
+  el check avisa que esta mal clasificado en vez de dar un error confuso.
 - ESLint con max-warnings 200
 - `vite build` local (atrapa imports rotos)
 
