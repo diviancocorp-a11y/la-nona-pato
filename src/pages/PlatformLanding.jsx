@@ -83,6 +83,9 @@ export default function PlatformLanding() {
         <div style={{ marginTop: 12, fontSize: 13, opacity: 0.5 }}>
           Gratis. Tu local online en un minuto.
         </div>
+        <div style={{ marginTop: 18, fontSize: 14, opacity: 0.7 }}>
+          ¿Ya tenés uno? <a href="/entrar" style={{ color: '#e8b947' }}>Entrar</a>
+        </div>
       </div>
 
       <footer style={{ marginTop: 8, fontSize: 12, opacity: 0.35 }}>

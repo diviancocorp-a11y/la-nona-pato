@@ -14,6 +14,7 @@ import Catalog from './pages/Catalog'
 import PlatformLanding from './pages/PlatformLanding'
 import Signup from './pages/Signup'
 import Bienvenido from './pages/Bienvenido'
+import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import { isPlatformRoot } from './lib/tenantHost'
 import { useEffect } from 'react'
@@ -134,6 +135,7 @@ export default function App() {
                   subdominio de un tenant el local ya es de alguien. */}
               <Route path="/registro" element={<Signup />} />
               <Route path="/bienvenido" element={<Bienvenido />} />
+              <Route path="/entrar" element={<Login />} />
               <Route path="/q/:slug" element={<QrRedirect />} />
               <Route path="/info/:slug" element={<InfoPage />} />
               <Route path="/admin" element={<Admin />} />

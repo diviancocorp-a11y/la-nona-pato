@@ -225,6 +225,10 @@ export default function Signup() {
         <p style={{ color: C.t2, fontSize: 12.5, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
           Te vamos a pedir que confirmes el email antes de activar el local.
         </p>
+
+        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 13.5, color: C.t2 }}>
+          ¿Ya tenés cuenta? <a href="/entrar" style={{ color: C.ac }}>Entrar</a>
+        </div>
       </form>
     </main>
   );

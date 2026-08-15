@@ -62,6 +62,41 @@ export async function crearTenantPendiente() {
   return { ok: true, slug: data?.slug, vertical: data?.vertical, tenantId: data?.tenant_id };
 }
 
+/**
+ * Inicia sesion en la plataforma.
+ * @returns {{ ok: boolean, error?: string }}
+ */
+export async function iniciarSesion({ email, password }) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, error: traducirError(error.message) };
+  return { ok: true };
+}
+
+/**
+ * A donde mandar al dueño despues de entrar.
+ *
+ * Aprovecha que signup_tenant() es idempotente (0019): una sola llamada cubre
+ * los DOS casos sin preguntar antes.
+ *   - ya tiene negocio  -> lo devuelve (already_existed) -> a su subdominio
+ *   - confirmo el mail pero nunca llego a /bienvenido -> lo crea ahora
+ *
+ * @returns {{ ok: boolean, url?: string, slug?: string, error?: string }}
+ */
+export async function destinoTrasLogin() {
+  const r = await crearTenantPendiente();
+  if (r.ok) return { ok: true, url: urlDelNegocio(r.slug), slug: r.slug };
+  return { ok: false, error: r.error };
+}
+
+/** Manda el mail de restablecimiento de contraseña. */
+export async function pedirResetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/entrar`,
+  });
+  if (error) return { ok: false, error: traducirError(error.message) };
+  return { ok: true };
+}
+
 /** URL final del negocio ya creado. */
 export function urlDelNegocio(slug) {
   const host = window.location.hostname;
@@ -83,6 +118,17 @@ function traducirError(msg = '') {
   if (m.includes('confirma tu email')) return 'Confirmá tu email antes de continuar.';
   if (m.includes('rate limit') || m.includes('too many')) {
     return 'Demasiados intentos. Esperá unos minutos.';
+  }
+  // Supabase devuelve el mismo error para "no existe" y "clave incorrecta", a
+  // proposito: distinguirlos permitiria averiguar que emails estan registrados.
+  if (m.includes('invalid login credentials')) {
+    return 'Email o contraseña incorrectos.';
+  }
+  if (m.includes('email not confirmed')) {
+    return 'Todavía no confirmaste tu email. Revisá tu casilla.';
+  }
+  if (m.includes('faltan datos del negocio')) {
+    return 'Tu cuenta existe pero no tiene un negocio asociado. Escribinos y lo resolvemos.';
   }
   return msg || 'Algo falló. Intentá de nuevo.';
 }

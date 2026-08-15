@@ -76,6 +76,16 @@ export default function Bienvenido() {
             El link de confirmación puede haber vencido. Entrá con tu email y
             contraseña y terminamos de crear tu local.
           </p>
+          <a
+            href="/entrar"
+            style={{
+              display: 'inline-block', marginTop: 20, padding: '11px 22px',
+              borderRadius: 10, background: C.ac, color: '#1a1408',
+              fontWeight: 700, fontSize: 15, textDecoration: 'none',
+            }}
+          >
+            Entrar
+          </a>
         </div>
       </main>
     );
