@@ -19,6 +19,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
+import { pathToFileURL } from 'node:url'
 
 const VERTICALS = ['gastro', 'barber', 'retail']
 
@@ -65,7 +66,10 @@ function arg(name) {
   return i >= 0 ? process.argv[i + 1] : undefined
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL y no `file://${argv[1]}`: en Windows argv[1] viene con
+// backslashes y la comparacion nunca da true — el script salia con codigo 0
+// sin crear nada.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   createOwner({
     email: arg('email'),
     name: arg('name'),

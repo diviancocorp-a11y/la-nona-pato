@@ -228,8 +228,11 @@ buckets = paso aparte).
 - Correr con env `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
   Requiere `npm i @supabase/supabase-js`. (No se corrio en la sesion: necesita
   service role.)
-- **PENDIENTE**: `attach_owner(user, slug)` para linkear un dueno a un tenant que
-  YA existe (los 3 gastro). `create-owner` crea tenant nuevo, no sirve para esos.
+- **`platform/scripts/attach-owner.mjs`** (15/ago): linkea un dueno a un tenant
+  que YA existe — los 5 portados/demo, que se cargaron sin dueno y por eso no
+  se les podia abrir el panel. Usa la RPC `attach_owner` (migracion 0024), que
+  es idempotente. `create-owner` no servia para esos: crea el tenant.
+  `node platform/scripts/attach-owner.mjs --email x@y.com --slug cochi`
 
 ## 6. Front (reuso de hermes-gastro)
 

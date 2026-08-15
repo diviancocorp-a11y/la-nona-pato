@@ -107,8 +107,10 @@ renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
   intentes unificarlos, no comparten ni una tabla.
 - **Un tenant sin fila en `tenant_members` no tiene panel.** Los 5 tenants
   demo/portados (cochi, mala-miga, la-nona-pato, barberia-demo, tienda-demo)
-  tienen productos pero ningún dueño, así que nadie puede entrar a
-  administrarlos. Falta `attach_owner(user, slug)`.
+  se cargaron sin dueño. Ya hay con qué arreglarlo —
+  `node platform/scripts/attach-owner.mjs --email x@y.com --slug cochi`,
+  necesita la service role exportada— pero mientras no se corra, esos tenants
+  siguen sin panel.
 - **No hay module registry por rubro**: una barbería ve "Recetas" y el filtro
   "Vegetariano" en el catálogo. `ProductEditor` ya ramifica por
   `tenant.vertical` (duración vs stock) y es el lugar del que sale ese
