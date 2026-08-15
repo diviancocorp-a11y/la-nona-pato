@@ -74,23 +74,30 @@ export default function PlatformAdmin() {
   // ── Carga inicial (solo con el gate ya en verde) ──
   const ready = status === 'ok';
 
+  // Las lecturas se acotan al tenant de ESTE host. No alcanza con RLS: un
+  // dueno de varios negocios es miembro de todos, y sin el filtro el panel de
+  // cada uno mostraba los productos de los otros.
+  const tenantId = tenant?.id || null;
+
   const loadProducts = useCallback(async () => {
+    if (!tenantId) return;
     setLoadingProducts(true);
-    setProducts(await fetchProducts());
+    setProducts(await fetchProducts(tenantId));
     setLoadingProducts(false);
-  }, []);
+  }, [tenantId]);
 
   const loadOrders = useCallback(async () => {
+    if (!tenantId) return;
     setLoadingOrders(true);
-    setOrders(await fetchOrders());
+    setOrders(await fetchOrders(tenantId));
     setLoadingOrders(false);
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !tenantId) return;
     loadProducts();
     loadOrders();
-  }, [ready, loadProducts, loadOrders]);
+  }, [ready, tenantId, loadProducts, loadOrders]);
 
   // ── Acciones de productos ──
   const handleSaveProduct = useCallback(async (form) => {

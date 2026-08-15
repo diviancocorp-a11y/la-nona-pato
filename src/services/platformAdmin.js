@@ -5,10 +5,18 @@
 // (recipes.js, orders.js, inventory.js), que hablan con el schema viejo
 // (recipes/ingredients/settings) que en el edificio no existe.
 //
-// Seguridad: el aislamiento entre tenants NO lo hace este archivo, lo hacen
-// las policies RLS (`tenant_id in (select private.current_user_tenants())`).
-// Aca el tenant_id se manda solo porque el INSERT lo necesita para pasar el
-// with_check; si alguien mandara otro, la policy lo rechaza.
+// RLS NO ALCANZA PARA ACOTAR AL TENANT DE ESTE HOST — leer antes de tocar.
+//
+// Las policies dicen `tenant_id in (select private.current_user_tenants())`,
+// o sea "las filas de CUALQUIER tenant del que seas miembro". Eso es correcto
+// como frontera de seguridad (nunca ves lo de un tercero) pero NO es un filtro
+// de alcance: un usuario que administra varios negocios veia los productos de
+// todos mezclados en el panel de cada uno.
+//
+// El bug estuvo tapado mientras cada usuario pertenecia a un solo tenant, y
+// aparecio el dia que un mismo dueno quedo vinculado a cinco. Por eso toda
+// lectura filtra explicitamente por `tenant_id` ademas de apoyarse en RLS:
+// RLS decide QUE PODES ver, el filtro decide QUE ESTAS MIRANDO.
 //
 // Este archivo esta en PLATFORM_PATHS (scripts/check-supabase-columns.mjs),
 // asi que el pre-commit valida sus columnas contra scripts/platform-schema.json
@@ -18,6 +26,15 @@
 
 import { supabase } from '../lib/supabase';
 import { resolveTenantSlug } from '../lib/activeTenant';
+
+/**
+ * Falla fuerte si falta el tenant. Un tenantId undefined haria una consulta
+ * sin filtrar que RLS igual deja pasar: en vez de "no ves nada" el sintoma
+ * seria "ves de mas", que es peor y mas dificil de notar.
+ */
+function exigirTenant(tenantId, quien) {
+  if (!tenantId) throw new Error(`${quien}: falta tenantId (sin el, la consulta trae otros negocios)`);
+}
 
 /* ─────────────────────── Estados de pedido ─────────────────────── */
 
@@ -98,10 +115,12 @@ export function defaultProductType(vertical) {
   return vertical === 'barber' ? 'service' : 'simple';
 }
 
-export async function fetchProducts() {
+export async function fetchProducts(tenantId) {
+  exigirTenant(tenantId, 'fetchProducts');
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_COLS)
+    .eq('tenant_id', tenantId)
     .order('category', { nullsFirst: false })
     .order('name');
   if (error) { console.error('fetchProducts:', error.message); return []; }
@@ -192,10 +211,12 @@ export function categoriesFrom(products) {
 
 const ORDER_COLS = 'id, created_at, status, channel, customer_name, customer_phone, customer_email, total, subtotal, discount, delivery, delivery_address, delivery_cost, delivery_date, payment, note, is_gift, gift_note, tip_amount';
 
-export async function fetchOrders({ limit = 100 } = {}) {
+export async function fetchOrders(tenantId, { limit = 100 } = {}) {
+  exigirTenant(tenantId, 'fetchOrders');
   const { data, error } = await supabase
     .from('orders')
     .select(ORDER_COLS)
+    .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) { console.error('fetchOrders:', error.message); return []; }
