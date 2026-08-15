@@ -22,7 +22,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { pathToFileURL } from 'node:url'
-import { cargarEnvDeArchivo, faltanCredenciales } from './_env.mjs'
+import { cargarEnvDeArchivo, faltanCredenciales, esPlaceholder, ENV_FILE } from './_env.mjs'
 
 cargarEnvDeArchivo()
 
@@ -48,6 +48,9 @@ export async function attachOwner({ email, slug, role = 'owner' }) {
   const url = process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !serviceKey) throw new Error(faltanCredenciales(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']))
+  if (esPlaceholder(serviceKey)) {
+    throw new Error(`Todavia esta el texto de ejemplo en ${ENV_FILE}: reemplazá esa linea por tu service role.`)
+  }
   if (!email || !slug) throw new Error('Faltan campos: email, slug')
   if (!ROLES.includes(role)) throw new Error(`rol invalido: ${role} (usar ${ROLES.join('|')})`)
 

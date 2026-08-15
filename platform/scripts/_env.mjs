@@ -43,6 +43,15 @@ export function cargarEnvDeArchivo(file = ENV_FILE) {
   return true;
 }
 
+// El archivo se crea con un placeholder para que solo haya que reemplazar una
+// linea. Si llega sin reemplazar, el error natural seria un 401 de la API
+// ("Invalid API key"), que manda a revisar la clave en vez de al archivo.
+const PLACEHOLDER = /^REEMPLAZAR/i;
+
+export function esPlaceholder(valor) {
+  return typeof valor === 'string' && PLACEHOLDER.test(valor.trim());
+}
+
 /** Mensaje de error util: dice las dos formas de cargar las credenciales. */
 export function faltanCredenciales(vars) {
   return [
