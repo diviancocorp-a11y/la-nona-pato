@@ -1,12 +1,82 @@
-# HANDOFF — Hermes plataforma multi-rubro (para seguir en code)
+# HANDOFF — Dico, plataforma multi-rubro (para seguir en code)
 
-> Resumen de la sesion del 9/jul/2026. Punto de entrada para continuar el
-> desarrollo. Docs largos: `PLAN-MULTI-RUBRO.md`, `ARQUITECTURA-MODULAR.md`,
-> `DEMO-REAL-VS-MOCK.md`. Todo el SQL del edificio esta en `platform/`.
+> Punto de entrada para continuar. **Leer la seccion 00 primero** (lo mas
+> reciente), despues la 0. Docs largos: `PLAN-MULTI-RUBRO.md`,
+> `ARQUITECTURA-MODULAR.md`, `DEMO-REAL-VS-MOCK.md`. SQL en `platform/`.
+>
+> Para retomar en un chat nuevo: **`/dico`**. Para cerrar: **`/cerrardico`**.
 
 ---
 
-## 0. Actualizacion 12/ago/2026 (leer primero)
+## 00. Actualizacion 14/ago/2026 — EL ALTA SELF-SERVICE FUNCIONA
+
+**El producto se llama Dico. Divianco es la empresa.** No son
+intercambiables: textos legales y copyright -> Divianco; marketing y
+producto -> Dico. `dico.app` esta tomado por un tercero, por eso la
+plataforma se queda en `divianco.app`.
+
+**Probado punta a punta en produccion (14/ago):** alta nueva completa
+(registro -> mail -> confirmacion -> tenant creado -> redirect al subdominio)
+y recuperacion de una cuenta huerfana via login. Las dos OK.
+
+### Hecho en esta sesion
+
+**Correo (Resend)** — dominio `send.divianco.app`, region sa-east-1.
+Los 4 registros DNS verificados a mano en Cloudflare (DKIM, MX, SPF, DMARC).
+SMTP cargado en Supabase Auth. Limite de envio: 30 mails/hora en Supabase,
+pero **el techo real es Resend free = 100/dia**; subir Supabase sin subir el
+plan de Resend solo mueve donde rebota.
+
+**Signup self-service** (`/registro`, `/bienvenido`, `/entrar`):
+- `0016`+`0019` `signup_tenant()`: sin argumentos, toma la identidad de
+  `auth.uid()` y lee los datos del negocio del `raw_user_meta_data`. NO se
+  reuso `provision_owner` porque recibe el `user_id` como parametro: darle
+  grant a `authenticated` dejaria crear tenants a nombre de otro. Es
+  idempotente — devuelve el tenant existente con `already_existed=true`.
+- `0020`+`0021` slugs reservados: UNA fuente en SQL (`is_reserved_slug`) y
+  una en JS (`tenantHost.js`), con un test que las compara parseando la
+  migracion. Incluye los subdominios de correo y `dico`.
+- Los datos del negocio viajan en `user_metadata`, NO en localStorage: el
+  mail se confirma a veces desde otro dispositivo.
+
+**Login** (`/entrar`) — *nacio de un bug real*: en la primera prueba el Site
+URL de Supabase estaba en `localhost:3000`, el redirect fallo y quedo una
+cuenta CONFIRMADA sin forma de entrar. Resuelve los dos casos con la misma
+llamada gracias a la idempotencia de `signup_tenant`. Los mensajes de error
+son **ambiguos a proposito** (no distinguen mail inexistente de clave
+incorrecta): precisarlos permitiria enumerar cuentas.
+
+**Ciclo de vida** (`0017`) — `status` / `activated_at` / `first_order_at` /
+`last_activity_at` + triggers. `release_dormant_tenants()` agendada con
+pg_cron (4am UTC): a los 45 dias sin un solo producto, el slug se libera
+(se RENOMBRA a `dormant-<id>`, no se borra). Ataca la ocupacion del
+namespace, que es el danio caro, sin friccion en el alta.
+
+**Rename a Dico** — landing, signup, bienvenida, login, manifest, favicon
+generado, y el catalogo/admin legacy. Los identificadores internos
+(`HermesMark`, `HERMES_BUSINESS_COPY`) y los nombres de infraestructura
+(repo, proyecto Supabase, proyecto Vercel) se dejan: renombrarlos rompe
+imports y deploys a cambio de nada.
+
+### Bloqueado por Ricky
+- Nada critico. Si abre el registro al publico, vigilar el consumo de
+  Resend (100 mails/dia en el plan free).
+
+### Pendiente inmediato (en orden)
+1. **El panel del admin no esta conectado al edificio.** Un tenant nuevo se
+   registra, entra a su subdominio y NO TIENE DONDE CARGAR PRODUCTOS. Es el
+   bloqueante para que el signup sirva de algo. Bloque grande.
+2. **Module registry por vertical**: hoy una barberia ve "Recetas" y el
+   filtro "Vegetariano". La UI sigue siendo la gastronomica.
+3. Formulario de contrasena nueva tras el reset (el link ya cae en
+   `/entrar` con sesion, falta el form).
+4. `og:` tags por tenant — compartir por WhatsApp muestra la marca del
+   build. Necesita render en el edge.
+5. `unit_cost` en 0: sin modelo de costos, el P&L no da.
+
+---
+
+## 0. Actualizacion 12/ago/2026
 
 **Deploy vivo:** https://hermes-platform-sigma.vercel.app — proyecto Vercel
 `hermes-platform` (`prj_3WSWrxws27VLbIDebl8mDqyTPxCC`), aparte de los 3 legacy.

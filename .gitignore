@@ -38,3 +38,6 @@ coverage/
 # Reafirmado DESPUES de `.env*`: la regla de arriba lo volvia a ignorar y
 # el .env.example es justamente el que SI tiene que estar en el repo.
 !.env.example
+
+# Claude Code: las skills se comparten, la config local no
+.claude/settings.local.json
