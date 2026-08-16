@@ -23,6 +23,13 @@ function exigirTenant(tenantId, quien) {
   if (!tenantId) throw new Error(`${quien}: falta tenantId (sin el, la consulta trae otros negocios)`);
 }
 
+// Los mismos defaults que muestra la pantalla de configuracion
+// (Settings.jsx: `waste_pct ?? 5`, `expense_pct ?? 0`) y que usa el legacy en
+// useFinancials. Tienen que coincidir en los tres lados o el numero que ve el
+// usuario no es el que se calcula.
+export const PCT_MERMA_DEFAULT = 5;
+export const PCT_GASTOS_DEFAULT = 0;
+
 /* ─────────────────────────── Lectura ─────────────────────────── */
 
 /**
@@ -62,12 +69,18 @@ export function agruparPorProducto(lineas) {
  */
 export function factorDeCosto(settings) {
   const pct = (v, porDefecto) => {
+    // null / undefined / '' = "sin definir" -> el default. OJO: Number(null)
+    // es 0, asi que sin este corte un campo vacio en la DB se lee como un 0%
+    // explicito. Eso paso: Settings.jsx muestra `waste_pct ?? 5` —o sea 5%—
+    // mientras el costeo calculaba con 0%. La pantalla decia una cosa y la
+    // cuenta hacia otra, sin que nada fallara.
+    if (v === null || v === undefined || v === '') return porDefecto;
     const n = Number(v);
     if (!Number.isFinite(n) || n < 0) return porDefecto;
-    return Math.min(100, n);
+    return Math.min(100, n);   // un 0 explicito SI vale 0: es una eleccion
   };
-  const merma = pct(settings?.waste_pct, 5);
-  const gastos = pct(settings?.expense_pct, 0);
+  const merma = pct(settings?.waste_pct, PCT_MERMA_DEFAULT);
+  const gastos = pct(settings?.expense_pct, PCT_GASTOS_DEFAULT);
   return 1 + (merma + gastos) / 100;
 }
 

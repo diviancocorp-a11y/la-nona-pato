@@ -44,9 +44,36 @@ describe('factorDeCosto', () => {
     expect(factorDeCosto({})).toBeCloseTo(1.05);
   });
 
+  it('NULL en la DB es "sin definir", no un 0% explicito', () => {
+    // El bug del 16/ago: Number(null) es 0, asi que un campo vacio se leia
+    // como 0% de colchon mientras Settings.jsx mostraba `?? 5` -> 5%. La
+    // pantalla decia una cosa y la cuenta hacia otra, sin fallar.
+    expect(factorDeCosto({ waste_pct: null, expense_pct: null })).toBeCloseTo(1.05);
+    expect(factorDeCosto({ waste_pct: undefined })).toBeCloseTo(1.05);
+    expect(factorDeCosto({ waste_pct: '' })).toBeCloseTo(1.05);
+  });
+
+  it('pero un 0 EXPLICITO vale 0: es una eleccion, no un vacio', () => {
+    expect(factorDeCosto({ waste_pct: 0, expense_pct: 0 })).toBeCloseTo(1);
+  });
+
   it('valores invalidos caen al default en vez de dar NaN', () => {
     // Un NaN acá se propaga a todos los costos de la pantalla sin decir por qué.
     expect(factorDeCosto({ waste_pct: 'mucho', expense_pct: null })).toBeCloseTo(1.05);
+  });
+
+  it('coincide con lo que muestra la pantalla de configuracion', () => {
+    // Settings.jsx: `settings?.waste_pct ?? 5` y `settings?.expense_pct ?? 0`.
+    // Si estos defaults se separan, el usuario ve un numero y se calcula otro.
+    const comoLoMuestraLaPantalla = (s) => ({
+      merma: s?.waste_pct ?? 5,
+      gastos: s?.expense_pct ?? 0,
+    });
+    for (const s of [null, {}, { waste_pct: null }, { waste_pct: 12, expense_pct: 3 }, { waste_pct: 0 }]) {
+      const vista = comoLoMuestraLaPantalla(s);
+      const esperado = 1 + (vista.merma + vista.gastos) / 100;
+      expect(factorDeCosto(s), `settings=${JSON.stringify(s)}`).toBeCloseTo(esperado);
+    }
   });
 
   it('recorta arriba de 100 y descarta negativos', () => {
