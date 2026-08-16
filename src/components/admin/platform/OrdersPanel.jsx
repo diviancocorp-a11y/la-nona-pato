@@ -181,13 +181,18 @@ export default function OrdersPanel({ orders, loading, onSetStatus, showToast })
     showToast?.('Pedido cancelado');
   };
 
+  // En flujo, no `ag-page-over`: esa clase es un overlay full-screen que
+  // esconde el topbar y el bottom nav (ver la nota en ProductsPanel).
   return (
-    <div className="ag-page-over">
-      <div className="ag-page-over-head">
-        <h2 className="ag-page-over-title">Pedidos</h2>
+    <div style={{ padding: '12px 16px 6px', position: 'relative', zIndex: 2 }}>
+      <div style={{ marginBottom: 14 }}>
+        <h2 style={{
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 18,
+          margin: 0, color: 'var(--ag-ink)', letterSpacing: '-0.01em',
+        }}>Pedidos</h2>
       </div>
 
-      <div className="ag-page-over-body">
+      <div>
         {loading && <p style={{ color: 'var(--ag-ink-3)', fontSize: 13, textAlign: 'center' }}>Cargando...</p>}
 
         {!loading && orders.length === 0 && (

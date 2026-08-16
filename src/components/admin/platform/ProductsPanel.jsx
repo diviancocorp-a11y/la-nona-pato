@@ -95,14 +95,23 @@ export default function ProductsPanel({
     );
   }
 
-  /* ── Listado ── */
+  /* ── Listado ──
+     Contenedor EN FLUJO, no `ag-page-over`. Esa clase es un overlay de
+     pantalla completa (position:fixed, z-index 950) y admin-shared.css tiene
+     una regla explicita que esconde el topbar y el bottom nav mientras haya
+     uno en el DOM. Usarla para una pestania principal dejaba el panel sin
+     engranaje y sin navegacion: los elementos se renderizaban y quedaban
+     tapados. Los overlays de verdad —el formulario de abajo— si la usan. */
   return (
-    <div className="ag-page-over">
-      <div className="ag-page-over-head">
-        <h2 className="ag-page-over-title">{t.plural}</h2>
+    <div style={{ padding: '12px 16px 6px', position: 'relative', zIndex: 2 }}>
+      <div style={{ marginBottom: 14 }}>
+        <h2 style={{
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 18,
+          margin: 0, color: 'var(--ag-ink)', letterSpacing: '-0.01em',
+        }}>{t.plural}</h2>
       </div>
 
-      <div className="ag-page-over-body">
+      <div>
         {products.length > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
