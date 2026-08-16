@@ -45,7 +45,29 @@ app ya tiene hoy:
 Es la misma información con otra sensación. **Se puede hacer en cualquier
 momento y no bloquea nada.**
 
-### Capa 2 — Dico que suelta datos, sin LLM
+### Capa 2 — Dico que suelta datos, sin LLM ✅ PRIMERA VERSIÓN (16/ago)
+
+`src/modules/dico/reglas.js` (funciones puras, 19 tests) +
+`DicoAvisos.jsx` en la pestaña de entrada del panel. Nueve reglas, ordenadas
+por gravedad y **cortadas en 4** — veinte avisos son cero avisos.
+
+Tres cosas que quedaron decididas y conviene no reabrir:
+
+- **`listo` es obligatorio.** Mientras el panel carga, las listas llegan
+  vacías. Sin ese corte, Dico le dice "todavía no cargaste ningún producto" a
+  alguien que tiene cuarenta. Un asistente que se equivoca una vez así no se
+  vuelve a leer.
+- **Se puede cerrar, y vuelve cuando cambia lo que tiene para decir** (se
+  compara la firma de los avisos, no un booleano). Cerrar es "ya lo vi", no
+  "no me hables nunca".
+- **Sin receta no opina del margen.** Con costo 0 el margen daría 100% y todo
+  parecería rentabilísimo — la misma decisión que ya se tomó en el costeo.
+
+Falta: el arte. El lugar está reservado (`.dico-cara` en `DicoAvisos.jsx`) y
+no se puso un placeholder para no tener que ir a buscarlo después.
+
+<details>
+<summary>El razonamiento original</summary>
 
 Reglas sobre datos que ya existen, escritas a mano. Se siente inteligente, no
 cuesta un peso, **no puede alucinar**, y no puede filtrar entre negocios si la
@@ -68,6 +90,8 @@ sin un `if` por vertical: "te faltan turnos cargados" en una barbería,
 Dónde vive: un módulo `src/modules/dico/reglas.js` de **funciones puras** sobre
 los datos que el panel ya tiene en memoria — mismo criterio que `useFinancials`
 y que el costeo de recetas. Nada de consultas nuevas por regla.
+
+</details>
 
 ### Capa 3 — Dico conversacional (LLM)
 
@@ -92,7 +116,19 @@ y que el costeo de recetas. Nada de consultas nuevas por regla.
 ## Orden
 
 ```
-Capa 1 (cara)      ── independiente, cuando se quiera
-Capa 2 (reglas)    ── ya se puede: los datos que usa están bien
+Capa 1 (cara)      ── independiente, cuando se quiera. Falta el arte como asset.
+Capa 2 (reglas)    ── ✅ primera versión, 16/ago
 Capa 3 (LLM)       ── después de Etapa 4 (ventas y P&L) y 5 (clientes)
 ```
+
+## Qué probar de la capa 2
+
+En **la-nona-pato**, en la pestaña de entrada del panel:
+1. Debería aparecer el cartel de Dico con lo que esté mal hoy (hay insumos sin
+   clasificar y probablemente productos sin receta).
+2. Tocar el botón de un aviso te lleva a la pestaña que corresponde.
+3. Cerrarlo con la ✕ y cambiar de pestaña y volver: **no** tiene que volver.
+   Arreglar lo que decía y romper otra cosa: **sí** tiene que volver.
+4. En un tenant vacío (`prueba-disco`) tiene que decir "todavía no cargaste
+   ningún producto" — y **nunca** decirlo en uno que sí tiene.
+5. En **barberia-demo** no puede hablar de recetas ni de tipo de comida.

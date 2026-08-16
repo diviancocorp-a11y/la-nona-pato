@@ -21,6 +21,7 @@ import AdminBackdrop from '../components/admin/shared/AdminBackdrop';
 import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
+import DicoAvisos from '../components/admin/platform/DicoAvisos';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
@@ -355,6 +356,22 @@ export default function PlatformAdmin() {
           display: 'flex', flexDirection: 'column', minHeight: 0,
           paddingBottom: 'var(--ag-bottom-nav-h, 76px)',
         }}>
+          {/* Dico vive en la pestania de entrada, que es donde cae el que
+              abre el panel. `listo` evita el peor error posible: decirle
+              "todavia no cargaste ningun producto" a alguien que tiene
+              cuarenta, porque la consulta no volvio. */}
+          {tab === 'products' && (
+            <DicoAvisos
+              listo={!loadingProducts && recetas !== null}
+              vertical={tenant?.vertical}
+              productos={products}
+              insumos={ings}
+              recetas={recetas}
+              gastos={gastos}
+              settings={sett}
+              onIr={setTab}
+            />
+          )}
           {tab === 'products' && (
             <ProductsPanel
               products={products}
