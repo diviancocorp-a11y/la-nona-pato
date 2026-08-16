@@ -79,6 +79,9 @@ export const RUBROS = {
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'requires_age_gate'],
+    // Un plato se arma con insumos y por eso tiene costo real. Un corte de
+    // pelo y una remera no: su costo no sale de una receta.
+    receta: true,
     modulos: ['products', 'orders', 'stock', 'caja'],
   },
 
@@ -144,6 +147,11 @@ export function tipoPorDefecto(vertical) {
 /** ¿Este rubro carga este campo? */
 export function usaCampo(vertical, campo) {
   return getRubro(vertical).campos.includes(campo);
+}
+
+/** ¿Los productos de este rubro se arman con insumos? */
+export function usaReceta(vertical) {
+  return getRubro(vertical).receta === true;
 }
 
 export function camposDe(vertical) {

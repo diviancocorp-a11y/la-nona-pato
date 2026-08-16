@@ -121,22 +121,36 @@ Dos cosas que se agregaron sobre el legacy:
 
 ---
 
-## Etapa 2 — Recetas y costos reales
-
-La que apaga el `unit_cost = 0` que hoy rompe cualquier número.
+## Etapa 2 — Recetas y costos ✅ HECHA (16/ago)
 
 | | |
 |---|---|
-| Tablas | `product_ingredients` (el `recipe_ingredients` del legacy) |
-| Ojo | en el edificio la receta **ya es** `products` con `type='composite'` — no se crea una tabla `recipes` nueva |
-| Service | `recipes.js` → costeo sobre `products` |
-| Pantalla | `Recipes.jsx` |
+| Tabla | `product_ingredients` (migración 0028) |
+| Service | `platformRecipes.js` — costeo en funciones puras |
+| Pantalla | `RecipeEditor` **dentro** del formulario de producto |
 
-Los combos (`combo_items`) entran acá o se posponen: son recursivos y agregan
-la mitad de la complejidad de la etapa.
+**No se portó `Recipes.jsx`.** En el legacy "receta" y "producto" eran la misma
+fila de `recipes`; en el edificio esa fila ya es `products`. Traer la pantalla
+habría dejado dos lugares para cargar lo mismo. La receta se edita donde se
+edita el producto, y el costo y el margen se muestran ahí — que es el momento
+en que sirven, cuando se está poniendo el precio.
 
-**Desbloquea:** costo por plato, margen por producto, y que `order_items.unit_cost`
-deje de ser 0.
+**Combos pospuestos** (decisión del 16/ago): son productos hechos de otros
+productos y el costeo se vuelve recursivo. Cerca de la mitad de la complejidad
+de la etapa para algo que un cliente nuevo no necesita el primer día.
+
+Decisiones que quedaron:
+- **Sin receta, el margen es `null`, no 100%.** Con costo 0 el margen daría
+  100% y todo el catálogo parecería rentabilísimo. Una mentira cómoda es peor
+  que un dato ausente.
+- El `type` pasa a `composite` solo cuando el producto tiene insumos.
+- Guardar la receta **no es atómico** con guardar el producto. Si falla la
+  segunda parte, el mensaje lo dice: "se guardó el producto, pero la receta
+  no" — en vez de un "no se pudo guardar" que haría pensar que se perdió todo.
+
+**Falta para cerrar el círculo:** `order_items.unit_cost` sigue en 0. Ya hay
+con qué calcularlo; hay que hacer que `submit-order` lo escriba al confirmar
+el pedido. Va con la Etapa 4, que es la que necesita ese dato.
 
 ---
 

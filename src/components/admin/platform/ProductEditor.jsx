@@ -8,8 +8,10 @@
  */
 import { useState } from 'react';
 import ToggleSwitch from '../shared/forms/ToggleSwitch';
+import RecipeEditor from './RecipeEditor';
 import { validateProduct } from '../../../services/platformAdmin';
-import { usaCampo, terminologia, tipoPorDefecto } from '../../../modules/registry';
+import { validateLineas } from '../../../services/platformRecipes';
+import { usaCampo, terminologia, tipoPorDefecto, usaReceta } from '../../../modules/registry';
 
 const EMPTY = {
   name: '', price: '', category: '', description: '', image_url: '',
@@ -25,7 +27,11 @@ const input = {
 };
 const row = { marginBottom: 14 };
 
-export default function ProductEditor({ product, vertical, categories = [], onSave, onCancel }) {
+export default function ProductEditor({
+  product, vertical, categories = [], onSave, onCancel,
+  ingredientes = [], lineasReceta = [], settings = null,
+}) {
+  const [lineas, setLineas] = useState(() => lineasReceta.map(l => ({ ...l })));
   const [form, setForm] = useState(() => ({
     ...EMPTY,
     ...(product || {}),
@@ -46,13 +52,23 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
   const usaStock = usaCampo(vertical, 'stock');
   const usaEdad = usaCampo(vertical, 'requires_age_gate');
 
+  const conReceta = usaReceta(vertical);
+
   const submit = async (e) => {
     e.preventDefault();
-    const problems = validateProduct(form);
+    const problems = [
+      ...validateProduct(form),
+      ...(conReceta ? validateLineas(lineas) : []),
+    ];
     if (problems.length) { setErrs(problems); return; }
     setErrs([]);
     setSaving(true);
-    await onSave({ ...form, type: product?.type || tipoPorDefecto(vertical) });
+    // El tipo lo decide la receta: un producto con insumos es 'composite'.
+    // Sin eso, el catalogo no sabria distinguir uno armado de uno de reventa.
+    const tipo = conReceta && lineas.length > 0
+      ? 'composite'
+      : (product?.type || tipoPorDefecto(vertical));
+    await onSave({ ...form, type: tipo }, conReceta ? lineas : null);
     setSaving(false);
   };
 
@@ -137,6 +153,22 @@ export default function ProductEditor({ product, vertical, categories = [], onSa
           onChange={e => set('image_url', e.target.value)} placeholder="https://..."
         />
       </div>
+
+      {conReceta && (
+        <div style={{ ...row, paddingTop: 14, borderTop: '1px solid var(--ag-line)' }}>
+          <label style={{ ...lbl, fontSize: 14, color: 'var(--ag-ink)', marginBottom: 3 }}>Receta</label>
+          <div style={{ fontSize: 11, color: 'var(--ag-ink-3)', marginBottom: 10 }}>
+            Con qué se hace. Sirve para saber cuánto te cuesta de verdad y cuánto ganás.
+          </div>
+          <RecipeEditor
+            lineas={lineas}
+            ingredientes={ingredientes}
+            precio={form.price}
+            settings={settings}
+            onChange={setLineas}
+          />
+        </div>
+      )}
 
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

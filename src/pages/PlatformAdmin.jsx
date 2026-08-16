@@ -30,6 +30,9 @@ import { getTenantSlugSync } from '../lib/activeTenant';
 import {
   fetchIngredients, upsertIngredient as upsertIngrediente, archiveIngredient as archivarIngrediente,
 } from '../services/platformInventory';
+import {
+  fetchProductIngredients, agruparPorProducto, saveProductIngredients,
+} from '../services/platformRecipes';
 import { modulosDe, terminologia } from '../modules/registry';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
@@ -89,6 +92,7 @@ export default function PlatformAdmin() {
   const [orders, setOrders] = useState([]);
   const [sett, setSett] = useState(null);
   const [ings, setIngs] = useState([]);
+  const [recetas, setRecetas] = useState(null); // Map product_id -> lineas
   const [ov, setOv] = useState(null); // overlays de Stock (editIng / waste)
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -148,13 +152,21 @@ export default function PlatformAdmin() {
     setIngs(await fetchIngredients(tenantId));
   }, [tenantId]);
 
+  // Todas las lineas de receta de una: la lista muestra el margen de cada
+  // producto, y pedirlas por producto seria una consulta por fila en pantalla.
+  const loadRecetas = useCallback(async () => {
+    if (!tenantId) return;
+    setRecetas(agruparPorProducto(await fetchProductIngredients(tenantId)));
+  }, [tenantId]);
+
   useEffect(() => {
     if (!ready || !tenantId) return;
     loadProducts();
     loadOrders();
     loadSettings();
     loadIngs();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs]);
+    loadRecetas();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -173,11 +185,24 @@ export default function PlatformAdmin() {
   }, [tenantId, msg]);
 
   // ── Acciones de productos ──
-  const handleSaveProduct = useCallback(async (form) => {
+  const handleSaveProduct = useCallback(async (form, lineas) => {
     const saved = await upsertProduct(tenant.id, form);
-    if (!saved?.__error) await loadProducts();
+    if (saved?.__error) return saved;
+
+    // La receta va DESPUES: un producto nuevo recien acá tiene id.
+    if (lineas) {
+      const r = await saveProductIngredients(tenant.id, saved.id, lineas);
+      if (r?.__error) {
+        // El producto SI se guardó. Decirlo, en vez de un "no se pudo
+        // guardar" que haría pensar que se perdió todo.
+        await loadProducts();
+        return { __error: 'receta', message: `Se guardó el producto, pero la receta no: ${r.message}` };
+      }
+      await loadRecetas();
+    }
+    await loadProducts();
     return saved;
-  }, [tenant, loadProducts]);
+  }, [tenant, loadProducts, loadRecetas]);
 
   const handleToggleActive = useCallback(async (p) => {
     // Optimista: el toggle tiene que sentirse instantaneo. Si falla, se revierte.
@@ -296,6 +321,9 @@ export default function PlatformAdmin() {
               products={products}
               vertical={tenant?.vertical}
               loading={loadingProducts}
+              ingredientes={ings}
+              recetas={recetas}
+              settings={sett}
               onSave={handleSaveProduct}
               onToggleActive={handleToggleActive}
               onDelete={handleDeleteProduct}

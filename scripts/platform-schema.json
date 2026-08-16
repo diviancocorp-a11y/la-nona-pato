@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-15",
-  "_migrations_through": "0027",
+  "_migrations_through": "0028",
   "tables": {
     "appointments": ["id", "tenant_id", "staff_id", "service_id", "customer_name", "customer_phone", "starts_at", "ends_at", "status", "notes", "created_at"],
     "cash_sessions": ["id", "tenant_id", "opened_by", "opened_at", "opening_amount", "closed_at", "closing_amount", "expected_amount", "difference", "status", "notes"],
@@ -11,6 +11,7 @@
     "orders": ["id", "tenant_id", "status", "channel", "customer_name", "customer_phone", "total", "created_at", "customer_email", "delivery", "delivery_address", "delivery_cost", "delivery_date", "payment", "payment_account_id", "payment_account_snapshot", "note", "is_gift", "gift_note", "subtotal", "discount", "tip_pct", "tip_amount", "user_id", "coupon_id"],
     "payment_methods": ["id", "tenant_id", "name", "kind", "surcharge_pct", "discount_pct", "active", "created_at"],
     "payments": ["id", "tenant_id", "order_id", "cash_session_id", "method_id", "amount", "paid_at"],
+    "product_ingredients": ["tenant_id", "product_id", "ingredient_id", "qty", "created_at"],
     "product_returns": ["id", "tenant_id", "order_id", "variant_id", "product_id", "qty", "reason", "restocked", "credit_id", "created_at"],
     "product_variants": ["id", "tenant_id", "product_id", "size", "color", "sku", "barcode", "price", "stock", "active", "created_at"],
     "products": ["id", "tenant_id", "type", "name", "price", "active", "created_at", "duration_min", "stock", "category", "description", "image_url", "requires_age_gate"],

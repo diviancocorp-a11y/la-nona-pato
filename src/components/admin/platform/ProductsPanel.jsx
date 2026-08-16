@@ -12,6 +12,7 @@ import { useState, useMemo } from 'react';
 import { useConfirm } from '../../ConfirmSlideProvider';
 import ProductEditor from './ProductEditor';
 import { categoriesFrom } from '../../../services/platformAdmin';
+import { margen, indexarInsumos } from '../../../services/platformRecipes';
 import { terminologia } from '../../../modules/registry';
 
 function money(n) {
@@ -20,6 +21,7 @@ function money(n) {
 
 export default function ProductsPanel({
   products, vertical, loading, onSave, onToggleActive, onDelete, showToast,
+  ingredientes = [], recetas = null, settings = null,
 }) {
   const confirmSlide = useConfirm();
   const [editing, setEditing] = useState(null); // objeto producto | 'new' | null
@@ -29,6 +31,10 @@ export default function ProductsPanel({
   // "producto": la palabra cambia toda la pantalla.
   const t = terminologia(vertical);
   const categories = useMemo(() => categoriesFrom(products), [products]);
+
+  // Indice de insumos una sola vez: el margen se calcula para cada fila de la
+  // lista, y rearmarlo por producto seria O(productos x insumos) por render.
+  const insumosPorId = useMemo(() => indexarInsumos(ingredientes), [ingredientes]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -49,10 +55,12 @@ export default function ProductsPanel({
     return [...map.entries()];
   }, [filtered]);
 
-  const handleSave = async (form) => {
-    const saved = await onSave(form);
+  // La receta se guarda DESPUES del producto y no antes: un producto nuevo
+  // todavia no tiene id, y las lineas de receta lo necesitan.
+  const handleSave = async (form, lineas) => {
+    const saved = await onSave(form, lineas);
     if (saved?.__error) { showToast?.(saved.message || 'No se pudo guardar'); return; }
-    showToast?.(form.id ? 'Producto actualizado' : 'Producto creado');
+    showToast?.(form.id ? `${t.singular} actualizado` : `${t.singular} creado`);
     setEditing(null);
   };
 
@@ -87,6 +95,9 @@ export default function ProductsPanel({
             product={isNew ? null : editing}
             vertical={vertical}
             categories={categories}
+            ingredientes={ingredientes}
+            lineasReceta={isNew ? [] : (recetas?.get(editing.id) || [])}
+            settings={settings}
             onSave={handleSave}
             onCancel={() => setEditing(null)}
           />
@@ -170,7 +181,11 @@ export default function ProductsPanel({
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {items.map(p => (
+              {items.map(p => {
+                // null cuando no hay receta cargada: sin insumos el costo da 0
+                // y el margen daria 100%, que es una mentira comoda.
+                const m = recetas ? margen(p, recetas.get(p.id), insumosPorId, settings) : null;
+                return (
                 <article
                   key={p.id}
                   style={{
@@ -201,6 +216,14 @@ export default function ProductsPanel({
                       {money(p.price)}
                       {p.duration_min ? ` · ${p.duration_min} min` : ''}
                       {!p.active && ' · oculto'}
+                      {m && (
+                        <span style={{
+                          marginLeft: 6,
+                          color: m.ganancia >= 0 ? 'var(--ag-c-sales, #3A7D44)' : 'var(--ag-c-orders, #C62828)',
+                        }}>
+                          · deja {money(m.ganancia)} ({m.pct.toFixed(0)}%)
+                        </span>
+                      )}
                     </div>
                   </button>
 
@@ -231,7 +254,8 @@ export default function ProductsPanel({
                     </svg>
                   </button>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </section>
         ))}
