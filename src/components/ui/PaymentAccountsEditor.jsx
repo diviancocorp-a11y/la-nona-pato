@@ -25,7 +25,12 @@ const SCOPES = [
 ];
 const scopeLabel = (s) => SCOPES.find(x => x.id === (s || "ambos"))?.label || "Ambos";
 
-export default function PaymentAccountsEditor({ settings, setSettings, showToast }) {
+// onSave: (settings) => Promise<guardado|null>. Por defecto escribe en la
+// tabla settings legacy; el panel del edificio inyecta la version por tenant.
+// Es el editor mas sensible de todos: estas cuentas son las que el cliente ve
+// al pagar. Si guardaba por su cuenta contra la base equivocada, el dueno
+// cargaba su CBU, veia el toast de exito y el checkout seguia sin cuentas.
+export default function PaymentAccountsEditor({ settings, setSettings, showToast, onSave = updateSettings }) {
   const confirmSlide = useConfirm();
   const accounts = Array.isArray(settings?.payment_accounts) ? settings.payment_accounts : [];
   const [editing, setEditing] = useState(null);
@@ -33,7 +38,7 @@ export default function PaymentAccountsEditor({ settings, setSettings, showToast
 
   const persist = async (next) => {
     setSaving(true);
-    const saved = await updateSettings({ ...settings, payment_accounts: next });
+    const saved = await onSave({ ...settings, payment_accounts: next });
     setSaving(false);
     if (saved) {
       setSettings(saved);

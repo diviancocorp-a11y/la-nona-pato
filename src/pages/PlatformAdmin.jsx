@@ -13,7 +13,7 @@
  * AdminTopbar/AdminProfileMenu consultan `admin_users`, que en el edificio no
  * existe, y su menu apunta a pantallas legacy.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 
 import usePlatformTenant from '../hooks/usePlatformTenant';
 import LoginScreen from '../components/admin/LoginScreen';
@@ -25,7 +25,24 @@ import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
 } from '../services/platformAdmin';
+import { fetchSettings, saveSettings } from '../services/platformSettings';
 import { modulosDe, terminologia } from '../modules/registry';
+
+// Settings es el componente del admin legacy, reusado tal cual: la unica
+// diferencia es que se le inyecta con que guardar y que zonas apagar. Va lazy
+// para que su peso (arrastra editores de QRs, paginas y pasarelas por imports
+// estaticos) no entre en el chunk del panel, que se carga siempre.
+const Settings = lazy(() => import('../components/admin/Settings'));
+
+// Lo que el edificio todavia no tiene tabla para sostener. Cada false se
+// convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
+const CAPACIDADES_EDIFICIO = {
+  qrs: false,        // tabla dynamic_qrs
+  paginas: false,    // tabla info_pages
+  pasarelas: false,  // tabla payment_integrations
+  canales: false,    // tabla delivery_channels
+  riesgo: false,     // el reset borra tablas del ERP viejo
+};
 
 import '../styles/admin-tokens.css';
 import '../styles/admin-bg.css';
@@ -63,6 +80,7 @@ export default function PlatformAdmin() {
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [sett, setSett] = useState(null);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
@@ -96,11 +114,26 @@ export default function PlatformAdmin() {
     setLoadingOrders(false);
   }, [tenantId]);
 
+  const loadSettings = useCallback(async () => {
+    if (!tenantId) return;
+    setSett(await fetchSettings(tenantId));
+  }, [tenantId]);
+
   useEffect(() => {
     if (!ready || !tenantId) return;
     loadProducts();
     loadOrders();
-  }, [ready, tenantId, loadProducts, loadOrders]);
+    loadSettings();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings]);
+
+  // El contrato que espera Settings: recibe el objeto entero y devuelve el
+  // guardado, o null si fallo. saveSettings filtra por lista blanca, asi que
+  // mandarle todo el objeto es inofensivo.
+  const guardarSettings = useCallback(async (valores) => {
+    const r = await saveSettings(tenantId, valores);
+    if (r?.__error) { msg(r.message || 'No se pudo guardar'); return null; }
+    return r;
+  }, [tenantId, msg]);
 
   // ── Acciones de productos ──
   const handleSaveProduct = useCallback(async (form) => {
@@ -195,6 +228,18 @@ export default function PlatformAdmin() {
             </button>
             <button
               type="button"
+              className="ag-theme-toggle"
+              onClick={() => setTab(tab === 'config' ? 'products' : 'config')}
+              aria-label="Configuración"
+              title="Configuración del negocio"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <button
+              type="button"
               className="ag-btn-mini"
               onClick={doLogout}
               title={`${session?.user?.email || ''}${role ? ` · ${role === 'owner' ? 'Dueño' : 'Staff'}` : ''}`}
@@ -227,6 +272,22 @@ export default function PlatformAdmin() {
               onSetStatus={handleSetOrderStatus}
               showToast={msg}
             />
+          )}
+          {tab === 'config' && (
+            sett
+              ? (
+                <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+                  <Settings
+                    settings={sett}
+                    setSettings={setSett}
+                    showToast={msg}
+                    onSave={guardarSettings}
+                    capacidades={CAPACIDADES_EDIFICIO}
+                    onBack={() => setTab('products')}
+                  />
+                </Suspense>
+              )
+              : <div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando configuración...</div>
           )}
         </main>
 

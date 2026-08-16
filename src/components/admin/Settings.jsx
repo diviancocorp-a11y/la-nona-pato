@@ -57,7 +57,31 @@ const SECTION_TITLES = {
   riesgo: "Zona de riesgo",
 };
 
-function Settings({ settings, setSettings, showToast, section = null, onBack }) {
+// Zonas que dependen de tablas que el edificio todavia no tiene. Por defecto
+// TODAS prendidas: el admin legacy no cambia en nada. El panel de la
+// plataforma pasa las que le faltan en false, y se van prendiendo a medida
+// que cada tabla llega (ver platform/PLAN-ERP.md).
+const CAPACIDADES_COMPLETAS = {
+  qrs: true,        // tabla dynamic_qrs
+  paginas: true,    // tabla info_pages
+  pasarelas: true,  // tabla payment_integrations
+  canales: true,    // tabla delivery_channels
+  riesgo: true,     // reset del historico: borra tablas del ERP viejo
+};
+
+/**
+ * @param onSave  (settings) => Promise<settingsGuardados|null>. Por defecto
+ *                escribe en la tabla `settings` legacy (id=1). El panel del
+ *                edificio inyecta la version por tenant. Es EL punto de
+ *                acople: todo el resto de la pantalla es agnostico de a que
+ *                base le esta hablando.
+ */
+function Settings({
+  settings, setSettings, showToast, section = null, onBack,
+  onSave = updateSettings,
+  capacidades,
+}) {
+  const cap = { ...CAPACIDADES_COMPLETAS, ...(capacidades || {}) };
   const confirmSlide = useConfirm();
   const [s, setS] = useState({ ...settings });
   const [page, setPage] = useState('root'); // 'root' | 'hours' | 'expCats' | 'ingCats' | 'costs' | 'gateways' | 'channels' | 'usarTargets' | 'reset'
@@ -76,7 +100,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       const mySeq = ++saveSeq.current;
-      const saved = await updateSettings(s);
+      const saved = await onSave(s);
       if (mySeq !== saveSeq.current) return;
       if (saved) setSettings(saved);
       else showToast("Error al guardar");
@@ -141,21 +165,21 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
               onClick={() => goTo('hours')}
             />
             {/* QRs dinamicos: mudado desde Personalizacion (12/jun) */}
-            <SettingsRow
+            {cap.qrs && <SettingsRow
               state="crm"
               icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z M20 14h1 M14 20h1 M20 20h1"/></svg>}
               label="QRs dinámicos"
               hint="QRs impresos que cambian de destino sin reimprimir"
               onClick={() => setQrsOpen(true)}
-            />
+            />}
             {/* Paginas informativas: contenido al que apuntan los QRs */}
-            <SettingsRow
+            {cap.paginas && <SettingsRow
               state="recipes"
               icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>}
               label="Páginas informativas"
               hint="Contenido para tus QRs y links · /info/..."
               onClick={() => setPagesOpen(true)}
-            />
+            />}
           </div>
           </>
           )}
@@ -174,20 +198,20 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
               hint="Efectivo, transferencias, billeteras — checkout y proveedores"
               onClick={() => setAccountsOpen(true)}
             />
-            <SettingsRow
+            {cap.pasarelas && <SettingsRow
               state="sales"
               icon={<Icon d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M1 10h22" />}
               label="Pasarelas de pago"
               hint="Conectar MercadoPago para cobrar online"
               onClick={() => goTo('gateways')}
-            />
-            <SettingsRow
+            />}
+            {cap.canales && <SettingsRow
               state="prep"
               icon={<Icon d="M3 6h18 M3 12h18 M3 18h18" />}
               label="Canales de venta"
               hint="Por dónde entran los pedidos y qué comisión te cobra cada uno"
               onClick={() => goTo('channels')}
-            />
+            />}
             <SettingsRow
               state="sales"
               icon={<Icon d="M3 3v18h18 M7 14l4-4 4 4 5-5" />}
@@ -246,13 +270,13 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
                 }} />
               }
             />
-            <SettingsRow
+            {cap.riesgo && <SettingsRow
               danger
               icon={<Icon d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />}
               label="Reinicio administrativo"
               hint="Borra pedidos, ventas, gastos, mermas"
               onClick={() => goTo('reset')}
-            />
+            />}
           </div>
           </>
           )}
@@ -281,6 +305,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
         setSettings={setSettings}
         showToast={showToast}
         onBack={goBack}
+        onSave={onSave}
       />
       <CatsSubPage
         open={page === 'ingCats'}
@@ -293,6 +318,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
         setSettings={setSettings}
         showToast={showToast}
         onBack={goBack}
+        onSave={onSave}
       />
       <CostsSubPage
         open={page === 'costs'}
@@ -300,16 +326,20 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
         setS={setS}
         onBack={goBack}
       />
-      <GatewaysSubPage
+      {/* Estas dos consultan sus tablas en el mount, no al abrirse: en este
+          patron las sub-paginas quedan montadas con open=false. Si el
+          edificio no tiene la tabla, dejarlas en el arbol seria una consulta
+          fallida en cada carga del panel. */}
+      {cap.pasarelas && <GatewaysSubPage
         open={page === 'gateways'}
         showToast={showToast}
         onBack={goBack}
-      />
-      <ChannelsSubPage
+      />}
+      {cap.canales && <ChannelsSubPage
         open={page === 'channels'}
         showToast={showToast}
         onBack={goBack}
-      />
+      />}
       <UsarTargetsSubPage
         open={page === 'usarTargets'}
         settings={s}
@@ -317,11 +347,11 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
         showToast={showToast}
         onBack={goBack}
       />
-      <ResetPage
+      {cap.riesgo && <ResetPage
         open={page === 'reset'}
         showToast={showToast}
         onBack={goBack}
-      />
+      />}
 
       {/* Overlay de QRs dinamicos (componente autonomo a pantalla completa) */}
       {qrsOpen && <DynamicQrs onClose={() => setQrsOpen(false)} showToast={showToast} />}
@@ -347,7 +377,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
             <h2 className="ag-page-over-title">Cuentas de pago</h2>
           </div>
           <div className="ag-page-over-body">
-            <PaymentAccountsEditor settings={settings} setSettings={setSettings} showToast={showToast} />
+            <PaymentAccountsEditor settings={settings} setSettings={setSettings} showToast={showToast} onSave={onSave} />
           </div>
         </div>
       )}
@@ -355,7 +385,7 @@ function Settings({ settings, setSettings, showToast, section = null, onBack }) 
   );
 }
 
-function CatsSubPage({ open, title, intro, field, label, icon, settings, setSettings, showToast, onBack }) {
+function CatsSubPage({ open, title, intro, field, label, icon, settings, setSettings, showToast, onBack, onSave }) {
   return (
     <SubPage open={open} title={title} onBack={onBack}>
       <p className="ag-subpage-intro">{intro}</p>
@@ -366,6 +396,7 @@ function CatsSubPage({ open, title, intro, field, label, icon, settings, setSett
         label={label}
         icon={icon}
         showToast={showToast}
+        onSave={onSave}
       />
     </SubPage>
   );

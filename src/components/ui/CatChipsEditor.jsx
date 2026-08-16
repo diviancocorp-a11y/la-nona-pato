@@ -5,7 +5,12 @@ import { useConfirm } from "../ConfirmSlideProvider";
 import { useState } from "react";
 import { updateSettings } from "../../services/settings";
 
-export default function CatChipsEditor({ settings, setSettings, field, label, icon, showToast }) {
+// onSave: (settings) => Promise<guardado|null>. Por defecto escribe en la
+// tabla settings legacy. El panel del edificio inyecta la version por tenant.
+// Sin esto el editor guardaba por su cuenta, salteando el onSave de la
+// pantalla que lo contiene — y en el edificio eso es un cambio que no
+// persiste y no avisa.
+export default function CatChipsEditor({ settings, setSettings, field, label, icon, showToast, onSave = updateSettings }) {
   const confirmSlide = useConfirm();
   const [val, setVal] = useState("");
   const [saving, setSaving] = useState(false);
@@ -13,7 +18,7 @@ export default function CatChipsEditor({ settings, setSettings, field, label, ic
 
   const persist = async (next) => {
     setSaving(true);
-    const saved = await updateSettings({ ...settings, [field]: next });
+    const saved = await onSave({ ...settings, [field]: next });
     setSaving(false);
     if (saved) {
       setSettings(saved);

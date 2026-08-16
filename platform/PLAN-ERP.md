@@ -40,7 +40,35 @@ distinto. Corregir la tabla, no la pantalla.
 
 ---
 
-## Etapa 0 — Settings por tenant
+## Etapa 0 — Settings por tenant ✅ HECHA (15/ago)
+
+Se resolvió con **tabla**, y salieron tres cosas que cambian el resto del plan:
+
+**1. El puente.** Había dos lectores del jsonb en producción (`get_catalog` y
+la edge function `submit-order`). En vez de migrar los tres a la vez —todo o
+nada, con plata en juego— la tabla es la verdad y un trigger espeja las claves
+que ellos leen de vuelta al jsonb. Siguen andando sin tocarlos. **Este patrón
+sirve para cualquier etapa que tenga lectores en producción.**
+
+**2. Las pantallas se gatean, no se bifurcan.** `Settings.jsx` (1010 líneas) se
+reusó entero. El acople era *una sola línea* — `updateSettings(s)` — que ahora
+es un prop `onSave` con default legacy. Las zonas que dependen de tablas que
+todavía no existen se apagan con un prop `capacidades`, y **se encienden
+cambiando un `false` por `true`** cuando llega su etapa. El admin viejo no
+cambió en nada.
+
+**3. Cuidado con los editores que guardan por su cuenta.** `CatChipsEditor` y
+`PaymentAccountsEditor` llamaban a `updateSettings` directo, salteando el
+`onSave` de la pantalla que los contiene. En el edificio eso es un cambio que
+no persiste y no avisa — y en el caso de las cuentas de pago, un dueño cargando
+su CBU, viendo el toast de éxito, y un checkout que sigue sin cuentas. **Al
+portar una pantalla, revisar si sus hijos escriben solos.**
+
+Lo que falta encender acá: QRs, páginas de info, pasarelas, canales de venta y
+zona de riesgo — cada uno cuando llegue su tabla.
+
+<details>
+<summary>La decisión original (por qué tabla y no jsonb)</summary>
 
 **Es la que bloquea a todas las demás, y hay que decidirla antes de empezar.**
 
@@ -65,6 +93,8 @@ no aplica y el bug vuelve.
 
 **Entregable:** migración `settings` con `tenant_id` + RLS, service
 `platformSettings.js`, y `Settings.jsx` apuntado al edificio.
+
+</details>
 
 ---
 
@@ -181,8 +211,11 @@ números están mal.
    qué estás mirando. Los dos hacen falta — es el bug que ya nos pasó.
 4. **Sumar el archivo a `PLATFORM_PATHS`** en `scripts/check-supabase-columns.mjs`,
    o el pre-commit lo valida contra el schema equivocado.
-5. **Pantalla**: reusar el componente del legacy, cambiándole el import del
-   service. Si hay que tocarle la lógica, revisar el punto 1.
+5. **Pantalla**: reusar el componente del legacy inyectándole el saver por
+   prop, con default legacy para no tocar el admin viejo. Apagar por
+   `capacidades` lo que dependa de tablas que todavía no están. **Revisar si
+   los componentes hijos escriben por su cuenta** — si lo hacen, inyectarles
+   el saver también. Si hay que tocarle la lógica, revisar el punto 1.
 6. **Registry**: `implementado: true` y agregarlo a los rubros que corresponda.
    Una barbería no necesita Recetas.
 7. **Test de aislamiento**: que la consulta salga con el filtro puesto.
