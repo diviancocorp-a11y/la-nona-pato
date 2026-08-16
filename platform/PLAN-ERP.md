@@ -98,23 +98,26 @@ no aplica y el bug vuelve.
 
 ---
 
-## Etapa 1 — Stock
-
-La más chica y la más autocontenida: no depende de ninguna otra.
+## Etapa 1 — Stock ✅ HECHA (15/ago)
 
 | | |
 |---|---|
-| Tablas | `ingredients` (+ `tenant_id`) |
-| Service | `inventory.js` → versión tenant-scoped |
-| Pantalla | `Stock.jsx` — se reusa |
+| Tabla | `ingredients` (migración 0026), mismas columnas que el legacy |
+| Service | `platformInventory.js` |
+| Pantalla | `Stock.jsx` reusada con `onUpsert` / `onArchive` inyectados |
 | Registry | `stock.implementado = true` |
 
-`adjust_stock` ya existe en el legacy con guard `is_admin()`; en el edificio el
-equivalente es la policy por `tenant_id`.
+El método funcionó tal como se esperaba: **tres puntos de acople** en 649
+líneas de pantalla. La merma queda apagada con `permiteMerma={false}` — vive
+en `waste_log`, que es de la Etapa 6.
 
-**Por qué primero:** entrega valor solo (saber qué falta comprar sirve sin
-recetas ni P&L) y es el mejor banco de pruebas del método "portar tabla,
-reusar pantalla" con algo chico.
+Dos cosas que se agregaron sobre el legacy:
+- **Índice único parcial** por `(tenant_id, lower(name))` sobre los no
+  archivados. Dos insumos con el mismo nombre siempre es error de carga, y
+  además rompe el costeo cuando la Etapa 2 tenga que resolver por nombre.
+- `adjustStock` está documentado como **no atómico**: lee y escribe en dos
+  pasos. Alcanza mientras el único que ajusta es el operador; cuando los
+  pedidos descuenten stock solos (Etapa 2) tiene que pasar a ser una RPC.
 
 ---
 

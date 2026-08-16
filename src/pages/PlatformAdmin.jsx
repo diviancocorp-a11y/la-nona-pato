@@ -26,6 +26,9 @@ import {
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
 } from '../services/platformAdmin';
 import { fetchSettings, saveSettings } from '../services/platformSettings';
+import {
+  fetchIngredients, upsertIngredient as upsertIngrediente, archiveIngredient as archivarIngrediente,
+} from '../services/platformInventory';
 import { modulosDe, terminologia } from '../modules/registry';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
@@ -33,6 +36,8 @@ import { modulosDe, terminologia } from '../modules/registry';
 // para que su peso (arrastra editores de QRs, paginas y pasarelas por imports
 // estaticos) no entre en el chunk del panel, que se carga siempre.
 const Settings = lazy(() => import('../components/admin/Settings'));
+// Stock: mismo componente del admin legacy, con el saver inyectado.
+const Stock = lazy(() => import('../components/admin/Stock'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -56,6 +61,7 @@ import '../styles/admin-shared.css';
 const ICONOS = {
   products: BoxIcon,
   orders: BagIcon,
+  stock: StockIcon,
 };
 
 function Centered({ children }) {
@@ -81,6 +87,8 @@ export default function PlatformAdmin() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [sett, setSett] = useState(null);
+  const [ings, setIngs] = useState([]);
+  const [ov, setOv] = useState(null); // overlays de Stock (editIng / waste)
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
@@ -119,12 +127,25 @@ export default function PlatformAdmin() {
     setSett(await fetchSettings(tenantId));
   }, [tenantId]);
 
+  const loadIngs = useCallback(async () => {
+    if (!tenantId) return;
+    setIngs(await fetchIngredients(tenantId));
+  }, [tenantId]);
+
   useEffect(() => {
     if (!ready || !tenantId) return;
     loadProducts();
     loadOrders();
     loadSettings();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings]);
+    loadIngs();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs]);
+
+  // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
+  // guardado o un {__error}.
+  const guardarIngrediente = useCallback(
+    (ing) => upsertIngrediente(tenantId, ing),
+    [tenantId]
+  );
 
   // El contrato que espera Settings: recibe el objeto entero y devuelve el
   // guardado, o null si fallo. saveSettings filtra por lista blanca, asi que
@@ -273,6 +294,22 @@ export default function PlatformAdmin() {
               showToast={msg}
             />
           )}
+          {tab === 'stock' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <Stock
+                ingredients={ings}
+                setIngredients={setIngs}
+                recipes={[]}
+                overlay={ov}
+                setOverlay={setOv}
+                showToast={msg}
+                settings={sett || {}}
+                onUpsert={guardarIngrediente}
+                onArchive={archivarIngrediente}
+                permiteMerma={false}
+              />
+            </Suspense>
+          )}
           {tab === 'config' && (
             sett
               ? (
@@ -324,6 +361,15 @@ function BoxIcon() {
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function StockIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+      <path d="M3 7l2-4h14l2 4" />
+      <path d="M9 11h6" />
     </svg>
   );
 }

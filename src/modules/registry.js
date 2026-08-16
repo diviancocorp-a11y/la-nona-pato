@@ -47,7 +47,7 @@ export const MODULOS = {
   stock: {
     id: 'stock',
     label: 'Stock',
-    implementado: false,
+    implementado: true,      // Etapa 1 del PLAN-ERP (migracion 0026)
   },
   caja: {
     id: 'caja',

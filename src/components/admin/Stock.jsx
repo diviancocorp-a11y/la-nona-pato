@@ -44,7 +44,22 @@ function stockState(it) {
   return { key: "ok", color: "var(--ag-c-sales)", soft: "var(--ag-c-sales-soft)", label: "OK" };
 }
 
-function Stock({ ingredients, setIngredients, recipes, overlay, setOverlay, showToast, settings }) {
+/**
+ * Acople inyectable, mismo patron que Settings.jsx: los defaults escriben en
+ * la base legacy, asi que el admin viejo no cambia en nada. El panel del
+ * edificio pasa las versiones por tenant.
+ *
+ * @param onUpsert  (insumo) => Promise<guardado|{__error}|null>
+ * @param onArchive (id) => Promise<bool>
+ * @param permiteMerma  false apaga el registro de merma: vive en waste_log,
+ *                      tabla que el edificio todavia no tiene (Etapa 6).
+ */
+function Stock({
+  ingredients, setIngredients, recipes, overlay, setOverlay, showToast, settings,
+  onUpsert = upsertIngredient,
+  onArchive = archiveIngredient,
+  permiteMerma = true,
+}) {
   const confirmSlide = useConfirm();
   const [search, setSearch] = useState("");
   const [fil, setFil] = useState("all");  // 'all' | 'low' | <categoría>
@@ -179,7 +194,7 @@ function Stock({ ingredients, setIngredients, recipes, overlay, setOverlay, show
 
         {/* CTAs: Merma + Agregar — arriba de la lista para que sean accesibles sin scroll */}
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          <button
+          {permiteMerma && <button
             type="button"
             onClick={() => setOverlay({ type: "waste" })}
             style={{
@@ -199,7 +214,7 @@ function Stock({ ingredients, setIngredients, recipes, overlay, setOverlay, show
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             Registrar merma
-          </button>
+          </button>}
           <button
             type="button"
             onClick={() => setOverlay({ type: "editIng", data: null })}
@@ -300,8 +315,8 @@ function Stock({ ingredients, setIngredients, recipes, overlay, setOverlay, show
           settings={settings}
           onClose={() => setOverlay(null)}
           onSave={async (it) => {
-            const saved = await upsertIngredient(it);
-            if (saved?.__error) { showToast("Error: " + saved.__error); return; }
+            const saved = await onUpsert(it);
+            if (saved?.__error) { showToast(saved.message || ("Error: " + saved.__error)); return; }
             if (saved) {
               if (it.id) setIngredients(p => p.map(i => i.id === it.id ? saved : i));
               else setIngredients(p => [...p, saved]);
@@ -325,14 +340,14 @@ function Stock({ ingredients, setIngredients, recipes, overlay, setOverlay, show
               successLabel: "Archivado ✓",
             });
             if (!ok) return;
-            await archiveIngredient(id);
+            await onArchive(id);
             setIngredients(p => p.map(i => i.id === id ? { ...i, is_archived: true } : i));
             setOverlay(null);
             showToast("Ingrediente archivado · historia conservada");
           }}
         />
       )}
-      {overlay?.type === "waste" && (
+      {permiteMerma && overlay?.type === "waste" && (
         <WasteForm
           ingredients={ingredients}
           setIngredients={setIngredients}
