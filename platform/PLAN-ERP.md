@@ -158,7 +158,7 @@ el pedido. Va con la Etapa 4, que es la que necesita ese dato.
 
 | | |
 |---|---|
-| Tablas | `expenses`, `suppliers` (migración 0030) |
+| Tablas | `expenses`, `suppliers` (migraciones 0030 y 0031) |
 | RPCs | `void_expense`, `register_purchase` |
 | Services | `platformFinance.js`, `platformSuppliers.js` |
 | Pantallas | `Expenses` + `Purchase` (Finance.jsx) y `Suppliers.jsx`, reusadas |
@@ -182,12 +182,45 @@ RLS de siempre sigue decidiendo quién toca qué, lo único que cambia es que
 todo pasa en una transacción. Los guards contables (no anular dos veces, no
 anular una anulación, no tocar un mes cerrado) se mudaron a la DB.
 
+**Una compra es UN movimiento (0031, corrección tras probarla).** 0030 la
+partía en una fila por categoría de alimento, copiando al legacy. Visto en
+pantalla no se sostiene: la lista reescribe la descripción de toda compra de
+materia prima a `Compra · <proveedor>`, así que las 2 o 3 filas quedaban
+**idénticas** y parecían tres compras distintas al mismo proveedor — la
+etiqueta por la que se partía ("Secos", "Lácteos") no se ve en ningún lado.
+
+Ahora es una fila por compra, que es lo que efectivamente pasó, y el desglose
+por categoría viaja **dentro de `items`** (cada línea lleva su
+`food_category`). No se pierde nada: el P&L saca el total de `amount` y el
+desglose sumando el jsonb, en vez de agrupando filas. `usar_category` queda
+siempre en null para las compras — una fila mixta no tiene una sola categoría
+USAR, y que a veces la tenga y a veces no es peor que no tenerla nunca. Lo que
+marca que es mercadería es `category = 'Materia Prima'`.
+
+**La lección:** el criterio para partir filas no puede ser sólo qué necesita el
+cálculo. Si el que la carga no puede distinguir dos filas en pantalla, están
+mal partidas.
+
 **Un insumo sin `food_category` se resuelve por rubro.** En gastronomía cae en
 `dry` como en el legacy: dejarlo sin clasificar lo sacaría del costo de comida
 del P&L y el food cost daría más bajo de lo real sin que nada avise — y no es
 un caso raro, porque el alta rápida de insumo dentro de la compra no pide la
-categoría. En barbería y retail queda sin `usar_category`: meter un shampoo en
+categoría. En barbería y retail queda sin clasificar: meter un gel en
 "Comida — Secos" es inventarle contabilidad de restaurante a quien no la lleva.
+
+**`suppliers.scope`: qué le comprás (0031).** `category` dice DE QUÉ rubro es
+el proveedor (Carnicería, Servicios) y sirve para leerlo, no para filtrar: la
+carnicería aparecía en el desplegable de "Registrar gasto", donde no tiene nada
+que hacer. `scope` es otra pregunta — `insumos` van a stock y se cargan por
+Compra, `servicios` por Gasto, `ambos` aparece en las dos. Default `ambos`,
+para que ningún proveedor ya cargado desaparezca de un lado sin explicación.
+El alta inline hereda el contexto: desde un gasto nace `servicios`, desde una
+compra nace `insumos`.
+
+**Barbería también stockea.** Compra gel, toallas y repuestos, y necesita saber
+cuándo se le acaban: eso es una compra que ingresa mercadería, no un gasto
+suelto. Lo que no tiene es **receta** — nadie carga cuánto gel lleva un corte.
+`stock` pasó a estar en los tres rubros; `receta` sigue siendo sólo de gastro.
 
 **Navegación:** las tres pantallas entran como **una sola** pestaña (`Gastos`)
 con tres solapas, en `FinanzasPanel`. La barra inferior se usa con el pulgar y
@@ -199,7 +232,6 @@ Lo que quedó apagado a propósito:
   ninguno (las imágenes de producto se cargan pegando una URL). Con
   `permiteComprobante={false}` la sección no se muestra y no se exige — pedir
   una foto que no se puede subir dejaría el botón de confirmar trabado.
-- **La solapa Compra en barbería**, que no stockea insumos (`tieneModulo`).
 - **La clasificación USAR** fuera de gastronomía (`usaContabilidadUsar`).
 
 ### Qué probar
@@ -208,18 +240,23 @@ En **la-nona-pato** (gastro, tiene 2 insumos cargados):
 1. Gastos → Registrar gasto: descripción, monto, categoría. Aparece en la
    lista con el total del mes actualizado.
 2. Compra → agregar los 2 insumos con precios nuevos → Confirmar. Tienen que
-   pasar **tres** cosas: el gasto aparece en la solapa Gastos, el stock subió
-   en la pestaña Stock, y el margen del producto que los usa cambió.
-3. Proveedores → crear uno. Volver a Gastos → Registrar gasto: tiene que estar
-   en el desplegable. Pausarlo → deja de aparecer ahí, sigue en el gestor.
+   pasar **tres** cosas: **un solo** gasto nuevo en la solapa Gastos, el stock
+   subió en la pestaña Stock, y el margen del producto que los usa cambió.
+   Abrir ese gasto: adentro tienen que estar **todos** los productos comprados.
+3. Proveedores → crear uno de tipo **Servicios**. Volver a Gastos → Registrar
+   gasto: tiene que estar en el desplegable. Crear otro de tipo **Insumos**:
+   ese **no** tiene que aparecer ahí, pero sí al registrar una compra. Pausar
+   uno → desaparece de los desplegables, sigue en el gestor.
 4. Anular un gasto del mes: el original queda tachado y aparece la reversión
    en verde. El botón "Ver reversión ↗" salta de uno al otro.
 5. Intentar crear un proveedor con un nombre que ya existe → mensaje claro,
    no un error de base.
+6. En el formulario de proveedor, el interruptor "Este proveedor factura"
+   tiene que decir qué es. Antes era un interruptor pelado, sin una palabra.
 
 **Casos negativos** (lo que NO tiene que pasar):
-- En **barberia-demo**: la solapa **Compra no existe**, y al cargar un gasto
-  **no aparece** el desplegable "Categoría USAR".
+- En **barberia-demo**: al cargar un gasto **no aparece** el desplegable
+  "Categoría USAR". La solapa Compra **sí** existe — una barbería compra gel.
 - En **cochi**: los gastos y proveedores de la-nona-pato **no se ven**. Es el
   mismo dueño en los dos, así que es RLS + filtro por `tenant_id`.
 
@@ -233,10 +270,12 @@ En **la-nona-pato** (gastro, tiene 2 insumos cargados):
 | Cálculo | **`useFinancials` se reusa sin tocar** — es cálculo puro sobre arrays |
 | Pantallas | `SalesView`, `MonthSummary`, los KPIs de `Home.jsx` |
 
-Lo que le dejó la Etapa 3 para resolver: los gastos de compra en barbería y
-retail llegan con `usar_category` en null. El P&L tiene que decidir si los
-suma como costo de mercadería (`category = 'Materia Prima'` los identifica) o
-los deja en el bucket genérico. Elegir a conciencia, no por omisión.
+Lo que le dejó la Etapa 3 para resolver: **las compras llegan siempre con
+`usar_category` en null**, porque una compra mixta no tiene una sola categoría
+USAR. El total sale de `amount` filtrando por `category = 'Materia Prima'`; el
+desglose por tipo de comida sale de sumar el jsonb `items`, donde cada línea
+lleva su `food_category`. Es una consulta más rara que agrupar filas, pero es
+la única forma de que el libro muestre una compra como un movimiento.
 
 Depende de la 2 y la 3: sin costos reales ni gastos, el P&L da cualquier cosa.
 Es exactamente el error que ya se arregló una vez en el legacy (doble conteo de

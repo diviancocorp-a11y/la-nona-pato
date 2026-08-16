@@ -8,6 +8,50 @@
 
 ---
 
+## 16/ago/2026 (noche) — CORRECCIONES DE LA ETAPA 3, PROBADA EN PRODUCCION
+
+Ricky probó la Etapa 3 con datos reales y salieron cuatro cosas. Migración
+0031. **Dico quedó planificado en `PLAN-DICO.md`** (capas 1 y 2 primero, la
+del LLM recién después de las Etapas 4 y 5; personaje sin piernas dentro de la
+app, con piernas sólo para marketing).
+
+1. **Una compra volvió a ser UN movimiento.** 0030 la partía en una fila por
+   categoría de alimento, copiando al legacy. En pantalla no se sostiene: la
+   lista reescribe la descripción de toda compra de materia prima a
+   `Compra · <proveedor>`, así que las filas quedaban **idénticas** y parecían
+   varias compras al mismo proveedor — la etiqueta por la que se partía
+   ("Secos", "Lácteos") no se ve en ningún lado. Ahora el desglose viaja
+   dentro de `items` (cada línea con su `food_category`) y no se pierde nada.
+   **La lección: si el que carga no puede distinguir dos filas en pantalla,
+   están mal partidas.** El criterio no puede ser sólo qué necesita el cálculo.
+2. **`suppliers.scope`.** `category` dice de qué rubro es el proveedor y sirve
+   para leerlo, no para filtrar: la carnicería salía en el desplegable de
+   "Registrar gasto". `scope` (insumos | servicios | ambos) decide en qué
+   pantalla aparece. Default `ambos` para no hacer desaparecer nada, y el alta
+   inline hereda el contexto (desde un gasto nace `servicios`).
+3. **`ToggleSwitch` mostraba un interruptor pelado.** `label` iba sólo a
+   `aria-label` y `hint` **ni siquiera era una prop** — se descartaba en
+   silencio. Los dos lugares que pasaban las dos cosas esperando verlas
+   ("Este proveedor factura" y el **"Tengo local físico"** de la marca, que ya
+   estaba así en producción) mostraban un switch sin una palabra de qué
+   prendía. Con lector de pantalla se entendía; mirando, no.
+4. **Barbería también stockea.** Compra gel, toallas y repuestos: eso es una
+   compra que ingresa mercadería, no un gasto suelto. `stock` pasó a estar en
+   los tres rubros. Lo que la barbería no tiene es **receta** — nadie carga
+   cuánto gel lleva un corte, así que `usaReceta` sigue siendo sólo de gastro.
+
+**Verificado contra la base:** la compra mixta da 1 fila con el desglose
+adentro, y el insumo sin clasificar sigue cayendo en `dry` sólo en gastro.
+499 tests.
+
+**Trampa para el que escriba tests:** en el helper `src/test/_chain.js` todos
+los métodos del builder son **el mismo** `vi.fn` (todos devuelven `self`), así
+que `.in` acumula también los `.eq` y los `.order`. Un `not.toHaveBeenCalled()`
+no puede pasar nunca y `mock.calls[0]` no es la llamada que buscás: hay que
+filtrar por argumento.
+
+---
+
 ## 16/ago/2026 (tarde) — ETAPA 3: GASTOS, COMPRAS Y PROVEEDORES
 
 El edificio ya sabía cuánto cuesta producir (Etapa 2). Ahora sabe cuánto sale

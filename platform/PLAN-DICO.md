@@ -1,0 +1,98 @@
+# Plan: Dico, el asistente
+
+> Estado al 16/ago/2026. **Nada de esto está hecho todavía.** Es el plan
+> acordado para no construir la parte cara antes que la barata.
+
+Dico es el personaje que le da cara a la plataforma y, más adelante, el
+asistente que le cuenta al dueño qué está pasando en su negocio.
+
+---
+
+## El personaje
+
+- **Sin piernas.** Dentro de la app Dico es una moneda con bracitos: entra en
+  espacios chicos, se anima barato y funciona a cualquier tamaño.
+- **La versión con piernas y zapatos es para marketing**, no para la app.
+  Landing, redes, material de venta.
+
+Tener una sola versión adentro es lo que hace que veinte poses se sientan el
+mismo personaje. Antes de generar más arte, cualquier pose nueva se hace sobre
+el cuerpo sin piernas.
+
+---
+
+## Las tres capas, de la más barata a la más cara
+
+El orden no es de importancia: es de **costo y riesgo**. Las dos primeras no
+usan IA y son las que dan casi todo el valor percibido.
+
+### Capa 1 — Dico como cara de la app
+
+Loading, estados vacíos, errores, confirmaciones, éxito. Cero IA, cero costo
+por uso, no depende de ninguna etapa del ERP.
+
+Las expresiones que ya existen mapean casi uno a uno con los estados que la
+app ya tiene hoy:
+
+| Estado en la app | Hoy | Con Dico |
+|---|---|---|
+| Cargando | "Cargando..." | Dico esperando |
+| Lista vacía | "Sin gastos registrados" | Dico señalando el botón |
+| Error / chunk roto | texto de error | Dico preocupado + qué hacer |
+| Guardado OK | toast "✓" | Dico con el pulgar arriba |
+| Confirmación destructiva | slide to confirm | Dico con cara de "¿seguro?" |
+
+Es la misma información con otra sensación. **Se puede hacer en cualquier
+momento y no bloquea nada.**
+
+### Capa 2 — Dico que suelta datos, sin LLM
+
+Reglas sobre datos que ya existen, escritas a mano. Se siente inteligente, no
+cuesta un peso, **no puede alucinar**, y no puede filtrar entre negocios si la
+consulta ya está acotada por `tenant_id`.
+
+Lo que ya se puede calcular hoy, con lo que hay:
+
+- **Stock bajo mínimo** — `bajoMinimo()` ya existe en `platformInventory.js`.
+- **Margen negativo o sospechoso** — el costeo de la Etapa 2 ya lo calcula.
+- **Producto sin receta** — el margen da `null`; hoy simplemente no se muestra.
+- **Mes sin gastos cargados** — van N días del mes y `expenses` está vacía.
+- **Insumo sin clasificar** (gastro) — ensucia el food cost del P&L.
+- **Proveedor sin tipo** — aparece en las dos pantallas y confunde.
+
+**El registry ya sirve para esto.** `src/modules/registry.js` sabe cómo se
+llama cada cosa en cada rubro, así que Dico puede hablar el idioma del negocio
+sin un `if` por vertical: "te faltan turnos cargados" en una barbería,
+"te faltan insumos" en una cocina.
+
+Dónde vive: un módulo `src/modules/dico/reglas.js` de **funciones puras** sobre
+los datos que el panel ya tiene en memoria — mismo criterio que `useFinancials`
+y que el costeo de recetas. Nada de consultas nuevas por regla.
+
+### Capa 3 — Dico conversacional (LLM)
+
+**No antes de las Etapas 4 y 5 del ERP.** Tres razones, por orden de gravedad:
+
+1. **Filtración entre negocios.** Ya pasó dos veces que la RLS alcanzaba como
+   frontera de seguridad y no como filtro de alcance. Un LLM que consulta la
+   base multiplica esa superficie: alcanza una consulta sin filtro, o un
+   prompt injection escondido en el nombre de un producto, para que un negocio
+   vea los números de otro. Eso no es un bug, es el fin del producto.
+   **Regla dura: el LLM no genera SQL y no toca la base.** Recibe un resumen
+   ya calculado y ya acotado al tenant.
+2. **El costo es por uso y por tenant**, en un SaaS con márgenes finitos. Sin
+   techo por plan, es un costo que no se puede predecir ni trasladar.
+3. **La calidad del dato.** Hoy el P&L del edificio no cierra: `unit_cost` va
+   en 0 y no existe el módulo de ventas. Una IA que "suelta datos relevantes"
+   sobre datos incompletos dice cosas equivocadas con total seguridad, que es
+   peor que no decir nada.
+
+---
+
+## Orden
+
+```
+Capa 1 (cara)      ── independiente, cuando se quiera
+Capa 2 (reglas)    ── ya se puede: los datos que usa están bien
+Capa 3 (LLM)       ── después de Etapa 4 (ventas y P&L) y 5 (clientes)
+```

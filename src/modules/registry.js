@@ -109,7 +109,11 @@ export const RUBROS = {
     productType: 'service',
     // Sin requires_age_gate: un corte de pelo no se restringe por edad.
     campos: [...CAMPOS_BASE, 'duration_min'],
-    modulos: ['products', 'orders', 'agenda', 'finanzas', 'caja'],
+    // Stock SI, receta no. Una barberia compra gel, toallas y repuestos, y
+    // necesita saber cuando se le acaban — eso es una compra que ingresa
+    // mercaderia, no un gasto suelto. Lo que no tiene es una receta que diga
+    // cuanto gel lleva un corte: por eso `receta` sigue sin estar.
+    modulos: ['products', 'orders', 'agenda', 'stock', 'finanzas', 'caja'],
   },
 
   retail: {

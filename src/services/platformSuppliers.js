@@ -13,15 +13,28 @@ import { supabase } from '../lib/supabase';
 
 // Literal a proposito: check-supabase-columns solo resuelve constantes de
 // modulo con string literal, no listas armadas en runtime.
-const COLS = 'id, tenant_id, name, category, cuit, can_invoice, location, phone, email, notes, is_active, created_at, updated_at';
+const COLS = 'id, tenant_id, name, category, scope, cuit, can_invoice, location, phone, email, notes, is_active, created_at, updated_at';
 
 export { COLS as SELECT_COLS };
 
 // Lo que el formulario puede escribir. tenant_id se agrega aparte; id solo
 // viaja cuando es una edicion; created_at/updated_at los maneja la DB.
 export const CAMPOS_EDITABLES = [
-  'name', 'category', 'cuit', 'can_invoice', 'location', 'phone', 'email', 'notes', 'is_active',
+  'name', 'category', 'scope', 'cuit', 'can_invoice', 'location', 'phone', 'email', 'notes', 'is_active',
 ];
+
+// `scope` responde QUE le comprás, y no hay que confundirlo con `category`,
+// que dice DE QUE rubro es el proveedor. La carniceria tiene category
+// "Carniceria" y scope "insumos": por eso no aparece al cargar un gasto de luz.
+export const SCOPES = ['insumos', 'servicios', 'ambos'];
+
+// Que scopes entran en cada pantalla. 'ambos' esta en las dos listas: es el
+// default, asi que un proveedor que nadie clasifico sigue apareciendo en
+// todos lados en vez de desaparecer sin explicacion.
+const SCOPES_POR_PANTALLA = {
+  compra: ['insumos', 'ambos'],
+  gasto: ['servicios', 'ambos'],
+};
 
 function exigirTenant(tenantId, quien) {
   if (!tenantId) throw new Error(`${quien}: falta tenantId (sin el, la consulta trae otros negocios)`);
@@ -31,11 +44,15 @@ function exigirTenant(tenantId, quien) {
  * Proveedores del tenant. Por defecto SOLO los activos, que es lo que piden
  * los selectores de gasto y de compra: un proveedor pausado no tiene que
  * aparecer ahi. El gestor pide todos y los recibe con los pausados al fondo.
+ *
+ * `para` acota por scope: 'compra' trae los de insumos, 'gasto' los de
+ * servicios. Sin `para` (el gestor) vienen todos.
  */
-export async function fetchSuppliers(tenantId, { activeOnly = true } = {}) {
+export async function fetchSuppliers(tenantId, { activeOnly = true, para } = {}) {
   exigirTenant(tenantId, 'fetchSuppliers');
   let q = supabase.from('suppliers').select(COLS).eq('tenant_id', tenantId);
   if (activeOnly) q = q.eq('is_active', true);
+  if (SCOPES_POR_PANTALLA[para]) q = q.in('scope', SCOPES_POR_PANTALLA[para]);
 
   const { data, error } = await q
     .order('is_active', { ascending: false })
@@ -52,6 +69,7 @@ export function validateSupplier(s) {
   if (s?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s.email).trim())) {
     errs.push('El email no parece valido');
   }
+  if (s?.scope && !SCOPES.includes(s.scope)) errs.push(`Tipo de proveedor invalido: ${s.scope}`);
   return errs;
 }
 
@@ -68,6 +86,7 @@ function toRow(s, tenantId) {
     // la lista mostraria dos veces lo que la DB considera el mismo nombre.
     name: (s.name || '').trim(),
     category: texto(s.category),
+    scope: SCOPES.includes(s.scope) ? s.scope : 'ambos',
     cuit: texto(s.cuit),
     can_invoice: !!s.can_invoice,
     location: texto(s.location),

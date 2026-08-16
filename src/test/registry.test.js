@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import {
   RUBROS, MODULOS, getRubro, terminologia, tipoPorDefecto,
   usaCampo, camposDe, modulosDe, tieneModulo, rubrosDisponibles,
-  usaContabilidadUsar,
+  usaContabilidadUsar, usaReceta,
 } from '../modules/registry';
 
 describe('rubros', () => {
@@ -114,18 +114,22 @@ describe('tipoPorDefecto', () => {
 describe('modulos', () => {
   it('solo devuelve los implementados', () => {
     const ids = modulosDe('barber').map(m => m.id);
-    expect(ids).toEqual(['products', 'orders', 'finanzas']);
+    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas']);
     // agenda y caja estan declaradas para barberia pero todavia no existen
     expect(ids).not.toContain('agenda');
     expect(ids).not.toContain('caja');
   });
 
-  // Stock es de insumos: una barberia no ingresa mercaderia, y por eso su
-  // pestaña de Finanzas no muestra la solapa de Compra.
-  it('stock es de gastro y retail, no de barberia', () => {
-    expect(tieneModulo('gastro', 'stock')).toBe(true);
-    expect(tieneModulo('retail', 'stock')).toBe(true);
-    expect(tieneModulo('barber', 'stock')).toBe(false);
+  // Stock lo tienen los tres: una barberia compra gel y toallas y necesita
+  // saber cuando se le acaban. Lo que NO tiene es receta — nadie carga cuanto
+  // gel lleva un corte.
+  it('todos stockean, pero solo gastro arma sus productos con insumos', () => {
+    for (const id of Object.keys(RUBROS)) {
+      expect(tieneModulo(id, 'stock'), id).toBe(true);
+    }
+    expect(usaReceta('gastro')).toBe(true);
+    expect(usaReceta('barber')).toBe(false);
+    expect(usaReceta('retail')).toBe(false);
   });
 
   it('gastos y proveedores los tiene cualquier rubro', () => {

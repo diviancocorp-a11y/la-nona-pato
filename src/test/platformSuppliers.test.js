@@ -7,7 +7,7 @@ vi.mock('../lib/supabase', () => ({ supabase: { from: mockFrom } }));
 
 import {
   fetchSuppliers, upsertSupplier, validateSupplier,
-  SELECT_COLS, CAMPOS_EDITABLES,
+  SELECT_COLS, CAMPOS_EDITABLES, SCOPES,
 } from '../services/platformSuppliers';
 import { chain } from './_chain.js';
 
@@ -63,6 +63,67 @@ describe('alcance por tenant', () => {
     mockFrom.mockReturnValue(c2);
     await fetchSuppliers(TENANT, { activeOnly: false });
     expect(c2.eq).not.toHaveBeenCalledWith('is_active', true);
+  });
+});
+
+// `scope` responde "que le comprás" y decide en que desplegable aparece. Es
+// distinto de `category`, que dice de que rubro es: la carniceria tenia
+// category "Carniceria" y aparecia igual al cargar un gasto de luz.
+describe('scope: en que pantalla aparece cada proveedor', () => {
+  it('los valores son los que acepta el CHECK de la migracion 0031', () => {
+    const sql = readFileSync(
+      resolve(__dirname, '../../platform/migrations/0031_compra_un_movimiento_y_scope_proveedor.sql'), 'utf-8'
+    ).replace(/--[^\n]*/g, '');
+    const m = sql.match(/check\s*\(\s*scope\s+in\s*\(([^)]*)\)/i);
+    expect(m).not.toBeNull();
+    expect([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]).sort()).toEqual([...SCOPES].sort());
+  });
+
+  it('una compra ofrece los de insumos; un gasto, los de servicios', async () => {
+    const c1 = chain({ data: [], error: null });
+    mockFrom.mockReturnValue(c1);
+    await fetchSuppliers(TENANT, { para: 'compra' });
+    expect(c1.in).toHaveBeenCalledWith('scope', ['insumos', 'ambos']);
+
+    const c2 = chain({ data: [], error: null });
+    mockFrom.mockReturnValue(c2);
+    await fetchSuppliers(TENANT, { para: 'gasto' });
+    expect(c2.in).toHaveBeenCalledWith('scope', ['servicios', 'ambos']);
+  });
+
+  // 'ambos' es el default de la DB: un proveedor que nadie clasifico tiene
+  // que seguir apareciendo en los dos lados, no desaparecer sin explicacion.
+  it('el gestor no filtra por scope, y "ambos" entra en las dos pantallas', async () => {
+    const c = chain({ data: [], error: null });
+    mockFrom.mockReturnValue(c);
+    await fetchSuppliers(TENANT, { activeOnly: false });
+    // Ojo: en el helper `chain` todos los metodos del builder son EL MISMO
+    // vi.fn (devuelven self), asi que `.in` acumula tambien los `.eq` y los
+    // `.order`. Un `not.toHaveBeenCalled()` nunca puede pasar; lo que se
+    // afirma es que ninguna llamada filtro por scope.
+    expect(c.in).not.toHaveBeenCalledWith('scope', expect.anything());
+
+    for (const para of ['compra', 'gasto']) {
+      const cx = chain({ data: [], error: null });
+      mockFrom.mockReturnValue(cx);
+      await fetchSuppliers(TENANT, { para });
+      // Por lo mismo de arriba hay que buscar la llamada, no tomar la primera.
+      const filtro = cx.in.mock.calls.find(c => c[0] === 'scope');
+      expect(filtro?.[1], para).toContain('ambos');
+    }
+  });
+
+  it('un scope inventado no llega a la base', async () => {
+    mockFrom.mockReturnValue(chain({ data: {}, error: null }));
+    const res = await upsertSupplier(TENANT, { name: 'Proveedor', scope: 'inventado' });
+    expect(res.__error).toBe('validation');
+  });
+
+  it('sin scope explicito se guarda como "ambos"', async () => {
+    const c = chain({ data: {}, error: null });
+    mockFrom.mockReturnValue(c);
+    await upsertSupplier(TENANT, { name: 'Proveedor' });
+    expect(c.upsert).toHaveBeenCalledWith(expect.objectContaining({ scope: 'ambos' }));
   });
 });
 

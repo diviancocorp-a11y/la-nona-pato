@@ -145,7 +145,7 @@ export default function Suppliers({
           <button
             type="button"
             className="ag-cta"
-            onClick={() => setEditing({ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "" })}
+            onClick={() => setEditing({ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "", scope: "ambos" })}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -208,6 +208,10 @@ export default function Suppliers({
                         <div style={{ fontSize: 11.5, color: "var(--ag-ink-3)", marginTop: 2 }}>
                           {s.category || "Sin categoría"}
                           {s.cuit ? ` · CUIT ${s.cuit}` : ""}
+                          {/* Dónde aparece. Es la respuesta a "por qué este
+                              proveedor no me sale al cargar el gasto". */}
+                          {s.scope === "insumos" && " · solo en Compras"}
+                          {s.scope === "servicios" && " · solo en Gastos"}
                         </div>
                         {s.location && (
                           <div style={{ fontSize: 11.5, color: "var(--ag-ink-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -334,6 +338,42 @@ export function SupplierForm({ supplier, onClose, onSave, onDelete }) {
           style={{ marginBottom: 12 }}
           autoFocus
         />
+
+        {/* Que le comprás. No es lo mismo que la categoría: la categoría dice
+            de qué rubro es (Carnicería), esto decide en qué pantalla aparece.
+            Sin esto la carnicería salía en el desplegable de "Registrar
+            gasto", donde no tiene nada que hacer. */}
+        <label className="ag-field-lbl">¿Qué le comprás?</label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 4 }}>
+          {[
+            { key: "insumos", label: "Insumos", hint: "Van a stock" },
+            { key: "servicios", label: "Servicios", hint: "Luz, alquiler…" },
+            { key: "ambos", label: "Las dos", hint: "Aparece siempre" },
+          ].map(o => {
+            const on = (f.scope || "ambos") === o.key;
+            return (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => s("scope", o.key)}
+                style={{
+                  padding: "9px 4px", borderRadius: 10,
+                  border: on ? "2px solid var(--ag-c-terra)" : "1px solid var(--ag-line)",
+                  background: on ? "rgba(245,158,11,0.08)" : "var(--ag-bg)",
+                  color: on ? "var(--ag-c-terra)" : "var(--ag-ink-2)",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                }}
+              >
+                <span>{o.label}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, opacity: 0.75 }}>{o.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p style={{ fontSize: 11, color: "var(--ag-ink-3)", margin: "0 0 12px 2px" }}>
+          Los de insumos aparecen al registrar una compra; los de servicios, al registrar un gasto.
+        </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
           <div>

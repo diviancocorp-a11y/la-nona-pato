@@ -1076,7 +1076,9 @@ function ExpForm({
   // Proveedores ACTIVOS (los pausados no aparecen) + alta sin salir del gasto
   const [sups, setSups] = useState([]);
   const [newSup, setNewSup] = useState(false);
-  useEffect(() => { onFetchSuppliers().then(setSups); }, [onFetchSuppliers]);
+  // `para` acota por tipo de proveedor: en un gasto no tiene sentido que
+  // aparezca la carniceria. El service legacy ignora la clave y trae todos.
+  useEffect(() => { onFetchSuppliers({ para: "gasto" }).then(setSups); }, [onFetchSuppliers]);
   const s = (k, v) => {
     setErr("");
     setF(p => {
@@ -1285,10 +1287,11 @@ function ExpForm({
         </div>
       </div>
 
-      {/* Alta de proveedor sin salir del gasto */}
+      {/* Alta de proveedor sin salir del gasto. Nace como "servicios": si lo
+          estás cargando desde acá, es a quien le pagás la luz, no la carne. */}
       {newSup && (
         <SupplierForm
-          supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "" }}
+          supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "", scope: "servicios" }}
           onClose={() => setNewSup(false)}
           onSave={async (data) => {
             const saved = await onSaveSupplier(data);
@@ -1336,8 +1339,9 @@ function Purchase({
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [paymentAccountId, setPaymentAccountId] = useState(null);
 
-  // Cargar proveedores activos al abrir
-  useEffect(() => { onFetchSuppliers().then(setSuppliers); }, [onFetchSuppliers]);
+  // Cargar proveedores activos de INSUMOS al abrir (ver ExpForm: la empresa
+  // de luz no tiene nada que hacer en el desplegable de una compra).
+  useEffect(() => { onFetchSuppliers({ para: "compra" }).then(setSuppliers); }, [onFetchSuppliers]);
 
   // Si suben foto, desactivar "sin recibo" (son mutuamente excluyentes)
   useEffect(() => { if (receiptUrl && noReceipt) setNoReceipt(false); }, [receiptUrl, noReceipt]);
@@ -1814,10 +1818,11 @@ function Purchase({
         })()}
       </div>
 
-      {/* Alta de proveedor sin salir de la compra */}
+      {/* Alta de proveedor sin salir de la compra. Nace como "insumos" por lo
+          mismo que en el gasto nace como "servicios": el contexto ya lo dice. */}
       {newSup && (
         <SupplierForm
-          supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "" }}
+          supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "", scope: "insumos" }}
           onClose={() => setNewSup(false)}
           onSave={async (data) => {
             const saved = await onSaveSupplier(data);
