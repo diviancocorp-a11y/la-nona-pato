@@ -1,10 +1,161 @@
 # HANDOFF — Dico, plataforma multi-rubro (para seguir en code)
 
-> Punto de entrada para continuar. **Leer la seccion 00 primero** (lo mas
-> reciente), despues la 0. Docs largos: `PLAN-MULTI-RUBRO.md`,
-> `ARQUITECTURA-MODULAR.md`, `DEMO-REAL-VS-MOCK.md`. SQL en `platform/`.
+> Punto de entrada para continuar. **Las secciones van de mas nueva a mas
+> vieja: leer la primera.** Docs largos: `PLAN-ERP.md` (el plan vivo del ERP),
+> `PLAN-MULTI-RUBRO.md`, `ARQUITECTURA-MODULAR.md`. SQL en `platform/`.
 >
 > Para retomar en un chat nuevo: **`/dico`**. Para cerrar: **`/cerrardico`**.
+
+---
+
+## 16/ago/2026 — EL PANEL DEL EDIFICIO EXISTE Y EL ERP EMPEZO A MUDARSE
+
+Sesion larga (19 commits, migraciones 0022 a 0029). El edificio paso de "un
+cliente se registra y no tiene donde cargar nada" a tener panel con productos,
+pedidos, configuracion, stock y recetas con costo real.
+
+### El metodo que salio de esta sesion (lo mas reutilizable)
+
+Las pantallas del admin legacy **no le hablan a la base, le hablan a un
+service**, y los calculos (`useFinancials`) son funciones puras. De las tres
+capas —pantalla, service, tabla— **se rehace una sola**.
+
+Cada pantalla se porta asi: se le inyecta el saver por prop con **default
+legacy** (asi el admin viejo no cambia en nada) y se apaga por `capacidades`
+lo que dependa de tablas que todavia no estan. Encender un modulo despues es
+cambiar un `false` por `true`. El molde completo esta en `PLAN-ERP.md`.
+
+**Trampa que ya nos mordio:** al portar una pantalla hay que revisar si sus
+**componentes hijos escriben por su cuenta**. `CatChipsEditor` y
+`PaymentAccountsEditor` llamaban a `updateSettings` directo, salteando el
+`onSave` inyectado. En el edificio eso es un cambio que no persiste y no
+avisa — y en cuentas de pago era el dueno cargando su CBU, viendo el toast de
+exito, y un checkout que seguia sin cuentas.
+
+### Hecho
+
+**Panel del edificio** (`src/pages/PlatformAdmin.jsx`) — panel NUEVO, no una
+bifurcacion del legacy: `pages/Admin.jsx` carga recipes, ingredients, sales,
+expenses y waste_log, y de eso el edificio no tiene ninguna tabla. Lo decide
+`business.platform` en la ruta `/admin`, igual que `fetchCatalog`. **Los dos
+paneles conviven y no comparten una sola tabla: no intentar unificarlos.**
+
+**`attach_owner` (0024)** + `platform/scripts/attach-owner.mjs` — vincula un
+dueno a un tenant que YA existe. Los 5 portados/demo se habian cargado sin
+dueno y por eso nadie podia abrirles el panel. Ya estan los 7 con dueno.
+
+**Registry de rubros** (`src/modules/registry.js`) — declara QUE ES cada rubro
+(como se llama lo que vende, que campos carga, que modulos tiene). Ningun
+componente vuelve a preguntar `vertical === 'barber'`. `implementado:
+true|false` es la unica fuente de verdad de que existe hoy; la nav filtra por
+ahi, asi que declarar un modulo futuro no ensucia la UI.
+
+**Etapa 0 — settings en tabla (0025).** Fue tabla y no jsonb porque el bug
+recurrente del repo (campo que se agrega a la UI, no al Zod, y se descarta en
+silencio) tiene toda su red de contencion construida alrededor de columnas.
+**El puente es lo importante:** habia dos lectores del jsonb en produccion
+(`get_catalog` y la edge function `submit-order`). En vez de migrar los tres a
+la vez —todo o nada, con plata en juego— la tabla es la verdad y un trigger
+espeja al jsonb las claves que ellos leen. Siguen andando sin tocarlos.
+**No escribir `tenants.settings` a mano: se pisa en el proximo guardado.**
+
+**Etapa 1 — stock (0026).** `Stock.jsx` reusada con `onUpsert`/`onArchive`
+inyectados. Indice unico parcial por `(tenant_id, lower(name))` sobre no
+archivados. `adjustStock` **no es atomico**: lee y escribe en dos pasos;
+cuando los pedidos descuenten stock solos tiene que pasar a RPC.
+
+**Etapa 2 — recetas y costo (0028).** **No se porto `Recipes.jsx`**: en el
+legacy "receta" y "producto" eran la misma fila, y en el edificio esa fila ya
+es `products`. Traerla habria dejado dos lugares para cargar lo mismo. La
+receta se edita dentro del formulario del producto. **Combos pospuestos** por
+decision explicita (son recursivos, media etapa de complejidad, un cliente
+nuevo no los necesita el primer dia).
+
+**Tooling que se arreglo en el camino** (todo esto fallaba en silencio):
+- `check-supabase-columns.mjs` medía TODO contra el schema legacy y ademas
+  solo entendia `.select('literal')` — los archivos con `.select(COLS)` se
+  salteaban ENTEROS. Los "✓ N archivos validan" incluian archivos que ni
+  miraba. Ahora distingue las dos bases (`PLATFORM_PATHS`) y resuelve
+  constantes de modulo.
+- `npm run schema:sync` **ahora existe** (antes la doc lo mencionaba y no
+  estaba), sobre el RPC `schema_snapshot()` (0023). Y hay un guard offline de
+  frescura que corre en el pre-commit sin credenciales.
+- `check-integrity-all` armaba UN comando con los ~225 paths de `src/`: al
+  cruzar el limite de 8191 caracteres de Windows **dejo de dejar commitear**.
+  Va por lotes.
+- Los scripts de `platform/scripts/` no corrian en Windows
+  (`import.meta.url === file://argv[1]` nunca da true con backslashes): salian
+  con codigo 0 sin hacer nada.
+
+### Bugs de esta sesion que vale conocer (todos fallaban sin avisar)
+
+1. **Aislamiento entre tenants.** Las lecturas se apoyaban solo en RLS, que
+   dice "las filas de cualquier tenant del que seas miembro" — correcto como
+   frontera de seguridad, **inutil como filtro de alcance**. Con un dueno en
+   5 tenants, el panel de cada uno mostraba los productos de todos. **RLS
+   decide QUE PODES ver; el filtro por `tenant_id` decide QUE ESTAS MIRANDO.
+   Hacen falta los dos.** Nunca hubo filtracion a terceros.
+2. **El panel sin engranaje ni nav.** Las pestanias usaban `ag-page-over` como
+   contenedor raiz: es un overlay full-screen y `admin-shared.css` tiene una
+   regla que esconde el topbar y el bottom nav mientras exista uno en el DOM.
+   El chrome se renderizaba y quedaba tapado — el DOM estaba perfecto, asi que
+   leyendo el codigo no se veia nada raro.
+3. **La marca del build en todos los tenants.** El login leia `settings`, que
+   desde 0025 tiene RLS, y sin sesion caia al `business` compilado: todos
+   decian "Cochi". Se resolvio con el RPC publico `get_tenant_brand` (0027).
+   El `<title>` tenia lo mismo: `applyTenantHead` solo se llama desde
+   `Catalog.jsx`, nunca desde `/admin`.
+4. **`Number(null)` es 0.** El colchon de merma no se aplicaba: la pantalla
+   mostraba `waste_pct ?? 5` (5%) y el costeo calculaba `Number(null)` (0%).
+   Misma familia que `Number('')` en el precio, dos veces en un dia. Ahora
+   null/undefined/'' es "sin definir" y un **0 explicito sigue valiendo 0**.
+   0029 ademas puso defaults en la DB para que no haya una tercera lectura.
+5. **El PWA no se podia actualizar.** La deteccion de version nueva andaba,
+   pero `reload` era un `location.reload()` pelado y el service worker volvia
+   a servir el build cacheado. Ni Ctrl+Shift+R ni cerrar todas las pestanias
+   alcanzaban. `src/lib/hardReload.js` vacia los caches antes de recargar, y
+   lo usan el banner **y** el rescate por chunk roto de `App.jsx` — ese
+   segundo era peor: recargaba, el SW devolvia el mismo index con el mismo
+   chunk inexistente, y el usuario quedaba con la pantalla rota.
+
+### Verificado
+
+**En produccion, por Ricky:** el panel entero (productos, pedidos, config,
+stock, recetas), la separacion por tenant con datos reales, la terminologia
+por rubro, el costo y el margen con el colchon aplicado. Quedaron 2 insumos y
+2 lineas de receta cargadas de esas pruebas.
+
+**Contra la base, con `BEGIN`/`ROLLBACK`:** `attach_owner` (idempotencia y los
+3 guards), el puente de settings (escribir en la tabla se refleja en
+`get_catalog` sin pisar lo que la tabla no modela).
+
+**Solo tests y build:** 462 tests. Lo que NO se probo con un usuario real es
+el checkout del edificio de punta a punta desde que existe la tabla settings.
+
+### Pendiente inmediato
+
+1. **Etapa 3 del `PLAN-ERP.md`**: compras, gastos y proveedores. Alimenta el
+   otro lado del P&L y depende de la 1, que ya esta.
+2. **`order_items.unit_cost` sigue en 0.** Ya hay con que calcularlo (la
+   receta existe); falta que `submit-order` lo escriba al confirmar el pedido.
+   Va con la Etapa 4, que es la que necesita ese dato.
+3. Encender en la config del edificio lo que sigue apagado: QRs, paginas de
+   info, pasarelas, canales de venta, zona de riesgo. Cada uno con su tabla.
+4. Las `og:` tags siguen siendo las del build (compartir por WhatsApp muestra
+   la marca equivocada). Necesita render en el edge — el `<title>` ya se
+   arreglo, esto no.
+
+### Bloqueado por Ricky
+
+- **Nada tecnico.** Los scripts leen las credenciales de `.env.scripts`
+  (ignorado por git), asi que no hace falta exportar nada por terminal.
+- **Una decision, sin urgencia:** que pasa con `main`. Hoy sirve a los 3
+  negocios legacy y esta congelada (0 commits desde que salio la rama). La
+  rama lleva +9465 lineas, casi todo archivos nuevos, con 104 borradas
+  repartidas en 10 archivos legacy — **no hay riesgo de conflicto**. Pero
+  cuanto mas tiempo convivan las dos, mas se parece a una bifurcacion
+  permanente. Las salidas son mergear cuando el edificio este maduro, o que
+  esta rama pase a ser la principal y main quede archivada.
 
 ---
 
