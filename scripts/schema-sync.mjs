@@ -27,6 +27,13 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { cargarEnvDeArchivo } from '../platform/scripts/_env.mjs';
+
+// Las credenciales tambien salen de .env.scripts (fuera de git), igual que en
+// los scripts de platform/. Antes este script solo miraba el entorno: con el
+// archivo ya creado igual respondia "sin credenciales — salteado", que se lee
+// como "no hace falta" y deja el snapshot viejo sin que nadie se entere.
+cargarEnvDeArchivo();
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');

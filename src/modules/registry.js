@@ -49,6 +49,11 @@ export const MODULOS = {
     label: 'Stock',
     implementado: true,      // Etapa 1 del PLAN-ERP (migracion 0026)
   },
+  finanzas: {
+    id: 'finanzas',
+    label: 'Gastos',
+    implementado: true,      // Etapa 3 del PLAN-ERP (migracion 0030)
+  },
   caja: {
     id: 'caja',
     label: 'Caja',
@@ -82,7 +87,11 @@ export const RUBROS = {
     // Un plato se arma con insumos y por eso tiene costo real. Un corte de
     // pelo y una remera no: su costo no sale de una receta.
     receta: true,
-    modulos: ['products', 'orders', 'stock', 'caja'],
+    // USAR (Uniform System of Accounts for Restaurants) es el plan de cuentas
+    // de la gastronomia: separa comida, packaging y personal de cocina. A una
+    // barberia no se le pide clasificar un gasto en "Comida — Lacteos".
+    contabilidadUsar: true,
+    modulos: ['products', 'orders', 'stock', 'finanzas', 'caja'],
   },
 
   barber: {
@@ -100,7 +109,7 @@ export const RUBROS = {
     productType: 'service',
     // Sin requires_age_gate: un corte de pelo no se restringe por edad.
     campos: [...CAMPOS_BASE, 'duration_min'],
-    modulos: ['products', 'orders', 'agenda', 'caja'],
+    modulos: ['products', 'orders', 'agenda', 'finanzas', 'caja'],
   },
 
   retail: {
@@ -116,7 +125,7 @@ export const RUBROS = {
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'stock', 'requires_age_gate'],
-    modulos: ['products', 'orders', 'variants', 'stock', 'caja'],
+    modulos: ['products', 'orders', 'variants', 'stock', 'finanzas', 'caja'],
   },
 };
 
@@ -152,6 +161,11 @@ export function usaCampo(vertical, campo) {
 /** ¿Los productos de este rubro se arman con insumos? */
 export function usaReceta(vertical) {
   return getRubro(vertical).receta === true;
+}
+
+/** ¿Este rubro clasifica sus gastos con el plan de cuentas USAR? */
+export function usaContabilidadUsar(vertical) {
+  return getRubro(vertical).contabilidadUsar === true;
 }
 
 export function camposDe(vertical) {

@@ -12,6 +12,13 @@
  *  - Cards con `.ag-card`
  *  - Botones con `.ag-btn-primary` / `.ag-btn-ghost`
  *  - Colores vía tokens `var(--ag-c-*)`
+ *
+ * ETAPA 3 del edificio: todo lo que escribe en la base entra por prop, con
+ * default legacy — el admin viejo no cambia en nada. Ojo con los hijos que
+ * guardan solos: `ExpForm` y `Purchase` cargan y crean PROVEEDORES por su
+ * cuenta, salteando cualquier saver de la pantalla que los contiene. Es la
+ * trampa que ya nos mordió con `CatChipsEditor` y `PaymentAccountsEditor`, así
+ * que esos dos accesos también viajan por prop.
  */
 import { useState, useEffect } from "react";
 import { formatInt, todayISO, formatOrderCode } from "../../lib/utils";
@@ -145,7 +152,17 @@ function EmptyState({ icon = "📦", text }) {
 // ═══════════════════════════════════════════════════════════════
 //                          EXPENSES
 // ═══════════════════════════════════════════════════════════════
-function Expenses({ expenses, setExpenses, settings, setSettings, showToast, onClose, user }) {
+function Expenses({
+  expenses, setExpenses, settings, setSettings, showToast, onClose, user,
+  // Puntos de acople del edificio. Los defaults son los del admin viejo.
+  onCreate = createExpense,
+  onVoid = voidExpense,
+  onFetchSuppliers = fetchSuppliers,
+  onSaveSupplier = upsertSupplier,
+  // La clasificación USAR es contabilidad de restaurante: una barbería no la
+  // carga y el registry decide quién la ve.
+  permiteUsar = true,
+}) {
   const monthStart = todayISO().slice(0, 7) + "-01";
   const sorted = [...expenses].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const monthExpenses = expenses.filter(e => e.date >= monthStart);
@@ -206,7 +223,7 @@ function Expenses({ expenses, setExpenses, settings, setSettings, showToast, onC
   const submitVoid = async () => {
     if (!voidTarget || voiding) return;
     setVoiding(true);
-    const res = await voidExpense({ id: voidTarget.id, reason: voidReason, user });
+    const res = await onVoid({ id: voidTarget.id, reason: voidReason, user });
     setVoiding(false);
     if (!res.ok) {
       const msg = res.errors?.[0] === 'outside_current_month'
@@ -770,16 +787,22 @@ function Expenses({ expenses, setExpenses, settings, setSettings, showToast, onC
           settings={settings}
           user={user}
           showToast={showToast}
+          permiteUsar={permiteUsar}
+          onFetchSuppliers={onFetchSuppliers}
+          onSaveSupplier={onSaveSupplier}
           onClose={() => setShowForm(false)}
           onSave={async (e) => {
-            const saved = await createExpense(e);
-            if (saved) {
+            const saved = await onCreate(e);
+            // El service del edificio devuelve {__error, message} en vez de
+            // null: sin este chequeo un fallo de validación se festejaba como
+            // "Gasto registrado ✓" y la fila no existía.
+            if (saved && !saved.__error) {
               setExpenses(p => [saved, ...p]);
               setShowForm(false);
               showToast("Gasto registrado ✓");
             } else {
               setShowForm(false);
-              showToast("Error al registrar");
+              showToast(saved?.message || "Error al registrar");
             }
           }}
         />
@@ -1025,7 +1048,12 @@ function ExpensesExportModal({ expenses, settings, onClose, showToast }) {
   );
 }
 
-function ExpForm({ onClose, onSave, settings, user, showToast }) {
+function ExpForm({
+  onClose, onSave, settings, user, showToast,
+  permiteUsar = true,
+  onFetchSuppliers = fetchSuppliers,
+  onSaveSupplier = upsertSupplier,
+}) {
   // "Materia Prima" y "Packaging" se EXCLUYEN acá: ambos son insumos físicos
   // que se registran via Compras para mantener stock + items + proveedor.
   const CATS_PURCHASE_ONLY = ["Materia Prima", "Packaging"];
@@ -1036,7 +1064,10 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
   const [f, setF] = useState({
     date: todayISO(), description: "", amount: 0,
     category: defaultCat, supplier: "", supplier_id: null, expense_type: "variable",
-    usar_category: "other_opex",
+    // Sin clasificación USAR el campo queda null, no "other_opex": un negocio
+    // que no lleva contabilidad de restaurante no tiene por qué declarar que
+    // todo es "otros gastos operativos".
+    usar_category: permiteUsar ? "other_opex" : null,
     installment_current: 1, installment_total: 12,
     payment_method: "efectivo",
     payment_account_id: null,
@@ -1045,7 +1076,7 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
   // Proveedores ACTIVOS (los pausados no aparecen) + alta sin salir del gasto
   const [sups, setSups] = useState([]);
   const [newSup, setNewSup] = useState(false);
-  useEffect(() => { fetchSuppliers().then(setSups); }, []);
+  useEffect(() => { onFetchSuppliers().then(setSups); }, [onFetchSuppliers]);
   const s = (k, v) => {
     setErr("");
     setF(p => {
@@ -1110,29 +1141,33 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
           </div>
         </div>
 
-        <label className="ag-field-lbl" style={{ marginTop: 14 }}>Categoría USAR</label>
-        <select
-          className="ag-field-input"
-          value={f.usar_category}
-          onChange={e => s("usar_category", e.target.value)}
-        >
-          {/* Labels en espanol para los grupos USAR (las keys internas no cambian) */}
-          {[
-            { key: "COGS", label: "Mercadería (COGS)" },
-            { key: "Labor", label: "Personal" },
-            { key: "OPEX", label: "Gastos operativos (OPEX)" },
-          ].map(group => (
-            <optgroup key={group.key} label={group.label}>
-              {USAR_EXPENSE_CATEGORIES
-                .filter(c => c.group === group.key)
-                .filter(c => !c.value.startsWith("food_") && c.value !== "packaging")
-                .map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </optgroup>
-          ))}
-        </select>
-        <p style={{ fontSize: 11, color: "var(--ag-ink-3)", margin: "4px 0 12px 2px" }}>
-          Comida y packaging se registran en <strong>Compras</strong> (alimentan stock).
-        </p>
+        {permiteUsar && (
+          <>
+            <label className="ag-field-lbl" style={{ marginTop: 14 }}>Categoría USAR</label>
+            <select
+              className="ag-field-input"
+              value={f.usar_category || ""}
+              onChange={e => s("usar_category", e.target.value)}
+            >
+              {/* Labels en espanol para los grupos USAR (las keys internas no cambian) */}
+              {[
+                { key: "COGS", label: "Mercadería (COGS)" },
+                { key: "Labor", label: "Personal" },
+                { key: "OPEX", label: "Gastos operativos (OPEX)" },
+              ].map(group => (
+                <optgroup key={group.key} label={group.label}>
+                  {USAR_EXPENSE_CATEGORIES
+                    .filter(c => c.group === group.key)
+                    .filter(c => !c.value.startsWith("food_") && c.value !== "packaging")
+                    .map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <p style={{ fontSize: 11, color: "var(--ag-ink-3)", margin: "4px 0 12px 2px" }}>
+              Comida y packaging se registran en <strong>Compras</strong> (alimentan stock).
+            </p>
+          </>
+        )}
 
         <label className="ag-field-lbl" style={{ marginTop: 14 }}>Tipo de gasto</label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
@@ -1208,6 +1243,8 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
             const v = e.target.value;
             if (v === "__new__") { setNewSup(true); return; }
             const found = sups.find(x => x.id === v);
+            // Los dos juntos y en este orden: el id es el vínculo vivo y el
+            // nombre es la copia que sobrevive si el proveedor se elimina.
             s("supplier_id", v || null);
             s("supplier", found?.name || "");
           }}
@@ -1254,8 +1291,8 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
           supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "" }}
           onClose={() => setNewSup(false)}
           onSave={async (data) => {
-            const saved = await upsertSupplier(data);
-            if (saved?.__error) { showToast?.("Error: " + saved.__error); return; }
+            const saved = await onSaveSupplier(data);
+            if (saved?.__error) { showToast?.("Error: " + (saved.message || saved.__error)); return; }
             setSups(p => [...p, saved].sort((a, b) => a.name.localeCompare(b.name)));
             s("supplier_id", saved.id);
             s("supplier", saved.name);
@@ -1271,7 +1308,20 @@ function ExpForm({ onClose, onSave, settings, user, showToast }) {
 // ═══════════════════════════════════════════════════════════════
 //                           PURCHASE
 // ═══════════════════════════════════════════════════════════════
-function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose, showToast, loadAll, user }) {
+function Purchase({
+  ingredients, setIngredients, setExpenses, settings, onClose, showToast, loadAll, user,
+  // Registrar la compra entera de una. Null = comportamiento legacy: un bucle
+  // de llamadas sueltas (N ajustes de stock + N gastos) sin nada que las ate.
+  // El edificio pasa la RPC `register_purchase`, que hace todo en una
+  // transacción — si algo falla, no queda mercadería ingresada sin su gasto.
+  onRegistrar = null,
+  onCrearInsumo = upsertIngredient,
+  onFetchSuppliers = fetchSuppliers,
+  onSaveSupplier = upsertSupplier,
+  // La foto del ticket necesita un bucket de Storage, que el edificio todavía
+  // no tiene. Con esto en false la sección no se muestra y no se exige.
+  permiteComprobante = true,
+}) {
   const [supId, setSupId] = useState("");
   const [supName, setSupName] = useState("");
   const [suppliers, setSuppliers] = useState([]);
@@ -1287,7 +1337,7 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
   const [paymentAccountId, setPaymentAccountId] = useState(null);
 
   // Cargar proveedores activos al abrir
-  useEffect(() => { fetchSuppliers().then(setSuppliers); }, []);
+  useEffect(() => { onFetchSuppliers().then(setSuppliers); }, [onFetchSuppliers]);
 
   // Si suben foto, desactivar "sin recibo" (son mutuamente excluyentes)
   useEffect(() => { if (receiptUrl && noReceipt) setNoReceipt(false); }, [receiptUrl, noReceipt]);
@@ -1320,13 +1370,17 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
 
   const cr = async () => {
     if (!ni.name) return;
-    const saved = await upsertIngredient({ ...ni, stock: 0 });
-    if (saved) {
-      setIngredients(p => [...p, saved]);
-      setSn(false);
-      setNi({ name: "", unit: "kg", category: "Secos", cost: 0, min_stock: 0 });
-      showToast("Insumo creado: " + saved.name);
+    const saved = await onCrearInsumo({ ...ni, stock: 0 });
+    if (!saved || saved.__error) {
+      // El índice único por nombre del edificio cae acá: sin este chequeo el
+      // insumo duplicado se anunciaba como creado y no aparecía en la lista.
+      showToast(saved?.message || "No se pudo crear el insumo");
+      return;
     }
+    setIngredients(p => [...p, saved]);
+    setSn(false);
+    setNi({ name: "", unit: "kg", category: "Secos", cost: 0, min_stock: 0 });
+    showToast("Insumo creado: " + saved.name);
   };
 
   const tot = items.reduce((s, it) => s + (it.qty || 0) * (it.unitCost || 0), 0);
@@ -1334,6 +1388,24 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
   const sub = async () => {
     const v = items.filter(it => it.ingredient_id && it.qty > 0);
     if (!v.length) return;
+
+    // Camino del edificio: una sola llamada, una sola transacción. El
+    // desglose por categoría de alimento lo hace la RPC, no la pantalla.
+    if (onRegistrar) {
+      const res = await onRegistrar({
+        date, items: v,
+        supplier: supName, supplierId: supId || null,
+        paymentMethod, paymentAccountId,
+        receiptUrl: receiptUrl || null, noReceipt,
+      });
+      if (!res || res.__error) { showToast(res?.message || "No se pudo registrar la compra"); return; }
+      if (res.expenses?.length) setExpenses(p => [...res.expenses, ...p]);
+      await loadAll();
+      showToast("Compra registrada ✓");
+      onClose();
+      return;
+    }
+
     for (const it of v) {
       await updateIngredientStock(it.ingredient_id, it.qty);
       if (it.unitCost > 0) await upsertIngredient({ id: it.ingredient_id, cost: it.unitCost });
@@ -1448,6 +1520,7 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
         </div>
 
         {/* Comprobante · uno de los dos es obligatorio (foto o "sin recibo") */}
+        {permiteComprobante && (
         <div style={{ marginBottom: 14 }}>
           <label className="ag-field-lbl">
             Comprobante <span style={{ color: "var(--ag-c-orders)" }}>*</span>
@@ -1569,6 +1642,7 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
             </div>
           )}
         </div>
+        )}
 
         {/* Items header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -1722,7 +1796,9 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
 
         {(() => {
           const validItems = items.filter(it => it.ingredient_id && it.qty > 0).length > 0;
-          const hasProof = !!receiptUrl || noReceipt;
+          // Sin sección de comprobante no hay nada que exigir: pedir una foto
+          // que no se puede subir dejaría el botón trabado para siempre.
+          const hasProof = !permiteComprobante || !!receiptUrl || noReceipt;
           const canConfirm = validItems && hasProof;
           return (
             <button
@@ -1744,8 +1820,8 @@ function Purchase({ ingredients, setIngredients, setExpenses, settings, onClose,
           supplier={{ name: "", phone: "", email: "", category: "", notes: "", cuit: "", can_invoice: false, location: "" }}
           onClose={() => setNewSup(false)}
           onSave={async (data) => {
-            const saved = await upsertSupplier(data);
-            if (saved?.__error) { showToast?.("Error: " + saved.__error); return; }
+            const saved = await onSaveSupplier(data);
+            if (saved?.__error) { showToast?.("Error: " + (saved.message || saved.__error)); return; }
             setSuppliers(p => [...p, saved].sort((a, b) => a.name.localeCompare(b.name)));
             setSupId(saved.id);
             setSupName(saved.name);

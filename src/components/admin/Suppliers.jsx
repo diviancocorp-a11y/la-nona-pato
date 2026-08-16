@@ -12,6 +12,10 @@
  * Accesible desde el menú ☰ → Proveedores.
  * Migraciones: 20260525_suppliers_and_receipts.sql,
  *              20260612_suppliers_cuit_invoice_location.sql
+ *
+ * ETAPA 3 del edificio: los cuatro accesos a la base se inyectan por prop con
+ * default legacy, así que el admin viejo no cambia en nada. El edificio pasa
+ * los suyos (platformSuppliers.js), que filtran por tenant.
  */
 import { useConfirm } from "../ConfirmSlideProvider";
 import { useState, useEffect, useCallback } from "react";
@@ -46,7 +50,20 @@ function ContactBubble({ href, label, children }) {
   );
 }
 
-export default function Suppliers({ onBack, showToast }) {
+export default function Suppliers({
+  onBack, showToast,
+  // Puntos de acople del edificio. Los defaults son los del admin viejo.
+  onFetch = fetchSuppliers,
+  onSave = upsertSupplier,
+  onToggle = toggleSupplierActive,
+  onDelete = deleteSupplier,
+  // asPage: renderizar como pantalla comun en vez de overlay full-screen.
+  // `.ag-page-over` esconde el topbar y el bottom nav mientras exista en el
+  // DOM (regla de admin-shared.css). En el panel del edificio esto es una
+  // pestaña, no un takeover: sin esto el usuario se queda sin barra ni
+  // engranaje, que es exactamente el bug del 16/ago.
+  asPage = false,
+}) {
   const confirmSlide = useConfirm();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,10 +73,10 @@ export default function Suppliers({ onBack, showToast }) {
   const load = useCallback(async () => {
     setLoading(true);
     // Todos (activos primero, pausados al fondo — lo ordena el servicio)
-    const data = await fetchSuppliers({ activeOnly: false });
+    const data = await onFetch({ activeOnly: false });
     setList(data);
     setLoading(false);
-  }, []);
+  }, [onFetch]);
   useEffect(() => { load(); }, [load]);
 
   const filtered = list.filter(s =>
@@ -69,25 +86,35 @@ export default function Suppliers({ onBack, showToast }) {
   );
 
   const togglePause = async (s) => {
-    const r = await toggleSupplierActive(s.id, !s.is_active);
-    if (r?.__error) { showToast?.("Error: " + r.__error); return; }
+    const r = await onToggle(s.id, !s.is_active);
+    if (r?.__error) { showToast?.("Error: " + (r.message || r.__error)); return; }
     showToast?.(s.is_active ? `${s.name} pausado — no aparece al cargar gastos` : `${s.name} activo de nuevo ✓`);
     await load();
   };
 
   return (
-    <div className="ag-page-over">
-      <div className="ag-page-over-head">
-        <button type="button" className="ag-subpage-back" onClick={onBack} aria-label="Volver">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          <span>Atrás</span>
-        </button>
-        <h2 className="ag-page-over-title">Proveedores</h2>
-      </div>
+    <div
+      className={asPage ? undefined : "ag-page-over"}
+      style={asPage ? { padding: "12px 16px 100px", position: "relative", zIndex: 2 } : undefined}
+    >
+      {asPage ? (
+        <h1 style={{
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 22,
+          margin: "4px 0 14px", color: "var(--ag-ink)", letterSpacing: "-0.01em",
+        }}>Proveedores</h1>
+      ) : (
+        <div className="ag-page-over-head">
+          <button type="button" className="ag-subpage-back" onClick={onBack} aria-label="Volver">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Atrás</span>
+          </button>
+          <h2 className="ag-page-over-title">Proveedores</h2>
+        </div>
+      )}
 
-      <div className="ag-page-over-body">
+      <div className={asPage ? undefined : "ag-page-over-body"}>
 
         {/* Búsqueda */}
         <div style={{
@@ -256,8 +283,8 @@ export default function Suppliers({ onBack, showToast }) {
           supplier={editing}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
-            const saved = await upsertSupplier(data);
-            if (saved?.__error) { showToast?.("Error: " + saved.__error); return; }
+            const saved = await onSave(data);
+            if (saved?.__error) { showToast?.("Error: " + (saved.message || saved.__error)); return; }
             showToast?.(data.id ? "Proveedor actualizado ✓" : "Proveedor creado ✓");
             setEditing(null);
             await load();
@@ -265,8 +292,8 @@ export default function Suppliers({ onBack, showToast }) {
           onDelete={async () => {
             const ok = await confirmSlide({ title: `Eliminar a ${editing.name}`, body: "Se borra del catálogo. Sus gastos históricos conservan el nombre. Si solo querés que no aparezca, mejor pausalo.", label: "Deslizá para eliminar" });
             if (!ok) return;
-            const r = await deleteSupplier(editing.id);
-            if (r?.__error) { showToast?.("Error: " + r.__error); return; }
+            const r = await onDelete(editing.id);
+            if (r?.__error) { showToast?.("Error: " + (r.message || r.__error)); return; }
             showToast?.("Proveedor eliminado");
             setEditing(null);
             await load();

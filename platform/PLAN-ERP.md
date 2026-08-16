@@ -154,15 +154,74 @@ el pedido. Va con la Etapa 4, que es la que necesita ese dato.
 
 ---
 
-## Etapa 3 — Compras, gastos y proveedores
+## Etapa 3 — Compras, gastos y proveedores ✅ HECHA (16/ago)
 
 | | |
 |---|---|
-| Tablas | `expenses`, `suppliers`, `purchases` (+ `tenant_id`) |
-| Services | `finance.js`, `suppliers.js` |
-| Pantallas | `Finance.jsx` (Expenses + Purchase), `Suppliers.jsx` |
+| Tablas | `expenses`, `suppliers` (migración 0030) |
+| RPCs | `void_expense`, `register_purchase` |
+| Services | `platformFinance.js`, `platformSuppliers.js` |
+| Pantallas | `Expenses` + `Purchase` (Finance.jsx) y `Suppliers.jsx`, reusadas |
+| Registry | `finanzas.implementado = true`, en los tres rubros |
 
-Depende de la 1: una compra ingresa mercadería y toca stock.
+**`purchases` no existe, y era un error del plan.** `purchases` y
+`purchase_items` están en el legacy desde el schema inicial y **ninguna
+pantalla las escribe**: la pantalla de Compras registra filas en `expenses`
+(una por categoría de alimento, con el detalle en `items` jsonb) y ajusta el
+stock. `fetchPurchases` quedó en `services/finance.js` sin un solo llamador.
+Portarlas habría sido portar código muerto. **Antes de portar una tabla,
+buscar quién la escribe hoy.**
+
+**Dos operaciones se fueron a RPC.** Es la primera vez que una etapa no se
+resuelve solo con tabla + service, y el criterio es el que va a valer de acá
+en adelante: *si toca varias filas y es plata, va a la base*. Anular un gasto
+y registrar una compra eran bucles de llamadas desde el navegador, con un
+rollback escrito a mano en JavaScript — si el navegador se cierra en el medio,
+queda mercadería ingresada sin su gasto. Las dos van `security invoker`: la
+RLS de siempre sigue decidiendo quién toca qué, lo único que cambia es que
+todo pasa en una transacción. Los guards contables (no anular dos veces, no
+anular una anulación, no tocar un mes cerrado) se mudaron a la DB.
+
+**Un insumo sin `food_category` se resuelve por rubro.** En gastronomía cae en
+`dry` como en el legacy: dejarlo sin clasificar lo sacaría del costo de comida
+del P&L y el food cost daría más bajo de lo real sin que nada avise — y no es
+un caso raro, porque el alta rápida de insumo dentro de la compra no pide la
+categoría. En barbería y retail queda sin `usar_category`: meter un shampoo en
+"Comida — Secos" es inventarle contabilidad de restaurante a quien no la lleva.
+
+**Navegación:** las tres pantallas entran como **una sola** pestaña (`Gastos`)
+con tres solapas, en `FinanzasPanel`. La barra inferior se usa con el pulgar y
+seis ítems no entran. Además son el mismo momento del día: se carga la compra,
+se ve cuánto salió, y si el proveedor no estaba se crea ahí.
+
+Lo que quedó apagado a propósito:
+- **La foto del ticket.** Necesita un bucket de Storage y el edificio no tiene
+  ninguno (las imágenes de producto se cargan pegando una URL). Con
+  `permiteComprobante={false}` la sección no se muestra y no se exige — pedir
+  una foto que no se puede subir dejaría el botón de confirmar trabado.
+- **La solapa Compra en barbería**, que no stockea insumos (`tieneModulo`).
+- **La clasificación USAR** fuera de gastronomía (`usaContabilidadUsar`).
+
+### Qué probar
+
+En **la-nona-pato** (gastro, tiene 2 insumos cargados):
+1. Gastos → Registrar gasto: descripción, monto, categoría. Aparece en la
+   lista con el total del mes actualizado.
+2. Compra → agregar los 2 insumos con precios nuevos → Confirmar. Tienen que
+   pasar **tres** cosas: el gasto aparece en la solapa Gastos, el stock subió
+   en la pestaña Stock, y el margen del producto que los usa cambió.
+3. Proveedores → crear uno. Volver a Gastos → Registrar gasto: tiene que estar
+   en el desplegable. Pausarlo → deja de aparecer ahí, sigue en el gestor.
+4. Anular un gasto del mes: el original queda tachado y aparece la reversión
+   en verde. El botón "Ver reversión ↗" salta de uno al otro.
+5. Intentar crear un proveedor con un nombre que ya existe → mensaje claro,
+   no un error de base.
+
+**Casos negativos** (lo que NO tiene que pasar):
+- En **barberia-demo**: la solapa **Compra no existe**, y al cargar un gasto
+  **no aparece** el desplegable "Categoría USAR".
+- En **cochi**: los gastos y proveedores de la-nona-pato **no se ven**. Es el
+  mismo dueño en los dos, así que es RLS + filtro por `tenant_id`.
 
 ---
 
@@ -173,6 +232,11 @@ Depende de la 1: una compra ingresa mercadería y toca stock.
 | Tablas | `sales` (+ `tenant_id`) |
 | Cálculo | **`useFinancials` se reusa sin tocar** — es cálculo puro sobre arrays |
 | Pantallas | `SalesView`, `MonthSummary`, los KPIs de `Home.jsx` |
+
+Lo que le dejó la Etapa 3 para resolver: los gastos de compra en barbería y
+retail llegan con `usar_category` en null. El P&L tiene que decidir si los
+suma como costo de mercadería (`category = 'Materia Prima'` los identifica) o
+los deja en el bucket genérico. Elegir a conciencia, no por omisión.
 
 Depende de la 2 y la 3: sin costos reales ni gastos, el P&L da cualquier cosa.
 Es exactamente el error que ya se arregló una vez en el legacy (doble conteo de
@@ -208,6 +272,7 @@ merma (`waste_log`) · QRs dinámicos · push · páginas de info · usuarios y 
 0 settings ──┬── 1 stock ──── 3 compras ──┐
              │                            ├── 4 ventas y P&L
              └── 2 recetas ───────────────┘
+   ✅            ✅      ✅        ✅
 
 5 clientes  ·  6 periferia   (independientes, en cualquier momento)
 ```
@@ -220,8 +285,15 @@ números están mal.
 
 ## Cómo se hace cada etapa (el molde)
 
+0. **Buscar quién escribe la tabla hoy.** Que exista en el legacy no significa
+   que se use: `purchases` estaba desde el schema inicial y ninguna pantalla la
+   tocaba. Un `grep` del nombre de tabla antes de empezar ahorra una etapa
+   entera de trabajo inútil.
 1. **Migración**: tabla con `tenant_id not null` + RLS con el patrón
-   `tenant_id in (select private.current_user_tenants())`.
+   `tenant_id in (select private.current_user_tenants())`. **Si una operación
+   toca varias filas y es plata, va a una RPC `security invoker`**, no a un
+   bucle de llamadas desde el navegador: el cuerpo de una función plpgsql es
+   una transacción, y la RLS sigue aplicando igual.
 2. **Snapshot**: `npm run schema:sync` o subir `_migrations_through`.
 3. **Service nuevo** en `src/services/platform*.js`, con el `tenantId`
    **obligatorio** en toda lectura. RLS decide qué podés ver; el filtro decide

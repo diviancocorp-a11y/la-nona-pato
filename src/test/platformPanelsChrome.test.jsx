@@ -10,6 +10,18 @@ vi.mock('../components/ConfirmSlideProvider', () => ({
 
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
+import FinanzasPanel from '../components/admin/platform/FinanzasPanel';
+
+// Lo minimo para montar FinanzasPanel sin tocar la base.
+const finanzasProps = {
+  expenses: [], setExpenses: vi.fn(),
+  ingredients: [], setIngredients: vi.fn(),
+  settings: {}, user: null, showToast: vi.fn(), recargar: vi.fn(),
+  onCrearGasto: vi.fn(), onAnularGasto: vi.fn(),
+  onRegistrarCompra: vi.fn(), onCrearInsumo: vi.fn(),
+  onFetchProveedores: vi.fn().mockResolvedValue([]),
+  onSaveProveedor: vi.fn(), onToggleProveedor: vi.fn(), onDeleteProveedor: vi.fn(),
+};
 
 // El bug que estos tests cuidan (16/ago): las pestanias principales usaban
 // `ag-page-over` como contenedor raiz. Esa clase es un overlay full-screen
@@ -46,6 +58,29 @@ describe('las pestañas principales no tapan el chrome del panel', () => {
     );
     expect(raiz(container).className).not.toContain('ag-page-over');
     expect(container.querySelector('.ag-page-over')).toBeNull();
+  });
+
+  // Suppliers es el caso peligroso: su raiz NORMAL es `.ag-page-over` (en el
+  // admin viejo se abre desde el menu ☰ y taparlo todo esta bien). Dentro del
+  // panel del edificio es una solapa, no un takeover — por eso va con asPage.
+  it('ninguna solapa de Finanzas usa ag-page-over, incluida Proveedores', async () => {
+    const { container } = render(<FinanzasPanel {...finanzasProps} />);
+    expect(raiz(container).className || '').not.toContain('ag-page-over');
+    expect(container.querySelector('.ag-page-over')).toBeNull();
+
+    for (const solapa of ['Compra', 'Proveedores']) {
+      screen.getByRole('button', { name: solapa }).click();
+      await vi.waitFor(() => {
+        expect(screen.getByRole('button', { name: solapa }).getAttribute('aria-current')).toBe('page');
+      });
+      expect(container.querySelector('.ag-page-over'), solapa).toBeNull();
+    }
+  });
+
+  it('un rubro sin stock no ve la solapa de Compra', () => {
+    render(<FinanzasPanel {...finanzasProps} permiteCompras={false} />);
+    expect(screen.queryByRole('button', { name: 'Compra' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Proveedores' })).toBeTruthy();
   });
 
   it('el formulario de producto SI puede taparlo: es un takeover con Atrás', async () => {

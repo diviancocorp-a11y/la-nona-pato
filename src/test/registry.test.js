@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import {
   RUBROS, MODULOS, getRubro, terminologia, tipoPorDefecto,
   usaCampo, camposDe, modulosDe, tieneModulo, rubrosDisponibles,
+  usaContabilidadUsar,
 } from '../modules/registry';
 
 describe('rubros', () => {
@@ -113,9 +114,32 @@ describe('tipoPorDefecto', () => {
 describe('modulos', () => {
   it('solo devuelve los implementados', () => {
     const ids = modulosDe('barber').map(m => m.id);
-    expect(ids).toEqual(['products', 'orders']);
-    // agenda esta declarada para barberia pero todavia no existe
+    expect(ids).toEqual(['products', 'orders', 'finanzas']);
+    // agenda y caja estan declaradas para barberia pero todavia no existen
     expect(ids).not.toContain('agenda');
+    expect(ids).not.toContain('caja');
+  });
+
+  // Stock es de insumos: una barberia no ingresa mercaderia, y por eso su
+  // pestaña de Finanzas no muestra la solapa de Compra.
+  it('stock es de gastro y retail, no de barberia', () => {
+    expect(tieneModulo('gastro', 'stock')).toBe(true);
+    expect(tieneModulo('retail', 'stock')).toBe(true);
+    expect(tieneModulo('barber', 'stock')).toBe(false);
+  });
+
+  it('gastos y proveedores los tiene cualquier rubro', () => {
+    for (const id of Object.keys(RUBROS)) {
+      expect(tieneModulo(id, 'finanzas'), id).toBe(true);
+    }
+  });
+
+  // USAR es el plan de cuentas de la gastronomia. A una barberia no se le
+  // pide clasificar un gasto en "Comida — Lacteos".
+  it('la contabilidad USAR es solo gastronomica', () => {
+    expect(usaContabilidadUsar('gastro')).toBe(true);
+    expect(usaContabilidadUsar('barber')).toBe(false);
+    expect(usaContabilidadUsar('retail')).toBe(false);
   });
 
   it('con todos:true aparece la hoja de ruta completa', () => {

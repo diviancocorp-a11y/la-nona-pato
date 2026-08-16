@@ -33,7 +33,15 @@ import {
 import {
   fetchProductIngredients, agruparPorProducto, saveProductIngredients,
 } from '../services/platformRecipes';
-import { modulosDe, terminologia } from '../modules/registry';
+import {
+  fetchExpenses, createExpense, voidExpense as anularGasto, registerPurchase,
+} from '../services/platformFinance';
+import {
+  fetchSuppliers, upsertSupplier, toggleSupplierActive, deleteSupplier,
+} from '../services/platformSuppliers';
+import {
+  modulosDe, terminologia, tieneModulo, usaContabilidadUsar,
+} from '../modules/registry';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
 // diferencia es que se le inyecta con que guardar y que zonas apagar. Va lazy
@@ -42,6 +50,9 @@ import { modulosDe, terminologia } from '../modules/registry';
 const Settings = lazy(() => import('../components/admin/Settings'));
 // Stock: mismo componente del admin legacy, con el saver inyectado.
 const Stock = lazy(() => import('../components/admin/Stock'));
+// Finanzas: contenedor de Gastos + Compra + Proveedores (Etapa 3). Lazy por
+// lo mismo que Settings — arrastra Finance.jsx entero, que son 2000 lineas.
+const FinanzasPanel = lazy(() => import('../components/admin/platform/FinanzasPanel'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -66,6 +77,7 @@ const ICONOS = {
   products: BoxIcon,
   orders: BagIcon,
   stock: StockIcon,
+  finanzas: MoneyIcon,
 };
 
 function Centered({ children }) {
@@ -92,6 +104,7 @@ export default function PlatformAdmin() {
   const [orders, setOrders] = useState([]);
   const [sett, setSett] = useState(null);
   const [ings, setIngs] = useState([]);
+  const [gastos, setGastos] = useState([]);
   const [recetas, setRecetas] = useState(null); // Map product_id -> lineas
   const [ov, setOv] = useState(null); // overlays de Stock (editIng / waste)
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -152,6 +165,11 @@ export default function PlatformAdmin() {
     setIngs(await fetchIngredients(tenantId));
   }, [tenantId]);
 
+  const loadGastos = useCallback(async () => {
+    if (!tenantId) return;
+    setGastos(await fetchExpenses(tenantId));
+  }, [tenantId]);
+
   // Todas las lineas de receta de una: la lista muestra el margen de cada
   // producto, y pedirlas por producto seria una consulta por fila en pantalla.
   const loadRecetas = useCallback(async () => {
@@ -166,7 +184,8 @@ export default function PlatformAdmin() {
     loadSettings();
     loadIngs();
     loadRecetas();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas]);
+    loadGastos();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -174,6 +193,26 @@ export default function PlatformAdmin() {
     (ing) => upsertIngrediente(tenantId, ing),
     [tenantId]
   );
+
+  /* ── Etapa 3: gastos, compras y proveedores ──
+     Los componentes de Finance.jsx y Suppliers.jsx esperan funciones sin
+     tenant: se lo atamos aca. Van con useCallback porque ExpForm y Purchase
+     los usan como dependencia de un useEffect — una funcion nueva en cada
+     render dispararia la carga de proveedores en loop. */
+  const crearGasto = useCallback((e) => createExpense(tenantId, e), [tenantId]);
+
+  const registrarCompra = useCallback((payload) => registerPurchase(tenantId, payload), [tenantId]);
+
+  const traerProveedores = useCallback((opts) => fetchSuppliers(tenantId, opts), [tenantId]);
+  const guardarProveedor = useCallback((s) => upsertSupplier(tenantId, s), [tenantId]);
+
+  // Lo que Purchase llama despues de registrar (su prop `loadAll`). Una compra
+  // toca stock Y gastos: releer solo los gastos dejaria la pantalla de Stock
+  // mostrando el stock de antes, y el margen de las recetas calculado con el
+  // costo viejo del insumo.
+  const recargarTrasCompra = useCallback(async () => {
+    await Promise.all([loadIngs(), loadGastos()]);
+  }, [loadIngs, loadGastos]);
 
   // El contrato que espera Settings: recibe el objeto entero y devuelve el
   // guardado, o null si fallo. saveSettings filtra por lista blanca, asi que
@@ -354,6 +393,32 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'finanzas' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <FinanzasPanel
+                expenses={gastos}
+                setExpenses={setGastos}
+                ingredients={ings}
+                setIngredients={setIngs}
+                settings={sett}
+                user={session?.user}
+                showToast={msg}
+                recargar={recargarTrasCompra}
+                // Comprar insumos solo tiene sentido donde hay insumos que
+                // stockear. Una barberia ve Gastos y Proveedores, no Compra.
+                permiteCompras={tieneModulo(tenant?.vertical, 'stock')}
+                permiteUsar={usaContabilidadUsar(tenant?.vertical)}
+                onCrearGasto={crearGasto}
+                onAnularGasto={anularGasto}
+                onRegistrarCompra={registrarCompra}
+                onCrearInsumo={guardarIngrediente}
+                onFetchProveedores={traerProveedores}
+                onSaveProveedor={guardarProveedor}
+                onToggleProveedor={toggleSupplierActive}
+                onDeleteProveedor={deleteSupplier}
+              />
+            </Suspense>
+          )}
           {tab === 'config' && (
             sett
               ? (
@@ -414,6 +479,15 @@ function StockIcon() {
       <path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
       <path d="M3 7l2-4h14l2 4" />
       <path d="M9 11h6" />
+    </svg>
+  );
+}
+function MoneyIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 12h.01M18 12h.01" />
     </svg>
   );
 }

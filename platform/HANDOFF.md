@@ -8,6 +8,82 @@
 
 ---
 
+## 16/ago/2026 (tarde) — ETAPA 3: GASTOS, COMPRAS Y PROVEEDORES
+
+El edificio ya sabía cuánto cuesta producir (Etapa 2). Ahora sabe cuánto sale
+todo lo demás. Migración 0030 + dos RPCs.
+
+### Lo más reutilizable que salió
+
+**Antes de portar una tabla, buscar quién la escribe hoy.** El plan pedía
+`expenses`, `suppliers` y `purchases`. `purchases` y `purchase_items` existen
+en el legacy desde el schema inicial y **ninguna pantalla las escribe**: una
+compra son N filas de `expenses` (una por categoría de alimento, con el
+detalle en `items` jsonb) más los ajustes de stock. `fetchPurchases` estaba en
+`services/finance.js` sin un solo llamador. Un `grep` al principio se ahorra
+una etapa de trabajo inútil.
+
+**Regla nueva del molde: si toca varias filas y es plata, va a una RPC.** Es
+la primera etapa que no se resuelve solo con tabla + service. Anular un gasto
+y registrar una compra eran bucles desde el navegador con un rollback escrito
+a mano en JavaScript — si el navegador se cierra en el medio, queda mercadería
+ingresada sin su gasto. Ahora son `void_expense` y `register_purchase`, las
+dos `security invoker`: la RLS sigue decidiendo quién toca qué, lo único que
+cambia es que todo pasa en una transacción. Los guards contables (no anular
+dos veces, no anular una anulación, no tocar un mes cerrado) viven en la DB, y
+el email de quien anula sale del token y no de lo que mande el cliente.
+
+**La trampa de los hijos que guardan solos volvió a aparecer**, tal como
+estaba anotado: `ExpForm` y `Purchase` cargan y crean **proveedores** por su
+cuenta, salteando cualquier saver de la pantalla que los contiene. Se revisó
+antes de portar, así que esta vez no costó un bug.
+
+### Hecho
+
+- **0030**: `suppliers` y `expenses` con las mismas columnas del legacy +
+  `tenant_id`. `expenses` **no tiene policy de DELETE** a propósito: un gasto
+  se anula, no se borra, y esa regla la sostiene la base y no la buena
+  voluntad de la pantalla.
+- **Índice único de proveedores** por `(tenant_id, lower(btrim(name)))` —
+  novedad contra el legacy, donde el campo era texto libre y generó duplicados.
+  El `btrim` no es cosmético: sin él `"  Carniceria"` entraba como fila nueva.
+  Se probó y pasaba.
+- **`FinanzasPanel`**: las tres pantallas entran como UNA pestaña con tres
+  solapas. La barra inferior se usa con el pulgar y seis ítems no entran.
+  `Suppliers` va con `asPage` porque su raíz normal es `.ag-page-over`, que
+  esconde el topbar y el nav — el bug de esta mañana, ahora con test.
+- **Registry**: `finanzas` en los tres rubros; `contabilidadUsar` solo en
+  gastro. Ningún componente pregunta por el vertical.
+- **`schema:sync` ahora lee `.env.scripts`.** Con el archivo ya creado seguía
+  respondiendo "sin credenciales — salteado", que se lee como "no hace falta"
+  y deja el snapshot viejo sin que nadie se entere.
+
+### Decisiones que conviene conocer
+
+- **Un insumo sin `food_category` se resuelve por rubro.** En gastro cae en
+  `dry` como el legacy: dejarlo sin clasificar lo sacaría del costo de comida
+  del P&L y el food cost daría más bajo de lo real, en silencio — y no es raro,
+  porque el alta rápida de insumo dentro de la compra no pide la categoría. En
+  barbería y retail queda sin `usar_category`.
+- **La foto del ticket quedó apagada.** Necesita un bucket de Storage y el
+  edificio no tiene ninguno (las imágenes de producto se cargan pegando una
+  URL). Se apagó entera con `permiteComprobante={false}` en vez de dejar un
+  botón que falla.
+
+### Verificado
+
+**Contra la base, con `BEGIN`/`ROLLBACK`:** la compra completa (agregación de
+líneas repetidas, stock, costo, desglose por categoría) y la anulación; y 11
+casos negativos — insumo de otro negocio, compra vacía, tenant ajeno, anular
+dos veces, anular una anulación, anular un mes cerrado, borrar un gasto,
+proveedor duplicado (con y sin espacios), mismo nombre en otro negocio, y el
+insumo sin clasificar en gastro vs barbería.
+
+**Solo tests y build:** 494 tests. **Nadie lo tocó todavía con un usuario
+real** — la lista de qué probar está al final de la Etapa 3 en `PLAN-ERP.md`.
+
+---
+
 ## 16/ago/2026 — EL PANEL DEL EDIFICIO EXISTE Y EL ERP EMPEZO A MUDARSE
 
 Sesion larga (19 commits, migraciones 0022 a 0029). El edificio paso de "un
