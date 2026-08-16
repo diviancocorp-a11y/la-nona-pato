@@ -66,6 +66,41 @@ Tres cosas que quedaron decididas y conviene no reabrir:
 Falta: el arte. El lugar está reservado (`.dico-cara` en `DicoAvisos.jsx`) y
 no se puso un placeholder para no tener que ir a buscarlo después.
 
+#### El truco 2.5D (decidido 16/ago, arte en manos de Ricky)
+
+Para que Dico se sienta "3D" siendo 2D (referencia: Miss Minutes de Loki), no
+hace falta 3D ni un runtime de animación. Son cinco trucos, todos transforms
+de CSS sobre capas de UN SVG. Prototipo funcionando en
+`platform/dico-prototipo-2.5d.html` (abrirlo en el browser y tocar los
+botones):
+
+1. **La luz nunca se mueve.** Gradiente radial, brillo especular y media-luna
+   de sombra quedan clavados al mundo aunque el cuerpo gire o salte. Es lo que
+   convierte un círculo plano en una esfera iluminada.
+2. **La cara viaja más que el cuerpo** (parallax) y se angosta al acercarse al
+   borde (foreshortening), recortada por un `clipPath` de la moneda. Los
+   rasgos flotan SOBRE la superficie, no están pegados al cuerpo.
+3. **El canto de la moneda aparece al girar** — una elipse finita oscura que
+   asoma del lado opuesto. Grosor con una sola forma.
+4. **Squash & stretch conservando volumen** (se estira a lo alto = se angosta
+   a lo ancho), con anticipación y aterrizaje.
+5. **Follow-through:** la cara llega ~0,1s tarde a lo que hace el cuerpo.
+   Parpadeo con `scaleY` (nunca opacity), easing con overshoot
+   (`cubic-bezier(.34,1.56,.64,1)`).
+
+**Decisión de implementación:** componente `DicoCara.jsx` a mano — SVG en
+capas + estados como clases CSS (`idle`, `mira`, `contento`, `preocupado`,
+`esperando`). Cero dependencias, ~3KB, tematizable con los tokens. Rive o
+Lottie solo si algún día hacen falta veinte poses de animador; para cinco
+emociones es un runtime de 60-100KB al pedo.
+
+**Ojo para producción:** la boca del prototipo usa `d: path()` en CSS, que no
+anda en Safari. Cambiarla por dos paths con crossfade o `<animate>`.
+
+Ricky está desarrollando el diseño canónico del personaje sobre esta base y
+manda un producto más terminado; el prototipo es la referencia técnica, no el
+arte final.
+
 <details>
 <summary>El razonamiento original</summary>
 

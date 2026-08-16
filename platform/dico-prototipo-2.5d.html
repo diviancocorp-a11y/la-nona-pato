@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dico — prototipo 2.5D</title>
+<style>
+  :root {
+    --bg: #14100b;
+    --card: #1e1812;
+    --ink: #f3ead9;
+    --ink3: #9c8f7a;
+    --ac: #f0b429;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 24px; padding: 24px;
+  }
+  h1 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .stage {
+    width: min(340px, 90vw); aspect-ratio: 1;
+    background: var(--card); border-radius: 24px;
+    display: grid; place-items: center;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 420px; }
+  .controls button {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid #3a3227;
+    background: transparent; color: var(--ink); font: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button.on { border-color: var(--ac); color: var(--ac); }
+  .nota { max-width: 420px; font-size: 12.5px; line-height: 1.5; color: var(--ink3); }
+  .nota b { color: var(--ink); }
+
+  /* ============ DICO ============ */
+  /* Todo el truco 3D es esto: capas que se mueven DISTINTO.
+     - luz y brillo: clavados al mundo (no giran con el cuerpo)
+     - cuerpo: se mueve poco
+     - cara: se mueve MAS que el cuerpo (parallax => curvatura)
+     - sombra de piso: se achica cuando Dico sube */
+  .dico { width: 240px; height: 240px; overflow: visible; }
+
+  .dico * { transform-box: fill-box; transform-origin: center; }
+
+  /* --- flotar: el cuerpo boya, la cara llega tarde (follow-through) --- */
+  .cuerpo { animation: boya 3.2s ease-in-out infinite; }
+  .cara   { animation: boyaCara 3.2s ease-in-out infinite; }
+  .sombra { animation: sombra 3.2s ease-in-out infinite; }
+  @keyframes boya {
+    0%,100% { transform: translateY(0) }
+    50%     { transform: translateY(-7px) }
+  }
+  /* la cara se retrasa 0.12s y viaja un toque mas: eso vende la esfera */
+  @keyframes boyaCara {
+    0%,100% { transform: translateY(0) }
+    54%     { transform: translateY(-10px) }
+  }
+  @keyframes sombra {
+    0%,100% { transform: scaleX(1); opacity: .35 }
+    50%     { transform: scaleX(.82); opacity: .22 }
+  }
+
+  /* --- parpadeo: scaleY, nunca opacity --- */
+  .ojo { animation: parpado 4.6s infinite; }
+  @keyframes parpado {
+    0%, 91%, 100% { transform: scaleY(1) }
+    93%, 95%      { transform: scaleY(.08) }
+  }
+
+  /* --- mirar a los costados: cara viaja 3x lo que el cuerpo --- */
+  .dico .cuerpo, .dico .cara, .dico .canto, .dico .brazoI, .dico .brazoD {
+    transition: transform .45s cubic-bezier(.34,1.56,.64,1); /* overshoot */
+  }
+  .mira-izq .cuerpo { transform: translateX(-4px) rotate(-4deg) }
+  .mira-izq .cara   { transform: translateX(-16px) scaleX(.88) } /* foreshortening */
+  .mira-izq .canto  { transform: translateX(3px); opacity: 1 }
+  .mira-der .cuerpo { transform: translateX(4px) rotate(4deg) }
+  .mira-der .cara   { transform: translateX(16px) scaleX(.88) }
+  .mira-der .canto  { transform: translateX(-3px) scaleX(-1); opacity: 1 }
+  .canto { opacity: 0; transition: opacity .45s, transform .45s cubic-bezier(.34,1.56,.64,1) }
+
+  /* en los estados dirigidos se pausa el idle para que no peleen */
+  .mira-izq .cuerpo, .mira-der .cuerpo, .contento .cuerpo, .preocupado .cuerpo,
+  .mira-izq .cara,   .mira-der .cara,   .contento .cara,   .preocupado .cara {
+    animation-play-state: paused;
+  }
+
+  /* --- contento: squash&stretch con volumen conservado --- */
+  .contento .cuerpo { animation: salto .55s ease-in-out; }
+  .contento .cara   { animation: saltoCara .55s ease-in-out; }
+  @keyframes salto {
+    0%   { transform: scale(1,1) }
+    18%  { transform: scale(1.12,.86) translateY(4px) }   /* anticipacion: squash */
+    55%  { transform: scale(.92,1.1) translateY(-16px) }  /* stretch subiendo */
+    80%  { transform: scale(1.06,.94) translateY(0) }     /* aterriza: squash */
+    100% { transform: scale(1,1) }
+  }
+  @keyframes saltoCara {
+    0%   { transform: translateY(0) }
+    22%  { transform: translateY(6px) }
+    58%  { transform: translateY(-22px) }
+    84%  { transform: translateY(3px) }
+    100% { transform: translateY(0) }
+  }
+  .contento .boca { d: path("M 82 118 Q 100 136 118 118"); }
+  .contento .brazoD { transform: rotate(-140deg); }
+
+  /* --- preocupado: cuerpo se encoge, cejas, boca chica --- */
+  .preocupado .cuerpo { transform: scale(.96) }
+  .preocupado .cara   { transform: translateY(4px) scale(.94) }
+  .preocupado .boca   { d: path("M 88 124 Q 100 116 112 124"); }
+  .preocupado .ceja   { opacity: 1; transform: translateY(0) }
+  .ceja { opacity: 0; transform: translateY(6px); transition: all .3s ease; }
+  .preocupado .brazoI, .preocupado .brazoD { transform: rotate(0deg) translateY(4px); }
+
+  .boca { transition: d .3s ease; }
+  .brazoI { transform-origin: 20% 20%; }
+  .brazoD { transform-origin: 80% 20%; }
+</style>
+</head>
+<body>
+  <h1>Dico — prototipo del truco 2.5D</h1>
+
+  <div class="stage">
+    <svg class="dico" id="dico" viewBox="0 0 200 200" aria-label="Dico">
+      <defs>
+        <!-- LUZ: arriba-izquierda, SIEMPRE. Nada de esto se mueve nunca. -->
+        <radialGradient id="cuerpoGrad" cx="38%" cy="30%" r="80%">
+          <stop offset="0%"  stop-color="#ffd968"/>
+          <stop offset="55%" stop-color="#f0b429"/>
+          <stop offset="100%" stop-color="#b07d0e"/>
+        </radialGradient>
+        <radialGradient id="brilloGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff" stop-opacity=".85"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </radialGradient>
+        <clipPath id="clipMoneda"><circle cx="100" cy="96" r="62"/></clipPath>
+      </defs>
+
+      <!-- sombra de piso: es la que "pega" a Dico al mundo -->
+      <ellipse class="sombra" cx="100" cy="180" rx="44" ry="8" fill="#000"/>
+
+      <!-- brazos, detras del cuerpo -->
+      <path class="brazoI" d="M 48 110 Q 30 118 26 134" stroke="#b07d0e" stroke-width="9" stroke-linecap="round" fill="none"/>
+      <path class="brazoD" d="M 152 110 Q 170 118 174 134" stroke="#b07d0e" stroke-width="9" stroke-linecap="round" fill="none"/>
+
+      <g class="cuerpo">
+        <!-- canto de la moneda: solo aparece al girar. Vende el grosor. -->
+        <ellipse class="canto" cx="163" cy="96" rx="7" ry="61" fill="#8a610a"/>
+        <circle cx="100" cy="96" r="62" fill="url(#cuerpoGrad)"/>
+        <!-- rim shadow: media luna opuesta a la luz -->
+        <path d="M 100 34 a 62 62 0 0 1 0 124 a 55 55 0 0 0 14 -124 z"
+              fill="#8a610a" opacity=".45" transform="rotate(40 100 96)"/>
+        <!-- filo interior de moneda -->
+        <circle cx="100" cy="96" r="52" fill="none" stroke="#c98f12" stroke-width="2.5" opacity=".7"/>
+        <!-- brillo especular: FIJO. La luz no viaja con el personaje. -->
+        <ellipse cx="76" cy="62" rx="20" ry="13" fill="url(#brilloGrad)" transform="rotate(-28 76 62)"/>
+      </g>
+
+      <!-- la cara vive RECORTADA por la moneda y viaja mas que el cuerpo -->
+      <g clip-path="url(#clipMoneda)">
+        <g class="cara">
+          <path class="ceja" d="M 74 76 q 8 -6 16 -2" stroke="#5c430a" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <path class="ceja" d="M 110 74 q 8 -4 16 2" stroke="#5c430a" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <ellipse class="ojo" cx="84" cy="92" rx="6.5" ry="9" fill="#3d2c05"/>
+          <ellipse class="ojo" cx="116" cy="92" rx="6.5" ry="9" fill="#3d2c05"/>
+          <!-- brillitos de ojo: del lado de LA LUZ, no del centro -->
+          <circle cx="81.5" cy="88" r="2" fill="#fff" opacity=".9"/>
+          <circle cx="113.5" cy="88" r="2" fill="#fff" opacity=".9"/>
+          <path class="boca" d="M 86 118 Q 100 128 114 118" stroke="#3d2c05" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+          <!-- cachetes -->
+          <ellipse cx="70" cy="110" rx="7" ry="4.5" fill="#e08a1e" opacity=".5"/>
+          <ellipse cx="130" cy="110" rx="7" ry="4.5" fill="#e08a1e" opacity=".5"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="controls" id="controls">
+    <button data-s="">Flotar (idle)</button>
+    <button data-s="mira-izq">Mirar ←</button>
+    <button data-s="mira-der">Mirar →</button>
+    <button data-s="contento">Contento</button>
+    <button data-s="preocupado">Preocupado</button>
+  </div>
+
+  <p class="nota">
+    Los 5 trucos, todos acá adentro: <b>la luz nunca se mueve</b> (gradiente,
+    brillo y media-luna quedan clavados aunque Dico gire) ·
+    <b>la cara viaja más que el cuerpo</b> y se angosta al llegar al borde
+    (parallax + foreshortening = curvatura) · <b>el canto aparece</b> al girar
+    (grosor) · <b>squash &amp; stretch</b> conservando volumen ·
+    <b>la cara llega tarde</b> (follow-through). Nada de esto es 3D: son
+    transforms de CSS sobre capas de un SVG.
+  </p>
+
+<script>
+  const dico = document.getElementById('dico');
+  const botones = document.querySelectorAll('#controls button');
+  botones.forEach(b => b.addEventListener('click', () => {
+    botones.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    dico.className.baseVal = 'dico ' + b.dataset.s;
+    // "contento" es un one-shot: reiniciar la animacion si se toca de nuevo
+    if (b.dataset.s === 'contento') {
+      dico.classList.remove('contento'); void dico.getBoundingClientRect();
+      dico.classList.add('contento');
+    }
+  }));
+  botones[0].classList.add('on');
+</script>
+</body>
+</html>
