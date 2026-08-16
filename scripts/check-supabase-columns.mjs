@@ -28,6 +28,7 @@ import { join, extname } from 'node:path';
       legacy. Prefijos: terminar en "/" marca un directorio entero. ── */
 const PLATFORM_PATHS = [
   'src/services/platformAdmin.js',
+  'src/services/platformSettings.js',
   'src/hooks/usePlatformTenant.js',
   'src/pages/PlatformAdmin.jsx',
   'src/components/admin/platform/',
@@ -88,8 +89,27 @@ if (args[0] === '--all') {
 }
 if (files.length === 0) process.exit(0);
 
-// Regex: .from('tabla').select('cols')
-const FROM_SELECT_RE = /\.from\(\s*['"]([a-z_][a-z0-9_]*)['"]\s*\)[^;{}]*?\.select\(\s*['"]([^'"]+)['"]\s*\)/gi;
+// Regex: .from('tabla').select('cols') o .select(CONSTANTE)
+//
+// El identificador importa: la forma natural de una lista de 46 columnas es
+// `const COLS = '...'` arriba y `.select(COLS)` abajo. Cuando el checker solo
+// entendia literales, esos archivos se salteaban ENTEROS y el resultado era un
+// "✓ columnas validan" que no habia validado nada. Un verde que miente es peor
+// que un rojo: nadie va a buscar el problema donde el semaforo esta en verde.
+const FROM_SELECT_RE = /\.from\(\s*['"]([a-z_][a-z0-9_]*)['"]\s*\)[^;{}]*?\.select\(\s*(?:['"]([^'"]+)['"]|([A-Za-z_$][\w$]*))\s*\)/gi;
+
+// Constantes string a nivel de modulo, para resolver `.select(COLS)`.
+// Solo literales simples: nada de concatenaciones ni template strings con
+// interpolacion, que no se pueden resolver sin evaluar el archivo.
+const CONST_STR_RE = /(?:^|\n)\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(['"])([^'"\n]*)\2\s*;/g;
+
+function constantesDe(src) {
+  const map = new Map();
+  CONST_STR_RE.lastIndex = 0;
+  let m;
+  while ((m = CONST_STR_RE.exec(src)) !== null) map.set(m[1], m[3]);
+  return map;
+}
 
 function splitCols(str) {
   // Split por comas a nivel 0 (ignorando parentesis de joins).
@@ -117,11 +137,15 @@ for (const file of files) {
 
   const tableNames = new Set(Object.keys(schema.tables));
   const cruzadas = schema.label === 'legacy' ? SOLO_PLATFORM : SOLO_LEGACY;
+  const constantes = constantesDe(src);
 
   let match;
   FROM_SELECT_RE.lastIndex = 0;
   while ((match = FROM_SELECT_RE.exec(src)) !== null) {
-    const [, table, selectStr] = match;
+    const [, table, literal, ident] = match;
+    // `.select(IDENT)` con una constante que no se puede resolver: no se opina.
+    const selectStr = literal !== undefined ? literal : constantes.get(ident);
+    if (selectStr === undefined) continue;
     const lineNum = src.slice(0, match.index).split('\n').length;
 
     // Tabla del OTRO schema: el archivo esta del lado equivocado.

@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-15",
-  "_migrations_through": "0024",
+  "_migrations_through": "0025",
   "tables": {
     "appointments": ["id", "tenant_id", "staff_id", "service_id", "customer_name", "customer_phone", "starts_at", "ends_at", "status", "notes", "created_at"],
     "cash_sessions": ["id", "tenant_id", "opened_by", "opened_at", "opening_amount", "closed_at", "closing_amount", "expected_amount", "difference", "status", "notes"],
@@ -15,6 +15,7 @@
     "products": ["id", "tenant_id", "type", "name", "price", "active", "created_at", "duration_min", "stock", "category", "description", "image_url", "requires_age_gate"],
     "profiles": ["id", "tenant_id", "full_name", "email", "created_at"],
     "rate_limits": ["key", "hits", "window_start"],
+    "settings": ["tenant_id", "biz_name", "logo_letter", "logo_color", "logo_url", "favicon_url", "cover_url", "og_image_url", "slogan", "banner_text", "banner_color", "catalog_font", "catalog_theme", "whatsapp", "instagram", "facebook", "tiktok", "linkedin", "twitter", "youtube", "store_open", "store_hours", "show_hours_on_catalog", "has_physical_store", "store_address", "prep_time_min", "delivery_time_min", "min_order_amount", "hidden_cats", "cat_names", "cat_images", "cat_groups", "daily_deals", "deal_pct", "payment_methods", "catalog_payment_methods", "payment_accounts", "delivery_pricing", "coupon_default_pct", "birthday_coupon_pct", "waste_pct", "expense_pct", "usar_targets", "exp_cats", "ing_cats", "updated_at"],
     "staff": ["id", "tenant_id", "name", "user_id", "commission_pct", "color", "active", "created_at"],
     "store_credits": ["id", "tenant_id", "code", "customer_name", "customer_phone", "origin_order_id", "amount", "balance", "status", "created_at"],
     "tenant_members": ["tenant_id", "user_id", "role", "created_at"],
