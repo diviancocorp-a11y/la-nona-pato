@@ -4,13 +4,20 @@
 //   - Centro: identidad del negocio (logo real desde settings + nombre)
 //   - Form: caja muy traslúcida, botón ámbar del sistema
 //
-// El logo + nombre vienen de la tabla `settings` (publicly readable, igual que el catálogo).
-// Cae a `business` (config compilada) si la DB aún no respondió.
+// El logo + nombre salen de la DB; caen a `business` (config compilada) si
+// todavía no respondió.
+//
+// En la PLATAFORMA no se puede leer `settings`: desde la migración 0025 tiene
+// RLS por tenant, y acá justamente no hay sesión todavía. El resultado era que
+// todos los tenants mostraban la marca del build — tienda-nueva.divianco.app
+// decía "Cochi", con el logo y el color de Cochi. Por eso va por el RPC
+// público get_tenant_brand(slug), que devuelve sólo identidad visible.
 
 import { useState, useEffect } from "react";
 import { login } from "../../lib/adminService";
 import { supabase } from "../../lib/supabase";
 import business from "@business";
+import { getTenantSlugSync } from "../../lib/activeTenant";
 import FlowFieldBackground from "./FlowFieldBackground";
 import HermesMark from "../HermesMark";
 
@@ -30,12 +37,36 @@ export default function LoginScreen({ onLogin }) {
   useEffect(() => {
     const t = setTimeout(() => setStage("form"), INTRO_MS);
     let mounted = true;
-    supabase
-      .from("settings")
-      .select("biz_name, logo_letter, logo_color, logo_url")
-      .limit(1)
-      .then(({ data }) => { if (mounted && data?.[0]) setDbSet(data[0]); })
-      .catch(() => {});
+
+    if (business.platform) {
+      // Subdominio -> slug sincrónico, sin red. En un host desconocido
+      // (local, preview) cae al slug del build, que es el comportamiento
+      // deseado en dev.
+      const slug = getTenantSlugSync();
+      if (slug) {
+        supabase
+          .rpc("get_tenant_brand", { p_slug: slug })
+          .then(({ data }) => {
+            if (mounted && data) {
+              setDbSet({
+                biz_name: data.name,
+                logo_letter: data.logo_letter,
+                logo_color: data.logo_color,
+                logo_url: data.logo_url,
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      supabase
+        .from("settings")
+        .select("biz_name, logo_letter, logo_color, logo_url")
+        .limit(1)
+        .then(({ data }) => { if (mounted && data?.[0]) setDbSet(data[0]); })
+        .catch(() => {});
+    }
+
     return () => { clearTimeout(t); mounted = false; };
   }, []);
 
