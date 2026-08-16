@@ -222,6 +222,16 @@ números están mal.
 6. **Registry**: `implementado: true` y agregarlo a los rubros que corresponda.
    Una barbería no necesita Recetas.
 7. **Test de aislamiento**: que la consulta salga con el filtro puesto.
+8. **Cerrar con una lista de qué probar**, concreta: en qué tenant, qué tocar
+   y qué tendría que pasar. Sin eso el feedback vuelve como "no anda" y se
+   pierde una vuelta entera averiguando dónde. Incluir siempre **un caso
+   negativo** (algo que NO debería aparecer): es lo que detecta que la
+   separación por tenant o por rubro se rompió.
+
+> **Ojo con el service worker.** La app es PWA: tras un deploy el navegador
+> puede seguir sirviendo el build viejo y parece que el cambio no salió.
+> Ctrl+Shift+R no siempre alcanza. Lo seguro es cerrar TODAS las pestañas del
+> sitio y volver a abrir, o usar el banner de actualización.
 
 ---
 
