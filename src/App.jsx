@@ -17,6 +17,7 @@ import Bienvenido from './pages/Bienvenido'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import { isPlatformRoot } from './lib/tenantHost'
+import { hardReload } from './lib/hardReload'
 import business from '@business'
 import { useEffect } from 'react'
 import { fetchSettings } from './services/settings'
@@ -36,7 +37,11 @@ function lazyReload(importer) {
         const last = Number(sessionStorage.getItem('hg_chunk_reload') || 0)
         if (Date.now() - last > 60000) {
           sessionStorage.setItem('hg_chunk_reload', String(Date.now()))
-          window.location.reload()
+          // hardReload y no location.reload(): si el chunk fallo por un deploy
+          // nuevo, el SW todavia tiene cacheado el index.html viejo que apunta
+          // a ese mismo chunk inexistente. Recargar a secas repite el error y
+          // el guard de 60s deja al usuario con la pantalla rota.
+          hardReload()
           return new Promise(() => {}) // la recarga interrumpe; no renderizar nada
         }
       } catch { /* sin storage: dejar que el error suba al ErrorBoundary */ }

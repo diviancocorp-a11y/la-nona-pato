@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { hardReload } from "../lib/hardReload";
 
 // Detecta cuando hay una version nueva desplegada mientras el usuario tiene la
 // app abierta. Es la causa raiz de la familia "chunk viejo tras deploy" (import
@@ -62,7 +63,10 @@ export default function useAppUpdate() {
     };
   }, [check]);
 
-  const reload = useCallback(() => { window.location.reload(); }, []);
+  // hardReload y no location.reload(): con un service worker activo, recargar
+  // a secas vuelve a servir el build cacheado y el banner reaparece para
+  // siempre. Hay que vaciarle los caches primero.
+  const reload = useCallback(() => { hardReload(); }, []);
 
   return { updateAvailable, reload };
 }
