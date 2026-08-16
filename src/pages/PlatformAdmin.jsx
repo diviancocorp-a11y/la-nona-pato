@@ -25,7 +25,8 @@ import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
 } from '../services/platformAdmin';
-import { fetchSettings, saveSettings } from '../services/platformSettings';
+import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
+import { getTenantSlugSync } from '../lib/activeTenant';
 import {
   fetchIngredients, upsertIngredient as upsertIngrediente, archiveIngredient as archivarIngrediente,
 } from '../services/platformInventory';
@@ -93,6 +94,21 @@ export default function PlatformAdmin() {
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   const msg = useCallback((m) => { setToast(m); setTimeout(() => setToast(''), 2400); }, []);
+
+  // ── Titulo de la pestania ──
+  // applyTenantHead solo se llama desde Catalog.jsx, asi que en /admin el
+  // <title> quedaba con el del build: TODOS los tenants decian "Cochi — ¡Que
+  // bien se cochina aqui!". Se resuelve antes del login a proposito (RPC
+  // publico): la pestania tiene que decir de quien es desde el primer render,
+  // sobre todo con varios negocios abiertos a la vez.
+  useEffect(() => {
+    let vivo = true;
+    const previo = document.title;
+    fetchTenantBrand(getTenantSlugSync()).then((brand) => {
+      if (vivo && brand?.name) document.title = `${brand.name} · Panel`;
+    });
+    return () => { vivo = false; document.title = previo; };
+  }, []);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';

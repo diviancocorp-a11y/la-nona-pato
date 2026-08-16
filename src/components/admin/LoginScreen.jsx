@@ -18,6 +18,7 @@ import { login } from "../../lib/adminService";
 import { supabase } from "../../lib/supabase";
 import business from "@business";
 import { getTenantSlugSync } from "../../lib/activeTenant";
+import { fetchTenantBrand } from "../../services/platformSettings";
 import FlowFieldBackground from "./FlowFieldBackground";
 import HermesMark from "../HermesMark";
 
@@ -42,22 +43,18 @@ export default function LoginScreen({ onLogin }) {
       // Subdominio -> slug sincrónico, sin red. En un host desconocido
       // (local, preview) cae al slug del build, que es el comportamiento
       // deseado en dev.
-      const slug = getTenantSlugSync();
-      if (slug) {
-        supabase
-          .rpc("get_tenant_brand", { p_slug: slug })
-          .then(({ data }) => {
-            if (mounted && data) {
-              setDbSet({
-                biz_name: data.name,
-                logo_letter: data.logo_letter,
-                logo_color: data.logo_color,
-                logo_url: data.logo_url,
-              });
-            }
-          })
-          .catch(() => {});
-      }
+      fetchTenantBrand(getTenantSlugSync())
+        .then((data) => {
+          if (mounted && data) {
+            setDbSet({
+              biz_name: data.name,
+              logo_letter: data.logo_letter,
+              logo_color: data.logo_color,
+              logo_url: data.logo_url,
+            });
+          }
+        })
+        .catch(() => {});
     } else {
       supabase
         .from("settings")

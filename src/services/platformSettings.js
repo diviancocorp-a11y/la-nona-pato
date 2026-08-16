@@ -57,6 +57,22 @@ function exigirTenant(tenantId, quien) {
 }
 
 /**
+ * Identidad visible de un tenant, SIN sesion (RPC publico get_tenant_brand,
+ * migracion 0027). Es lo que necesitan las pantallas que se muestran antes de
+ * loguearse: el login y el titulo de la pestania.
+ *
+ * No usa fetchSettings porque esa tabla tiene RLS por tenant y sin sesion no
+ * devuelve nada — que es justo como el login termino mostrando la marca del
+ * build para todos los tenants.
+ */
+export async function fetchTenantBrand(slug) {
+  if (!slug) return null;
+  const { data, error } = await supabase.rpc('get_tenant_brand', { p_slug: slug });
+  if (error) { console.error('fetchTenantBrand:', error.message); return null; }
+  return data || null;
+}
+
+/**
  * La config del tenant. Siempre hay fila: la crea un trigger al dar de alta el
  * tenant (0025), asi que un null aca es un error real y no un tenant nuevo.
  */
