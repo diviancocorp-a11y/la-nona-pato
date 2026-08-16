@@ -114,10 +114,19 @@ describe('tipoPorDefecto', () => {
 describe('modulos', () => {
   it('solo devuelve los implementados', () => {
     const ids = modulosDe('barber').map(m => m.id);
-    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas']);
+    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas', 'ventas']);
     // agenda y caja estan declaradas para barberia pero todavia no existen
     expect(ids).not.toContain('agenda');
     expect(ids).not.toContain('caja');
+  });
+
+  // Etapa 4: una barberia y una tienda tambien venden — el historial y el
+  // resumen del mes son de todos. Lo gastronomico del resumen (USAR) se apaga
+  // por usaContabilidadUsar, no quitando el modulo.
+  it('ventas la tiene cualquier rubro', () => {
+    for (const id of Object.keys(RUBROS)) {
+      expect(tieneModulo(id, 'ventas'), id).toBe(true);
+    }
   });
 
   // Stock lo tienen los tres: una barberia compra gel y toallas y necesita

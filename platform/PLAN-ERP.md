@@ -262,24 +262,98 @@ En **la-nona-pato** (gastro, tiene 2 insumos cargados):
 
 ---
 
-## Etapa 4 — Ventas y P&L
+## Etapa 4 — Ventas y P&L ✅ HECHA (16/ago) — falta aplicar 0032 y deployar
 
 | | |
 |---|---|
-| Tablas | `sales` (+ `tenant_id`) |
-| Cálculo | **`useFinancials` se reusa sin tocar** — es cálculo puro sobre arrays |
-| Pantallas | `SalesView`, `MonthSummary`, los KPIs de `Home.jsx` |
+| Tabla | `sales` (migración 0032) — columnas del legacy + `tenant_id`, `order_id`, `payment_method` |
+| RPC | `complete_order` — estado + ventas en una transacción |
+| Service | `platformSales.js` (+ adaptadores puros para las pantallas legacy) |
+| Pantallas | `SalesView` + `MonthSummary` en `VentasPanel` (dos solapas) |
+| Registry | `ventas.implementado = true`, en los tres rubros |
 
-Lo que le dejó la Etapa 3 para resolver: **las compras llegan siempre con
-`usar_category` en null**, porque una compra mixta no tiene una sola categoría
-USAR. El total sale de `amount` filtrando por `category = 'Materia Prima'`; el
-desglose por tipo de comida sale de sumar el jsonb `items`, donde cada línea
-lleva su `food_category`. Es una consulta más rara que agrupar filas, pero es
-la única forma de que el libro muestre una compra como un movimiento.
+**PENDIENTE DE ESTA SESIÓN (16/ago, noche):** el clasificador de permisos
+bloqueó el MCP de Supabase, así que la migración 0032 **NO está aplicada** en
+la base y `submit-order` **NO está redeployada**. El código está completo y
+testeado (532 tests, build OK) pero el panel va a fallar al cargar ventas
+hasta aplicar la migración. Pasos: 1) aplicar `platform/migrations/0032` (MCP
+`apply_migration`), 2) redeployar `platform/functions/submit-order` con
+`verify_jwt=false`, 3) correr las pruebas de abajo.
 
-Depende de la 2 y la 3: sin costos reales ni gastos, el P&L da cualquier cosa.
-Es exactamente el error que ya se arregló una vez en el legacy (doble conteo de
-merma y gastos proyectados, 12/jun) — conviene no repetirlo portando a medias.
+**Completar un pedido va por RPC.** En el legacy es un bucle de `createSale`
+desde el navegador (`useOrderWorkflow`), una llamada por item: si el navegador
+se cierra en el medio quedan ventas de un pedido sin completar. Mismo criterio
+que la Etapa 3: varias filas + plata = la base. `complete_order` guarda
+estado y ventas juntos, con guards (`ya_completado`, `pedido_cancelado`,
+`ya_tiene_ventas` como cinturón anti-duplicado).
+
+**El costo se congela dos veces, y la segunda manda.** `submit-order` calcula
+`order_items.unit_cost` con la receta del momento del pedido (best-effort: si
+el costeo falla, el pedido sale igual con 0 — un cliente no puede quedarse sin
+comprar por una falla del costeo interno). `complete_order` usa ese costo
+congelado, y si vino en 0 —pedidos viejos, receta cargada después— lo
+recalcula con la receta actual y lo escribe también en `order_items`: los dos
+libros dicen lo mismo.
+
+**El P&L del mes va SIN el colchón** (`costoBruto`, no `costoReceta`): merma%
+y gastos% proyectados son de PRICING. Aplicarlos al mes además de restar los
+gastos reales es el doble conteo del 12/jun. `MonthSummary` recibe esa
+función ya elegida desde `VentasPanel`.
+
+**SalesView era otro hijo que guarda solo** (`createSale` importado directo),
+tal como estaba anotado en el molde. Ahora recibe `onCreate` con default
+legacy. La venta manual del edificio congela `unit_cost` con la receta actual
+en el momento de guardar.
+
+**Sin doble conteo en la pantalla:** las ventas que `complete_order` asienta
+llevan `order_id`. SalesView recibe los pedidos completados + solo las ventas
+manuales (`order_id` null); el P&L recibe TODAS las ventas. Pasarle las dos
+cosas enteras mostraría cada pedido dos veces.
+
+**`sales` no tiene UPDATE ni DELETE** (mismo criterio que `expenses`): una
+venta se corrige por reversión, no editando historia. El legacy tenía
+`deleteSale` en el service y ninguna pantalla lo llamaba.
+
+Decisiones de alcance:
+- **Los KPIs de `Home.jsx` no se portaron**: el panel del edificio no tiene
+  Home — se entra por Productos. El resumen del mes cumple ese rol. Si algún
+  día hay pestaña Inicio, `useFinancials` sigue siendo reusable tal cual.
+- **Pedidos completados ANTES de la Etapa 4 no tienen ventas asentadas** (se
+  completaron con un update pelado). Aparecen en la solapa Ventas (vía
+  pedidos) pero no en el P&L. No se backfillea: son pedidos de prueba.
+- La pantalla del mes usa la receta ACTUAL para el costo (comportamiento
+  legacy de MonthSummary); el costo congelado por venta queda en la tabla para
+  cuando el resumen lo aproveche.
+
+Lo que le dejó la Etapa 3 para resolver (sigue vigente para UsarPnL): **las
+compras llegan siempre con `usar_category` en null**. El total sale de
+`amount` filtrando por `category = 'Materia Prima'`; el desglose por tipo de
+comida, de sumar el jsonb `items`.
+
+### Qué probar
+
+Primero aplicar 0032 y redeployar submit-order (ver arriba). Después, en
+**la-nona-pato**:
+1. Aparece la pestaña **Ventas** en la barra (ícono de gráfico), con dos
+   solapas: Ventas y Resumen del mes.
+2. Hacer un pedido desde el catálogo con un producto QUE TENGA receta →
+   en Pedidos, avanzarlo hasta **Completar**. Tienen que pasar tres cosas:
+   el pedido queda Completado, la venta aparece en la solapa Ventas (con el
+   nombre del cliente), y el Resumen del mes suma el ingreso con costo real.
+3. Completar el MISMO pedido de nuevo (recargando la página para forzarlo):
+   mensaje "ya estaba completado", sin venta duplicada.
+4. Registrar una **venta manual** desde la solapa Ventas: aparece como "Venta
+   manual" y el total del mes la suma una sola vez.
+5. En el Resumen: los ingresos por medio de pago ya NO caen todos en "Sin
+   especificar" (el pedido trae su medio de pago).
+
+**Casos negativos:**
+- En **barberia-demo**: la pestaña Ventas existe, pero el Resumen NO muestra
+  P&L USAR, Menu Engineering ni Food Cost teórico.
+- En **cochi**: las ventas de la-nona-pato no se ven (mismo dueño, RLS +
+  filtro por tenant).
+- Cancelar un pedido y después intentar completarlo: "Un pedido cancelado no
+  se puede completar".
 
 ---
 
@@ -311,7 +385,7 @@ merma (`waste_log`) · QRs dinámicos · push · páginas de info · usuarios y 
 0 settings ──┬── 1 stock ──── 3 compras ──┐
              │                            ├── 4 ventas y P&L
              └── 2 recetas ───────────────┘
-   ✅            ✅      ✅        ✅
+   ✅            ✅      ✅        ✅            ✅ 4 (falta aplicar 0032)
 
 5 clientes  ·  6 periferia   (independientes, en cualquier momento)
 ```

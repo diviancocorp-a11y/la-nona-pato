@@ -232,6 +232,26 @@ export async function fetchOrderItems(orderId) {
   return data || [];
 }
 
+/**
+ * TODOS los items del tenant, agrupados por pedido. Lo usa la pestaña Ventas:
+ * muestra el detalle de cada pedido completado y pedirlos de a uno seria una
+ * consulta por fila en pantalla (mismo criterio que fetchProductIngredients).
+ */
+export async function fetchOrderItemsByOrder(tenantId) {
+  exigirTenant(tenantId, 'fetchOrderItemsByOrder');
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('id, order_id, product_id, name_snapshot, qty, unit_price, subtotal')
+    .eq('tenant_id', tenantId);
+  if (error) { console.error('fetchOrderItemsByOrder:', error.message); return new Map(); }
+  const mapa = new Map();
+  for (const it of data || []) {
+    if (!mapa.has(it.order_id)) mapa.set(it.order_id, []);
+    mapa.get(it.order_id).push(it);
+  }
+  return mapa;
+}
+
 export async function setOrderStatus(id, status) {
   if (!PLATFORM_ORDER_STATUSES.includes(status)) {
     return { __error: 'validation', message: `Estado invalido: ${status}` };

@@ -24,8 +24,10 @@ import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
-  fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES,
+  fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
+  fetchOrderItemsByOrder,
 } from '../services/platformAdmin';
+import { fetchSales, createSale, completeOrder } from '../services/platformSales';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -54,6 +56,9 @@ const Stock = lazy(() => import('../components/admin/Stock'));
 // Finanzas: contenedor de Gastos + Compra + Proveedores (Etapa 3). Lazy por
 // lo mismo que Settings — arrastra Finance.jsx entero, que son 2000 lineas.
 const FinanzasPanel = lazy(() => import('../components/admin/platform/FinanzasPanel'));
+// Ventas: SalesView + MonthSummary del legacy (Etapa 4). Lazy: MonthSummary
+// arrastra los analisis USAR y el exportador de informes.
+const VentasPanel = lazy(() => import('../components/admin/platform/VentasPanel'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -79,6 +84,7 @@ const ICONOS = {
   orders: BagIcon,
   stock: StockIcon,
   finanzas: MoneyIcon,
+  ventas: ChartIcon,
 };
 
 function Centered({ children }) {
@@ -106,6 +112,8 @@ export default function PlatformAdmin() {
   const [sett, setSett] = useState(null);
   const [ings, setIngs] = useState([]);
   const [gastos, setGastos] = useState([]);
+  const [ventas, setVentas] = useState([]);
+  const [itemsPorPedido, setItemsPorPedido] = useState(null); // Map order_id -> items
   const [recetas, setRecetas] = useState(null); // Map product_id -> lineas
   const [ov, setOv] = useState(null); // overlays de Stock (editIng / waste)
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -171,6 +179,19 @@ export default function PlatformAdmin() {
     setGastos(await fetchExpenses(tenantId));
   }, [tenantId]);
 
+  const loadVentas = useCallback(async () => {
+    if (!tenantId) return;
+    setVentas(await fetchSales(tenantId));
+  }, [tenantId]);
+
+  // El detalle de todos los pedidos, de una: la pestaña Ventas muestra los
+  // items de cada pedido completado y pedirlos de a uno seria una consulta
+  // por fila en pantalla.
+  const loadItemsPedidos = useCallback(async () => {
+    if (!tenantId) return;
+    setItemsPorPedido(await fetchOrderItemsByOrder(tenantId));
+  }, [tenantId]);
+
   // Todas las lineas de receta de una: la lista muestra el margen de cada
   // producto, y pedirlas por producto seria una consulta por fila en pantalla.
   const loadRecetas = useCallback(async () => {
@@ -186,7 +207,9 @@ export default function PlatformAdmin() {
     loadIngs();
     loadRecetas();
     loadGastos();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos]);
+    loadVentas();
+    loadItemsPedidos();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -261,11 +284,24 @@ export default function PlatformAdmin() {
   }, [loadProducts]);
 
   // ── Acciones de pedidos ──
+  // Completar NO es un cambio de estado mas: asienta las ventas del pedido, y
+  // eso va junto con el estado en una transaccion (RPC complete_order). Los
+  // demas estados siguen siendo un update pelado.
   const handleSetOrderStatus = useCallback(async (id, next) => {
+    if (next === PlatformOrderStatus.COMPLETED) {
+      const res = await completeOrder(id);
+      if (res?.__error) return res;
+      setOrders(list => list.map(o => (o.id === id ? { ...o, status: next } : o)));
+      if (res.sales?.length) setVentas(prev => [...res.sales, ...prev]);
+      return true;
+    }
     const res = await setOrderStatus(id, next);
     if (res === true) setOrders(list => list.map(o => (o.id === id ? { ...o, status: next } : o)));
     return res;
   }, []);
+
+  // ── Etapa 4: venta manual ──
+  const crearVenta = useCallback((s) => createSale(tenantId, s), [tenantId]);
 
   /* ── Gates ── */
   if (status === 'checking') return <Centered>Cargando...</Centered>;
@@ -436,6 +472,26 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'ventas' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <VentasPanel
+                sales={ventas}
+                setSales={setVentas}
+                orders={orders}
+                itemsPorPedido={itemsPorPedido}
+                products={products}
+                recetas={recetas}
+                ingredients={ings}
+                expenses={gastos}
+                settings={sett}
+                showToast={msg}
+                // Los analisis USAR del resumen (P&L de restaurante, matriz de
+                // menu, food cost) son gastronomicos, como en FinanzasPanel.
+                permiteUsar={usaContabilidadUsar(tenant?.vertical)}
+                onCrearVenta={crearVenta}
+              />
+            </Suspense>
+          )}
           {tab === 'config' && (
             sett
               ? (
@@ -505,6 +561,14 @@ function MoneyIcon() {
       <rect x="2" y="6" width="20" height="12" rx="2" />
       <circle cx="12" cy="12" r="2.5" />
       <path d="M6 12h.01M18 12h.01" />
+    </svg>
+  );
+}
+function ChartIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 3v18h18" />
+      <path d="M7 15l4-5 3 3 5-7" />
     </svg>
   );
 }

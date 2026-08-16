@@ -8,8 +8,11 @@
 //   - la config sale de tenants.settings jsonb, no de una tabla settings
 //   - valida precios contra products (no recipes)
 //   - cupones scopeados por tenant (unique (tenant_id, upper(code)))
-//   - unit_cost va en 0: el edificio todavia no tiene modelo de costos
-//     (sin ingredients/recipe_ingredients el P&L real no se puede calcular)
+//   - unit_cost se CONGELA aca al crear el pedido (Etapa 4): sale de la
+//     receta actual (product_ingredients x ingredients.cost). Si despues
+//     cambia el costo de un insumo, lo que costo producir ESTE pedido no
+//     cambia. Un producto sin receta queda en 0 y complete_order lo
+//     reintenta al completar.
 //
 // Se despliega con verify_jwt=false (bug #6 de CLAUDE.md): las keys
 // sb_publishable_ no son JWT y el gateway las rechazaria para invitados.
@@ -247,8 +250,27 @@ Deno.serve(async (req) => {
         .eq("tenant_id", tenantId);
     }
 
-    // unit_cost en 0: sin ingredients/recipe_ingredients en el edificio no hay
-    // costo real que imputar. Cuando exista el modulo de costos, se calcula aca.
+    // ── Costo congelado por producto (Etapa 4) ──────────────────────
+    // La receta ACTUAL de cada producto pedido: sum(qty_insumo x costo).
+    // Best-effort a proposito: si esta consulta falla, el pedido sale igual
+    // con costo 0 — complete_order lo recalcula al completar. Un cliente no
+    // puede quedarse sin comprar porque el costeo interno fallo.
+    const unitCostByProduct: Record<string, number> = {};
+    try {
+      const { data: recipeLines } = await supabase
+        .from("product_ingredients")
+        .select("product_id, qty, ingredients(cost)")
+        .eq("tenant_id", tenantId)
+        .in("product_id", productIds);
+      for (const line of (recipeLines || [])) {
+        const cost = Number((line.ingredients as Record<string, unknown>)?.cost) || 0;
+        const pid = line.product_id as string;
+        unitCostByProduct[pid] = (unitCostByProduct[pid] || 0) + (Number(line.qty) || 0) * cost;
+      }
+    } catch (e) {
+      console.warn("costeo de items (non-blocking):", (e as Error)?.message);
+    }
+
     const orderItems = validatedItems.map((it) => ({
       tenant_id: tenantId,
       order_id: order.id,
@@ -256,7 +278,7 @@ Deno.serve(async (req) => {
       name_snapshot: it.name,
       qty: it.qty,
       unit_price: it.unitPrice,
-      unit_cost: 0,
+      unit_cost: Math.round((unitCostByProduct[it.productId] || 0) * 100) / 100,
       subtotal: it.subtotal,
     }));
     const { error: itemsError } = await supabase.from("order_items").insert(orderItems);

@@ -1842,7 +1842,10 @@ function Purchase({
 // ═══════════════════════════════════════════════════════════════
 //                          SALES VIEW
 // ═══════════════════════════════════════════════════════════════
-function SalesView({ sales, setSales, orders, recipes, overlay, setOverlay, showToast }) {
+// `onCreate` inyectable, con default legacy: el edificio guarda con su propio
+// service (tenant_id + costo congelado) sin que el admin viejo cambie en nada.
+// Mismo patron que Expenses — este componente guardaba solo.
+function SalesView({ sales, setSales, orders, recipes, overlay, setOverlay, showToast, onCreate = createSale }) {
   const monthStart = todayISO().slice(0, 7) + "-01";
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
@@ -1857,7 +1860,9 @@ function SalesView({ sales, setSales, orders, recipes, overlay, setOverlay, show
       date: o.date || (o.created_at || "").split("T")[0],
       items: (o.order_items || o.items || []).map(it => {
         const r = recipes.find(x => x.id === it.recipe_id);
-        return { name: r?.name || "?", qty: it.quantity || it.qty || 1, price: it.unit_price || 0 };
+        // name_snapshot: los items del edificio guardan el nombre al momento
+        // del pedido; si el producto se borro, ese nombre sigue siendo verdad.
+        return { name: r?.name || it.name_snapshot || "?", qty: it.quantity || it.qty || 1, price: it.unit_price || 0 };
       }),
       itemCount: (o.order_items || o.items || []).reduce((s, it) => s + (it.quantity || it.qty || 1), 0),
       total: o.total || 0, payment: o.payment || "—", phone: o.phone || "",
@@ -2026,7 +2031,10 @@ function SalesView({ sales, setSales, orders, recipes, overlay, setOverlay, show
           recipes={recipes}
           onClose={() => setOverlay(null)}
           onSave={async (s) => {
-            const saved = await createSale(s);
+            const saved = await onCreate(s);
+            // El saver legacy devuelve null si fallo; el del edificio, un
+            // objeto {__error}. Ninguno de los dos puede entrar a la lista.
+            if (saved?.__error) { showToast(saved.message || "No se pudo registrar la venta"); return; }
             if (saved) {
               setSales(p => [saved, ...p]);
               setOverlay(null);

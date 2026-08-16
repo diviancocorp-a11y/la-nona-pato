@@ -54,6 +54,11 @@ export const MODULOS = {
     label: 'Gastos',
     implementado: true,      // Etapa 3 del PLAN-ERP (migracion 0030)
   },
+  ventas: {
+    id: 'ventas',
+    label: 'Ventas',
+    implementado: true,      // Etapa 4 del PLAN-ERP (migracion 0032)
+  },
   caja: {
     id: 'caja',
     label: 'Caja',
@@ -91,7 +96,7 @@ export const RUBROS = {
     // de la gastronomia: separa comida, packaging y personal de cocina. A una
     // barberia no se le pide clasificar un gasto en "Comida — Lacteos".
     contabilidadUsar: true,
-    modulos: ['products', 'orders', 'stock', 'finanzas', 'caja'],
+    modulos: ['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja'],
   },
 
   barber: {
@@ -113,7 +118,7 @@ export const RUBROS = {
     // necesita saber cuando se le acaban — eso es una compra que ingresa
     // mercaderia, no un gasto suelto. Lo que no tiene es una receta que diga
     // cuanto gel lleva un corte: por eso `receta` sigue sin estar.
-    modulos: ['products', 'orders', 'agenda', 'stock', 'finanzas', 'caja'],
+    modulos: ['products', 'orders', 'agenda', 'stock', 'finanzas', 'ventas', 'caja'],
   },
 
   retail: {
@@ -129,7 +134,7 @@ export const RUBROS = {
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'stock', 'requires_age_gate'],
-    modulos: ['products', 'orders', 'variants', 'stock', 'finanzas', 'caja'],
+    modulos: ['products', 'orders', 'variants', 'stock', 'finanzas', 'ventas', 'caja'],
   },
 };
 

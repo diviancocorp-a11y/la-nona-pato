@@ -52,6 +52,10 @@ export default function MonthSummary({
   recipes = [], ingredients = [], waste = [],
   settings = {}, calculateRecipeCost,
   onBack,
+  // Los analisis USAR (P&L de restaurante, matriz de menu, food cost teorico)
+  // son gastronomicos. El edificio los apaga fuera de gastro — a una barberia
+  // no se le muestra "food cost". Default true: el admin legacy no cambia.
+  permiteUsar = true,
 }) {
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(monthKey(today));
@@ -380,36 +384,42 @@ export default function MonthSummary({
       </div>
 
       {/* P&L USAR (Dark Kitchen) ─────────────────────────────── */}
-      <div style={{ marginBottom: 14 }}>
-        <UsarPnL
-          orders={mo}
-          sales={ms}
-          expenses={me}
-          ingredients={ingredients}
-          recipes={recipes}
-          settings={settings}
-          calculateRecipeCost={calculateRecipeCost}
-        />
-      </div>
+      {permiteUsar && (
+        <div style={{ marginBottom: 14 }}>
+          <UsarPnL
+            orders={mo}
+            sales={ms}
+            expenses={me}
+            ingredients={ingredients}
+            recipes={recipes}
+            settings={settings}
+            calculateRecipeCost={calculateRecipeCost}
+          />
+        </div>
+      )}
 
       {/* Menu Engineering (matriz Kasavana) */}
-      <div style={{ marginBottom: 14 }}>
-        <MenuEngineering
-          sales={ms}
-          recipes={recipes}
-          calculateRecipeCost={calculateRecipeCost}
-        />
-      </div>
+      {permiteUsar && (
+        <div style={{ marginBottom: 14 }}>
+          <MenuEngineering
+            sales={ms}
+            recipes={recipes}
+            calculateRecipeCost={calculateRecipeCost}
+          />
+        </div>
+      )}
 
       {/* Theoretical vs Actual Food Cost (detector de fugas) */}
-      <div style={{ marginBottom: 14 }}>
-        <TheoreticalFoodCost
-          sales={ms}
-          expenses={me}
-          ingredients={ingredients}
-          recipes={recipes}
-        />
-      </div>
+      {permiteUsar && (
+        <div style={{ marginBottom: 14 }}>
+          <TheoreticalFoodCost
+            sales={ms}
+            expenses={me}
+            ingredients={ingredients}
+            recipes={recipes}
+          />
+        </div>
+      )}
 
       {/* INGRESOS */}
       <div style={{ marginBottom: 14 }}>
