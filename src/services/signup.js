@@ -97,6 +97,16 @@ export async function pedirResetPassword(email) {
   return { ok: true };
 }
 
+/**
+ * Fija la contraseña nueva. Solo tiene sentido con la sesion de recuperacion
+ * que abre el link del mail (type=recovery en el hash de /entrar).
+ */
+export async function cambiarPassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { ok: false, error: traducirError(error.message) };
+  return { ok: true };
+}
+
 /** URL final del negocio ya creado. */
 export function urlDelNegocio(slug) {
   const host = window.location.hostname;
@@ -112,6 +122,7 @@ function traducirError(msg = '') {
     return 'Ya existe una cuenta con ese email. Probá iniciar sesión.';
   }
   if (m.includes('password') && m.includes('6')) return 'La contraseña necesita al menos 6 caracteres.';
+  if (m.includes('should be different')) return 'La contraseña nueva tiene que ser distinta de la anterior.';
   if (m.includes('invalid') && m.includes('email')) return 'Ese email no parece válido.';
   if (m.includes('esta cuenta ya tiene un negocio')) return 'Esta cuenta ya tiene un negocio creado.';
   if (m.includes('no esta disponible')) return 'Esa dirección se ocupó mientras completabas el registro. Elegí otra.';
