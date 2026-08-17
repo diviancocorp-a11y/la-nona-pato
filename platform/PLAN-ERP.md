@@ -445,8 +445,40 @@ workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
 
 Cada uno es independiente y chico. Se hacen cuando se piden:
 
-merma (`waste_log`) · QRs dinámicos · push · páginas de info · usuarios y roles
+~~merma~~ ✅ · QRs dinámicos · push · páginas de info · usuarios y roles
 (`tenant_members` ya existe, falta la UI) · menu engineering · analytics
+
+### Merma ✅ (17/ago) — la pieza que completa el P&L
+
+| | |
+|---|---|
+| Tabla | `waste_log` (migración 0033), sin UPDATE ni DELETE |
+| RPC | `register_waste` — asiento + descuento de stock en una transacción |
+| Service | `platformWaste.js` (contrato bool del legacy) |
+| Pantalla | el form de merma de `Stock.jsx`, encendido con el saver inyectado |
+
+En el legacy `registerWaste` son dos llamadas sueltas (asiento y descuento):
+si la segunda no llega, queda merma asentada con el stock intacto. Acá es una
+RPC con los guards de siempre (`no_sos_miembro`, `cantidad_invalida`,
+`insumo_de_otro_negocio`) y el clamp a 0 del legacy — tirar más de lo que el
+sistema creía que había es un error de inventario previo, no stock negativo.
+`WasteForm` era otro hijo que guardaba solo; ahora recibe `onRegistrar`.
+
+La merma cargada alimenta el Resumen del mes (`mermaCost`), que hasta ahora
+recibía una lista vacía. La pantalla `Waste.jsx` (historial + cancelados) no
+se portó: el registro rápido + el número en el P&L son el valor; el historial
+se pide cuando alguien lo pida.
+
+**Verificado contra la base** (BEGIN/ROLLBACK): asiento con trim de nota,
+stock −1, y los negativos qty 0 / insumo inexistente / tenant ajeno / clamp
+a 0.
+
+**Qué probar** en la-nona-pato, pestaña Stock:
+1. Botón "Merma" → elegir insumo, cantidad, motivo → el stock baja y en
+   Ventas → Resumen aparece "Merma valorizada" con el costo.
+2. Cargar una merma mayor al stock: el stock queda en 0, no negativo.
+3. En barberia-demo el botón Merma también existe (compra gel, lo tira
+   vencido). En cochi no se ve la merma de la-nona-pato.
 
 ---
 

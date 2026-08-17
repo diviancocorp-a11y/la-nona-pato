@@ -51,14 +51,17 @@ function stockState(it) {
  *
  * @param onUpsert  (insumo) => Promise<guardado|{__error}|null>
  * @param onArchive (id) => Promise<bool>
- * @param permiteMerma  false apaga el registro de merma: vive en waste_log,
- *                      tabla que el edificio todavia no tiene (Etapa 6).
+ * @param permiteMerma  false apaga el registro de merma entero.
+ * @param onRegistrarMerma  (ingredientId, qty, reason, note) => Promise<bool>.
+ *        Default legacy (dos escrituras sueltas); el edificio inyecta la RPC
+ *        register_waste, que asienta y descuenta en una transaccion.
  */
 function Stock({
   ingredients, setIngredients, recipes, overlay, setOverlay, showToast, settings,
   onUpsert = upsertIngredient,
   onArchive = archiveIngredient,
   permiteMerma = true,
+  onRegistrarMerma = registerWaste,
 }) {
   const confirmSlide = useConfirm();
   const [search, setSearch] = useState("");
@@ -353,6 +356,7 @@ function Stock({
           setIngredients={setIngredients}
           showToast={showToast}
           onClose={() => setOverlay(null)}
+          onRegistrar={onRegistrarMerma}
         />
       )}
     </>
@@ -506,7 +510,7 @@ function IngForm({ data, onClose, onSave, onDel, settings }) {
 }
 
 /* ─── WasteForm: registrar merma ────────────────────────────── */
-function WasteForm({ ingredients, setIngredients, showToast, onClose }) {
+function WasteForm({ ingredients, setIngredients, showToast, onClose, onRegistrar = registerWaste }) {
   const [ingId, setIngId] = useState("");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("vencimiento");
@@ -521,7 +525,7 @@ function WasteForm({ ingredients, setIngredients, showToast, onClose }) {
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
-    const ok = await registerWaste(ingId, qtyNum, reason, note);
+    const ok = await onRegistrar(ingId, qtyNum, reason, note);
     setSaving(false);
     if (ok) {
       setIngredients(p => p.map(i => i.id === ingId ? { ...i, stock: newStock } : i));

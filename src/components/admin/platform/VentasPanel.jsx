@@ -60,6 +60,8 @@ export default function VentasPanel({
   sales, setSales,
   orders, itemsPorPedido,
   products, recetas, ingredients, expenses,
+  // Merma cargada a mano (Etapa 6): el resumen la resta como perdida real.
+  waste,
   settings, showToast,
   // Los analisis USAR del resumen son gastronomicos (registry).
   permiteUsar = true,
@@ -146,7 +148,7 @@ export default function VentasPanel({
           orders={orders || []}
           recipes={recs}
           ingredients={ingredients || []}
-          waste={[]}
+          waste={waste || []}
           settings={settings || {}}
           calculateRecipeCost={costoRecetaMes}
           permiteUsar={permiteUsar}

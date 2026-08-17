@@ -29,6 +29,7 @@ import {
 } from '../services/platformAdmin';
 import { fetchSales, createSale, completeOrder } from '../services/platformSales';
 import { fetchCustomerStats } from '../services/platformCrm';
+import { fetchWaste, registerWaste } from '../services/platformWaste';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -114,6 +115,7 @@ export default function PlatformAdmin() {
   const [ings, setIngs] = useState([]);
   const [gastos, setGastos] = useState([]);
   const [ventas, setVentas] = useState([]);
+  const [merma, setMerma] = useState([]);
   const [itemsPorPedido, setItemsPorPedido] = useState(null); // Map order_id -> items
   const [recetas, setRecetas] = useState(null); // Map product_id -> lineas
   const [ov, setOv] = useState(null); // overlays de Stock (editIng / waste)
@@ -185,6 +187,11 @@ export default function PlatformAdmin() {
     setVentas(await fetchSales(tenantId));
   }, [tenantId]);
 
+  const loadMerma = useCallback(async () => {
+    if (!tenantId) return;
+    setMerma(await fetchWaste(tenantId));
+  }, [tenantId]);
+
   // El detalle de todos los pedidos, de una: la pestaña Ventas muestra los
   // items de cada pedido completado y pedirlos de a uno seria una consulta
   // por fila en pantalla.
@@ -210,7 +217,8 @@ export default function PlatformAdmin() {
     loadGastos();
     loadVentas();
     loadItemsPedidos();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos]);
+    loadMerma();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -303,6 +311,16 @@ export default function PlatformAdmin() {
 
   // ── Etapa 4: venta manual ──
   const crearVenta = useCallback((s) => createSale(tenantId, s), [tenantId]);
+
+  // ── Etapa 6: merma ──
+  // La RPC descuenta el stock del lado de la base; despues se relee para que
+  // la pantalla no quede mostrando el stock de antes (mismo criterio que
+  // recargarTrasCompra).
+  const registrarMerma = useCallback(async (ingredientId, qty, reason, note) => {
+    const ok = await registerWaste(tenantId, ingredientId, qty, reason, note);
+    if (ok) await Promise.all([loadIngs(), loadMerma()]);
+    return ok;
+  }, [tenantId, loadIngs, loadMerma]);
 
   // ── Etapa 5a: clientes ──
   // useCallback obligatorio: CRM lo tiene como dependencia de un useEffect y
@@ -449,7 +467,8 @@ export default function PlatformAdmin() {
                 settings={sett || {}}
                 onUpsert={guardarIngrediente}
                 onArchive={archivarIngrediente}
-                permiteMerma={false}
+                permiteMerma
+                onRegistrarMerma={registrarMerma}
               />
             </Suspense>
           )}
@@ -490,6 +509,7 @@ export default function PlatformAdmin() {
                 recetas={recetas}
                 ingredients={ings}
                 expenses={gastos}
+                waste={merma}
                 settings={sett}
                 showToast={msg}
                 // Los analisis USAR del resumen (P&L de restaurante, matriz de
