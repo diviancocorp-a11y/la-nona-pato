@@ -28,6 +28,7 @@ import {
   fetchOrderItemsByOrder,
 } from '../services/platformAdmin';
 import { fetchSales, createSale, completeOrder } from '../services/platformSales';
+import { fetchCustomerStats } from '../services/platformCrm';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -303,6 +304,12 @@ export default function PlatformAdmin() {
   // ── Etapa 4: venta manual ──
   const crearVenta = useCallback((s) => createSale(tenantId, s), [tenantId]);
 
+  // ── Etapa 5a: clientes ──
+  // useCallback obligatorio: CRM lo tiene como dependencia de un useEffect y
+  // una funcion nueva por render dispararia la carga en loop (mismo caso que
+  // los fetchers de proveedores en la Etapa 3).
+  const traerClientes = useCallback(() => fetchCustomerStats(tenantId), [tenantId]);
+
   /* ── Gates ── */
   if (status === 'checking') return <Centered>Cargando...</Centered>;
   if (status === 'anon') return <LoginScreen onLogin={doLogin} />;
@@ -489,6 +496,7 @@ export default function PlatformAdmin() {
                 // menu, food cost) son gastronomicos, como en FinanzasPanel.
                 permiteUsar={usaContabilidadUsar(tenant?.vertical)}
                 onCrearVenta={crearVenta}
+                onFetchClientes={traerClientes}
               />
             </Suspense>
           )}

@@ -16,8 +16,10 @@
 // .env.local que este en .gitignore):
 //   PLATFORM_SUPABASE_URL / PLATFORM_SUPABASE_SERVICE_ROLE_KEY
 //   LEGACY_SUPABASE_URL   / LEGACY_SUPABASE_SERVICE_ROLE_KEY
-// Si solo vas a tocar uno, alcanza con SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
-// mas --target.
+// Las SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY genericas valen SOLO como
+// fallback de platform (son las del edificio, compartidas con platform/scripts).
+// El target legacy exige las LEGACY_* explicitas: sin ellas se saltea, que es
+// lo correcto mientras los 3 proyectos legacy sigan pausados.
 //
 // Requiere que la base tenga public.schema_snapshot() — en el edificio la crea
 // platform/migrations/0023_schema_snapshot_rpc.sql. Los 3 proyectos legacy
@@ -43,11 +45,17 @@ const TARGETS = {
     file: join(HERE, 'platform-schema.json'),
     envPrefix: 'PLATFORM_',
     migrations: join(ROOT, 'platform', 'migrations'),
+    // Las SUPABASE_URL/KEY genericas de .env.scripts son las del edificio
+    // (las comparten los scripts de platform/), asi que el fallback es valido.
+    genericFallback: true,
   },
   legacy: {
     file: join(HERE, 'supabase-schema.json'),
     envPrefix: 'LEGACY_',
     migrations: null, // nomenclatura por fecha, no correlativa: no se versiona aca
+    // SIN fallback generico: si legacy cayera en las credenciales del edificio,
+    // el sync pisaria supabase-schema.json con el schema equivocado en silencio.
+    genericFallback: false,
   },
 };
 
@@ -55,10 +63,35 @@ const args = process.argv.slice(2);
 const CHECK = args.includes('--check');
 const targetArg = (args.find(a => a.startsWith('--target=')) || '').split('=')[1] || 'all';
 
-function creds({ envPrefix }) {
-  const url = process.env[`${envPrefix}SUPABASE_URL`] || process.env.SUPABASE_URL;
-  const key = process.env[`${envPrefix}SUPABASE_SERVICE_ROLE_KEY`] || process.env.SUPABASE_SERVICE_ROLE_KEY;
+function creds({ envPrefix, genericFallback }) {
+  const url = process.env[`${envPrefix}SUPABASE_URL`] ||
+    (genericFallback ? process.env.SUPABASE_URL : undefined);
+  const key = process.env[`${envPrefix}SUPABASE_SERVICE_ROLE_KEY`] ||
+    (genericFallback ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined);
   return url && key ? { url: url.replace(/\/+$/, ''), key } : null;
+}
+
+// Tablas que solo existen en el edificio. Si la conexion "legacy" las devuelve,
+// las credenciales apuntan al proyecto equivocado: cortar antes de comparar o
+// escribir, porque el snapshot pisado no falla — deja de proteger en silencio.
+const TABLAS_SOLO_EDIFICIO = ['tenants', 'tenant_members', 'product_variants'];
+
+function validarIdentidad(name, tables) {
+  const esEdificio = TABLAS_SOLO_EDIFICIO.some(t => t in tables);
+  if (name === 'legacy' && esEdificio) {
+    throw new Error(
+      'esta conexion devuelve tablas del EDIFICIO (' +
+      TABLAS_SOLO_EDIFICIO.filter(t => t in tables).join(', ') +
+      '). Revisa LEGACY_SUPABASE_URL en .env.scripts — no escribo el snapshot.'
+    );
+  }
+  if (name === 'platform' && !esEdificio) {
+    throw new Error(
+      'esta conexion NO parece el edificio (faltan ' +
+      TABLAS_SOLO_EDIFICIO.join('/') +
+      '). Revisa PLATFORM_SUPABASE_URL / SUPABASE_URL en .env.scripts.'
+    );
+  }
 }
 
 async function pullSchema({ url, key }) {
@@ -139,6 +172,7 @@ for (const [name, cfg] of Object.entries(TARGETS)) {
   let tables;
   try {
     tables = await pullSchema(c);
+    validarIdentidad(name, tables);
   } catch (e) {
     console.error(`✗ ${name}: ${e.message}`);
     fallo = true;
@@ -175,4 +209,6 @@ if (hechos === 0 && !fallo) {
   console.log('Exportá PLATFORM_SUPABASE_URL y PLATFORM_SUPABASE_SERVICE_ROLE_KEY (dashboard > Project Settings > API).');
 }
 
-process.exit(fallo ? 1 : 0);
+// process.exit() en Windows aborta con un assert de libuv si undici todavia
+// esta cerrando handles del fetch; exitCode deja drenar el loop y sale limpio.
+process.exitCode = fallo ? 1 : 0;

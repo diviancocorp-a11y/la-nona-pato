@@ -17,12 +17,18 @@
 import { useMemo, useState } from 'react';
 import { SalesView } from '../Finance';
 import MonthSummary from '../MonthSummary';
+import CRM from '../CRM';
 import { productosComoRecetas, pedidosParaVentas } from '../../../services/platformSales';
+import { pedidosParaCrm } from '../../../services/platformCrm';
 import { costoBruto, indexarInsumos } from '../../../services/platformRecipes';
 
+// Clientes vive aca y no como pestania propia: la barra inferior se usa con
+// el pulgar y seis items no entran (la razon de FinanzasPanel). Ademas es el
+// mismo momento: se mira cuanto se vendio y a quien.
 const SOLAPAS = [
   { id: 'ventas', label: 'Ventas' },
-  { id: 'resumen', label: 'Resumen del mes' },
+  { id: 'resumen', label: 'Resumen' },
+  { id: 'clientes', label: 'Clientes' },
 ];
 
 function Solapas({ valor, onChange }) {
@@ -59,6 +65,8 @@ export default function VentasPanel({
   permiteUsar = true,
   // Saver del edificio para la venta manual.
   onCrearVenta,
+  // Clientes agregados desde los pedidos del tenant (Etapa 5a).
+  onFetchClientes,
 }) {
   const [solapa, setSolapa] = useState('ventas');
   const [ov, setOv] = useState(null);
@@ -82,6 +90,10 @@ export default function VentasPanel({
     () => (sales || []).filter(s => !s.order_id),
     [sales]
   );
+
+  // CRM recalcula tendencias con useMemo sobre `orders`: si el array se
+  // rearma en cada render, ese memo no memoiza nada.
+  const pedidosCrm = useMemo(() => pedidosParaCrm(orders), [orders]);
 
   // La venta manual congela el costo de la receta ACTUAL del producto. Sin
   // receta queda 0: el margen de esa venta no se conoce, y un 0 honesto es
@@ -112,6 +124,18 @@ export default function VentasPanel({
           setOverlay={setOv}
           showToast={showToast}
           onCreate={crearVentaConCosto}
+        />
+      )}
+
+      {solapa === 'clientes' && (
+        <CRM
+          orders={pedidosCrm}
+          showToast={showToast}
+          onFetchStats={onFetchClientes}
+          // El cumple necesita birth_date + edge function, y las promos crean
+          // cupones con el shape del legacy. Ninguno existe en el edificio.
+          permiteCumple={false}
+          permitePromos={false}
         />
       )}
 

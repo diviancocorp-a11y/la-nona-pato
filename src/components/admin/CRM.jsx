@@ -65,7 +65,12 @@ function parseLocation(address) {
   return { ciudad, zona };
 }
 
-function CRM({ orders, showToast }) {
+// `onFetchStats` inyectable con default legacy (este componente cargaba
+// solo). `permiteCumple` y `permitePromos` apagan lo que depende de piezas
+// que el edificio no tiene: el cumple usa customers.birth_date + la edge
+// function birthday-gift, y las promos crean cupones con el shape legacy
+// (kind/label). Defaults en true: el admin viejo no cambia en nada.
+function CRM({ orders, showToast, onFetchStats = fetchCustomerStats, permiteCumple = true, permitePromos = true }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -75,8 +80,8 @@ function CRM({ orders, showToast }) {
   const [showPromo, setShowPromo] = useState(false);
 
   useEffect(() => {
-    fetchCustomerStats().then(c => { setCustomers(c); setLoading(false); });
-  }, []);
+    onFetchStats().then(c => { setCustomers(c); setLoading(false); });
+  }, [onFetchStats]);
 
   const ordersByCustomer = useMemo(() => {
     const map = {};
@@ -199,7 +204,7 @@ function CRM({ orders, showToast }) {
         </>
       )}
 
-      <BirthdayGiftConfig showToast={showToast} />
+      {permiteCumple && <BirthdayGiftConfig showToast={showToast} />}
 
       <div style={{ position: "relative", marginBottom: 10 }}>
         <svg style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ag-ink-3)", pointerEvents: "none" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -230,7 +235,7 @@ function CRM({ orders, showToast }) {
                 : { color: "var(--ag-ink-3)", bg: "var(--ag-bg-soft)", icon: "▬" };
               const waHref = waLink(c.phone);
               return (
-                <div key={c._key + "-" + i} onClick={() => toggleSelect(c._key)}
+                <div key={c._key + "-" + i} onClick={() => permitePromos && toggleSelect(c._key)}
                   style={{
                     display: "flex", alignItems: "flex-start", gap: 10,
                     padding: "12px 14px",
@@ -314,7 +319,7 @@ function CRM({ orders, showToast }) {
         <CRMExportModal customers={customersRanked} onClose={() => setShowExport(false)} showToast={showToast} />
       )}
 
-      {selectedIds.size > 0 && !showPromo && (
+      {permitePromos && selectedIds.size > 0 && !showPromo && (
         <div style={{
           position: "fixed", bottom: "calc(var(--ag-bottom-nav-h, 76px) + 12px)",
           left: 12, right: 12, maxWidth: 580, marginLeft: "auto", marginRight: "auto",
@@ -340,7 +345,7 @@ function CRM({ orders, showToast }) {
         </div>
       )}
 
-      {showPromo && (
+      {permitePromos && showPromo && (
         <PromoFidelidadModal selected={selectedCustomers} onClose={() => setShowPromo(false)} showToast={showToast} onSent={() => { setShowPromo(false); clearSelection(); }} />
       )}
     </div>

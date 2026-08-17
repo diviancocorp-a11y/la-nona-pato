@@ -357,16 +357,60 @@ Primero aplicar 0032 y redeployar submit-order (ver arriba). Después, en
 
 ---
 
-## Etapa 5 — Clientes
+## Etapa 5a — Clientes en el panel ✅ HECHA (17/ago)
 
 | | |
 |---|---|
-| Tablas | `profiles` (ya existe), `addresses`, `favorites` |
-| Service | `crm.js` |
-| Pantalla | `CRM.jsx` |
+| Tablas | **ninguna nueva** (corrección al plan, ver abajo) |
+| Service | `platformCrm.js` — agregación pura sobre `orders` |
+| Pantalla | `CRM.jsx` reusada, como solapa Clientes dentro de Ventas |
 
-En el legacy `customers` y `profiles` ya se habían unificado; el edificio nace
-con esa decisión tomada, así que esta etapa es más corta de lo que parece.
+**La corrección al plan (paso 0 del molde, otra vez):** el plan listaba
+`addresses` y `favorites`, pero el CRM del legacy **no lee ninguna tabla de
+clientes** — `fetchCustomerStats` agrega sobre `orders`, y los pedidos del
+edificio ya traen nombre, teléfono, email y dirección. `addresses` y
+`favorites` son de OTRA mitad: la cuenta del comprador en el catálogo
+(AuthContext / MyAccount / CheckoutScreen), que es la **Etapa 5b** de abajo.
+Mismo caso que `purchases` en la Etapa 3.
+
+Decisiones:
+- **CRM vive como tercera solapa de Ventas** (Ventas · Resumen · Clientes),
+  no como pestaña propia: seis ítems no entran en la barra del pulgar, y es
+  el mismo momento — cuánto se vendió y a quién.
+- **`fetchCustomerStats(tenantId)` hace su propia consulta sin límite**: el
+  panel carga 100 pedidos para operar, pero el total gastado de un cliente
+  viejo necesita la historia entera. La tendencia por cliente (▲▼) sí se
+  calcula sobre los 100 cargados — suficiente para 30/60 días.
+- **Apagado por prop en el edificio:** `permiteCumple` (usa
+  `customers.birth_date` + edge function `birthday-gift`, no existen) y
+  `permitePromos` (crea cupones con el shape legacy `kind`/`label` que la
+  tabla del edificio no tiene). El export (CSV/Excel/PDF) queda: es puro
+  cliente. CRM era otro hijo que cargaba solo — ahora recibe `onFetchStats`.
+
+### Qué probar (después del deploy)
+
+En **la-nona-pato**, pestaña Ventas → solapa Clientes:
+1. Aparecen los clientes de los pedidos reales, consolidados (mismo teléfono
+   = un cliente), ordenados por total gastado, con su último pedido.
+2. El buscador filtra por nombre/teléfono/email. El botón de exportar genera
+   el Excel con los filtros.
+3. **NO** aparece la tarjeta "Regalo de cumpleaños" ni el botón de promos al
+   tocar un cliente (apagados en el edificio).
+4. En **cochi**: los clientes de la-nona-pato no se ven (mismo dueño).
+
+## Etapa 5b — La cuenta del comprador en el catálogo
+
+| | |
+|---|---|
+| Tablas | `addresses`, `favorites` (con RLS por `user_id`) |
+| Toca | `AuthContext.jsx`, `MyAccount.jsx`, guest RPCs, `CheckoutScreen.jsx` |
+
+Pendiente y **más grande de lo que el plan sugería**: hoy AuthContext consulta
+`addresses`/`favorites` que en el edificio no existen (falla en silencio), el
+historial por teléfono usa RPCs del legacy (`get_phone_customer_orders`), y
+MyAccount lee `recipes` para los favoritos. Ojo al encararla:
+`CheckoutScreen.jsx` es el archivo que se corrompe (CLAUDE.md) — Python
+heredoc, no Edit.
 
 ---
 
