@@ -1,7 +1,13 @@
 name: Morning Health Check
 
-# Lunes a sábado 10:00 UTC = 7:00 AM Argentina (UTC-3).
-# Notifica el estado de los 3 tenants a Telegram.
+# Lunes a sabado 10:00 UTC = 7:00 AM Argentina (UTC-3).
+# Salud del EDIFICIO (Dico) a Telegram: landing, tenants, submit-order,
+# drift de schema y Sentry. Los 3 proyectos legacy estan pausados a proposito
+# y ya no se chequean (daban rojo todas las mananas = ruido).
+#
+# OJO: el cron corre desde la rama DEFAULT (main). Hasta que main y
+# platform/runtime-tenant converjan, probarlo con workflow_dispatch eligiendo
+# la rama platform/runtime-tenant.
 on:
   schedule:
     - cron: '0 10 * * 1-6'
@@ -21,6 +27,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          LNP_ANON_KEY: ${{ secrets.LNP_ANON_KEY }}
-          COCHI_ANON_KEY: ${{ secrets.COCHI_ANON_KEY }}
-          MALA_MIGA_ANON_KEY: ${{ secrets.MALA_MIGA_ANON_KEY }}
+          # Opcional: habilita el check de drift del snapshot del edificio.
+          PLATFORM_SUPABASE_URL: ${{ secrets.PLATFORM_SUPABASE_URL }}
+          PLATFORM_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PLATFORM_SUPABASE_SERVICE_ROLE_KEY }}
+          # Opcional: habilita el resumen de errores de Sentry (24h).
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}

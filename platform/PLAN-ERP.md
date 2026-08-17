@@ -414,6 +414,33 @@ heredoc, no Edit.
 
 ---
 
+## Salud diaria — el edificio se reporta solo ✅ (17/ago, transversal)
+
+No es una etapa del ERP: es lo que avisa si las etapas ya entregadas se
+rompen. Va acá en el flujo porque recién con las Etapas 4/5a hay algo en
+producción que valga la pena vigilar todas las mañanas.
+
+`scripts/morning-health.mjs` (reescrito) + workflow cron L-S 7am AR:
+
+- **Lo que chequea es lo VIVO**: landing, los 3 tenants reales (HTTP del
+  subdominio + `get_catalog` con conteo de productos — un catálogo vacío en
+  un negocio real es rojo, no verde), `submit-order` (OPTIONS), drift del
+  snapshot (`schema-sync --check --target=platform`, se saltea sin
+  credenciales) y Sentry (issues de 24h, se saltea sin token).
+- **La versión anterior chequeaba los 3 legacy pausados**: rojo todas las
+  mañanas. Un reporte siempre en rojo se deja de leer — era anti-salud.
+- **El ping matutino además cuenta como actividad**: ayuda contra la
+  auto-pausa del free tier.
+- Mensaje con criterio: lo roto PRIMERO, el verde corto.
+
+**Pendiente de Ricky (secrets en GitHub → Settings → Secrets → Actions):**
+los `TELEGRAM_*` ya existen; sumar `PLATFORM_SUPABASE_URL` +
+`PLATFORM_SUPABASE_SERVICE_ROLE_KEY` (activa el check de drift) y
+`SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` (activa el de
+errores). Los `LNP/COCHI/MALA_MIGA_ANON_KEY` viejos ya no se usan.
+**OJO**: el cron corre desde `main`; hasta el merge, probarlo con
+workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
+
 ## Etapa 6 — Periferia
 
 Cada uno es independiente y chico. Se hacen cuando se piden:
