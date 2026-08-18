@@ -506,9 +506,75 @@ workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
 
 Cada uno es independiente y chico. Se hacen cuando se piden:
 
-~~merma~~ ✅ · ~~imágenes propias~~ ✅ · QRs dinámicos · push · páginas de
-info · usuarios y roles (`tenant_members` ya existe, falta la UI) · menu
-engineering · analytics
+~~merma~~ ✅ · ~~imágenes propias~~ ✅ · ~~push~~ ✅ · QRs dinámicos ·
+páginas de info · usuarios y roles (`tenant_members` ya existe, falta la UI) ·
+menu engineering · analytics
+
+### Push ✅ (18/ago) — el negocio se entera de que entró un pedido
+
+| | |
+|---|---|
+| Tabla | `push_subscriptions` (migración 0036), sólo vía RPCs |
+| Función | `send-push` del edificio, deployada con `verify_jwt=false` |
+| Pantalla | `AdminPushBanner`, reusado tal cual, en la pestaña de entrada |
+
+**Era la única pieza de periferia que costaba plata todos los días:**
+`submit-order` ya invocaba `send-push` y fallaba en silencio porque la función
+no existía en el edificio. Una cocina que no mira la pantalla pierde el pedido.
+
+**UNA sola VAPID para toda la plataforma.** En el legacy cada negocio tenía su
+par de claves porque cada uno era una app aparte. Acá no: VAPID identifica al
+**servidor** que manda, no al negocio, y todos los tenants se sirven desde el
+mismo origen. Un par por tenant obligaría además a generar claves en cada alta
+self-service. Lo que separa a un negocio de otro es `tenant_id` en la
+suscripción.
+
+**Sin tenant no se manda nada.** `send-push` corta con 400 si no viene
+`tenant_id`/`tenant_slug`. Un fallback a "todos" sería un push cruzado entre
+negocios — el peor error posible de esta función.
+
+**Dos mejoras sobre el legacy:**
+- **No cualquiera se suscribe como admin.** El RPC viejo aceptaba el `role`
+  sin validar, y los push de admin llevan nombre del cliente y monto.
+  Ahora, pedir `admin` sin ser miembro del tenant **degrada a `customer`** en
+  vez de fallar (quien se suscribe no eligió el rol: lo eligió la pantalla).
+- **La autorización de `send-push` es por membresía**, no por una tabla
+  `admin_users` que en el edificio no existe.
+
+**Las RPCs reciben el SLUG, no el uuid.** Primera versión pedía `tenant_id` y
+eso obligaba a exponer un RPC público nuevo sólo para traducir slug→id
+(`get_tenant_brand` no devuelve el id — lo verifiqué antes de asumirlo). El
+slug ya está en la URL: superficie nueva a cambio de nada.
+
+**Verificado contra la base** (BEGIN/ROLLBACK, 12 casos): invitado sin sesión
+se suscribe y se desuscribe; el colado que pide `admin` queda como `customer`;
+el dueño sí queda `admin`; anon no puede escribir, borrar ni contar tocando la
+tabla directo; la cuenta es por tenant (2 vs 0); el mismo endpoint dos veces
+deja una fila con las claves nuevas. **Y en producción**, contra la función ya
+deployada: sin tenant → 400, sin auth → 401, y **con la anon key (que es
+pública y viaja en el bundle) → 401**.
+
+#### Falta que Ricky cargue las claves (2 minutos, y sin esto no suena nada)
+
+Las VAPID son un secreto: no las genero yo ni las pego en el chat.
+
+1. Generarlas: `npx web-push generate-vapid-keys`
+2. En Supabase → proyecto `hermes-platform` → Edge Functions → Secrets:
+   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+   (`mailto:hola@divianco.app`)
+3. En Vercel → proyecto `hermes-platform` → Environment Variables:
+   `VITE_VAPID_PUBLIC_KEY` = **la pública** (la privada NO va acá: el front
+   es público). Redeploy para que entre al bundle.
+
+Mientras falten, `send-push` responde 500 "VAPID no configurado" — explícito,
+no en silencio.
+
+**Qué probar** (después de cargar las claves y redeployar):
+1. Entrar al panel de la-nona-pato → aparece el banner de notificaciones →
+   activarlo → el navegador pide permiso.
+2. Hacer un pedido desde el catálogo → llega la notificación "Nuevo pedido"
+   con el nombre y el monto.
+3. **Negativo:** el mismo dispositivo no recibe los pedidos de cochi.
 
 ### Imágenes propias ✅ (17/ago) — la peor fricción del onboarding
 

@@ -290,12 +290,14 @@ Deno.serve(async (req) => {
       return jsonRes({ error: "Error al crear los items" }, 500);
     }
 
-    // Push al admin: best-effort. send-push todavia no esta deployada en el
-    // edificio, asi que esto va a fallar silencioso hasta que lo este.
+    // Push al admin: best-effort. El tenant_id NO es opcional — sin el,
+    // send-push no sabe a que negocio avisarle y corta con 400 (nunca manda
+    // a todos, que seria notificarle a los clientes de otro local).
     if (!isMP) {
       try {
         await supabase.functions.invoke("send-push", {
           body: {
+            tenant_id: tenantId,
             title: "Nuevo pedido",
             body: `${customer || "Cliente"} - $${finalTotal}`,
             url: "/admin?tab=orders",

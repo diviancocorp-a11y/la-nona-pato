@@ -22,6 +22,7 @@ import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
+import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -434,6 +435,11 @@ export default function PlatformAdmin() {
               abre el panel. `listo` evita el peor error posible: decirle
               "todavia no cargaste ningun producto" a alguien que tiene
               cuarenta, porque la consulta no volvio. */}
+          {/* Avisos de pedido nuevo. Va en la pestania de entrada por lo
+              mismo que en el legacy: el boton escondido en un apartado no lo
+              tocaba nadie y los 3 tenants tenian CERO suscripciones admin.
+              Se suscribe ESTE dispositivo (la tablet del local). */}
+          {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
           {tab === 'products' && (
             <DicoAvisos
               listo={!loadingProducts && recetas !== null}
