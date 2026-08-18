@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import ToggleSwitch from '../shared/forms/ToggleSwitch';
 import RecipeEditor from './RecipeEditor';
+import ImagePicker from './ImagePicker';
 import { validateProduct } from '../../../services/platformAdmin';
 import { validateLineas } from '../../../services/platformRecipes';
 import { usaCampo, terminologia, tipoPorDefecto, usaReceta } from '../../../modules/registry';
@@ -30,6 +31,8 @@ const row = { marginBottom: 14 };
 export default function ProductEditor({
   product, vertical, categories = [], onSave, onCancel,
   ingredientes = [], lineasReceta = [], settings = null,
+  // Sin uploader, ImagePicker se cae al input de URL de siempre.
+  onSubirImagen = null,
 }) {
   const [lineas, setLineas] = useState(() => lineasReceta.map(l => ({ ...l })));
   const [form, setForm] = useState(() => ({
@@ -147,10 +150,12 @@ export default function ProductEditor({
       </div>
 
       <div style={row}>
-        <label style={lbl} htmlFor="pe-img">Imagen (URL)</label>
-        <input
-          id="pe-img" style={input} type="url" value={form.image_url}
-          onChange={e => set('image_url', e.target.value)} placeholder="https://..."
+        <ImagePicker
+          label="Foto"
+          ayuda="Se ve en el catálogo. Cuadrada queda mejor."
+          value={form.image_url}
+          onChange={(url) => set('image_url', url)}
+          onSubir={onSubirImagen}
         />
       </div>
 

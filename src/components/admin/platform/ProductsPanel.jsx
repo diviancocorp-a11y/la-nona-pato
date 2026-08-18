@@ -21,7 +21,7 @@ function money(n) {
 
 export default function ProductsPanel({
   products, vertical, loading, onSave, onToggleActive, onDelete, showToast,
-  ingredientes = [], recetas = null, settings = null,
+  ingredientes = [], recetas = null, settings = null, onSubirImagen = null,
 }) {
   const confirmSlide = useConfirm();
   const [editing, setEditing] = useState(null); // objeto producto | 'new' | null
@@ -99,6 +99,7 @@ export default function ProductsPanel({
             lineasReceta={isNew ? [] : (recetas?.get(editing.id) || [])}
             settings={settings}
             onSave={handleSave}
+            onSubirImagen={onSubirImagen}
             onCancel={() => setEditing(null)}
           />
         </div>

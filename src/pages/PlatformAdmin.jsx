@@ -30,6 +30,7 @@ import {
 import { fetchSales, createSale, completeOrder } from '../services/platformSales';
 import { fetchCustomerStats } from '../services/platformCrm';
 import { fetchWaste, registerWaste } from '../services/platformWaste';
+import { uploadTenantImage } from '../services/platformStorage';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -312,6 +313,18 @@ export default function PlatformAdmin() {
   // ── Etapa 4: venta manual ──
   const crearVenta = useCallback((s) => createSale(tenantId, s), [tenantId]);
 
+  // ── Etapa 6: imagenes propias ──
+  // El path lo arma el service con el tenant: la pantalla solo pasa el
+  // archivo y para que es. Sin esto habia que pegar una URL a mano.
+  const subirImagenProducto = useCallback(
+    (file) => uploadTenantImage(tenantId, file, { prefix: 'producto' }),
+    [tenantId]
+  );
+  const subirComprobante = useCallback(
+    (file) => uploadTenantImage(tenantId, file, { prefix: 'ticket' }),
+    [tenantId]
+  );
+
   // ── Etapa 6: merma ──
   // La RPC descuenta el stock del lado de la base; despues se relee para que
   // la pantalla no quede mostrando el stock de antes (mismo criterio que
@@ -444,6 +457,7 @@ export default function PlatformAdmin() {
               onSave={handleSaveProduct}
               onToggleActive={handleToggleActive}
               onDelete={handleDeleteProduct}
+              onSubirImagen={subirImagenProducto}
               showToast={msg}
             />
           )}
@@ -495,6 +509,7 @@ export default function PlatformAdmin() {
                 onSaveProveedor={guardarProveedor}
                 onToggleProveedor={toggleSupplierActive}
                 onDeleteProveedor={deleteSupplier}
+                onSubirComprobante={subirComprobante}
               />
             </Suspense>
           )}

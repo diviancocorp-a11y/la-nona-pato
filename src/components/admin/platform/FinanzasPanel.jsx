@@ -60,6 +60,8 @@ export default function FinanzasPanel({
   // Savers del edificio
   onCrearGasto, onAnularGasto, onRegistrarCompra, onCrearInsumo,
   onFetchProveedores, onSaveProveedor, onToggleProveedor, onDeleteProveedor,
+  // Sube la foto del ticket al bucket del tenant (migracion 0034).
+  onSubirComprobante = null,
 }) {
   const [solapa, setSolapa] = useState('gastos');
   const opciones = permiteCompras ? SOLAPAS : SOLAPAS.filter(s => s.id !== 'compra');
@@ -97,9 +99,10 @@ export default function FinanzasPanel({
           onCrearInsumo={onCrearInsumo}
           onFetchSuppliers={onFetchProveedores}
           onSaveSupplier={onSaveProveedor}
-          // Sin bucket de Storage en el edificio no hay dónde subir la foto
-          // del ticket. Se apaga entero en vez de dejar un botón que falla.
-          permiteComprobante={false}
+          // Con el bucket del tenant (0034) la foto del ticket ya tiene dónde
+          // ir: se enciende sólo si hay uploader inyectado.
+          permiteComprobante={!!onSubirComprobante}
+          onSubirComprobante={onSubirComprobante}
         />
       )}
 

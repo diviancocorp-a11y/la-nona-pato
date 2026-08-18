@@ -445,8 +445,58 @@ workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
 
 Cada uno es independiente y chico. Se hacen cuando se piden:
 
-~~merma~~ ✅ · QRs dinámicos · push · páginas de info · usuarios y roles
-(`tenant_members` ya existe, falta la UI) · menu engineering · analytics
+~~merma~~ ✅ · ~~imágenes propias~~ ✅ · QRs dinámicos · push · páginas de
+info · usuarios y roles (`tenant_members` ya existe, falta la UI) · menu
+engineering · analytics
+
+### Imágenes propias ✅ (17/ago) — la peor fricción del onboarding
+
+| | |
+|---|---|
+| Storage | bucket `tenant-images` (migración 0034), público para leer |
+| Service | `platformStorage.js` |
+| Pantallas | `ImagePicker` en el editor de producto · foto de ticket en Compra |
+
+**El problema era el alta de producto**: pedía "Imagen (URL)" con placeholder
+`https://...`. El dueño de una panadería no tiene una URL, tiene una foto en
+el teléfono — para poner una imagen había que subirla antes a un servicio
+ajeno y pegar el link. La mitad de los catálogos nuevos iban a quedar sin
+fotos, que es justo lo que hace que un catálogo se vea muerto.
+
+**Un bucket para todos, aislado por carpeta `<tenant_id>/`.** Un bucket por
+tenant obligaría a provisionar infraestructura (service role) en cada
+registro, y eso mata el alta self-service. Con uno solo, subir es una
+escritura normal del cliente y el aislamiento lo hace la RLS sobre
+`storage.objects` leyendo la primera carpeta del path. **Por eso el path se
+arma siempre en el service**: si una pantalla pudiera elegirlo, podría
+escribir en la carpeta de otro negocio.
+
+**Los límites viven en el bucket**, no solo en el JavaScript: 5 MB y tipos de
+imagen. La validación del cliente da el mensaje rápido; un request armado a
+mano la saltea entera, el `file_size_limit` no.
+
+**Pegar un enlace sigue existiendo**, escondido tras "o pegar un enlace": los
+tenants portados tienen sus imágenes en el storage de los proyectos viejos.
+
+**Verificado contra la base** (BEGIN/ROLLBACK, 6 casos): subir a la carpeta
+propia OK; a la de un negocio **ajeno de verdad**, rechazado; sin carpeta,
+rechazado; borrar del ajeno, rechazado; lectura anónima, funciona (el
+comprador no tiene sesión); anónimo subiendo, rechazado.
+
+> **Trampa del test de aislamiento en este proyecto:** el dueño de prueba es
+> miembro de los 6 tenants, así que "subir a la carpeta de cochi" **está
+> permitido** y parece un bug. Para probar aislamiento hay que crear un tenant
+> sin membresía dentro de la transacción. Es la misma distinción de siempre:
+> RLS decide qué PODÉS tocar, no qué estás mirando.
+
+**Qué probar** en la-nona-pato:
+1. Editar un producto → donde antes pedía una URL ahora hay "Sacar una foto o
+   elegir del teléfono". Subir una → se ve la miniatura → Guardar → la foto
+   aparece en el catálogo público.
+2. Intentar subir un archivo que no sea imagen o de más de 5 MB → mensaje
+   claro, sin subir nada.
+3. Compra → ahora aparece **Comprobante** con "Foto del ticket" / "Sin
+   recibo". Subir una foto y confirmar: el gasto queda con el 📎.
 
 ### Merma ✅ (17/ago) — la pieza que completa el P&L
 

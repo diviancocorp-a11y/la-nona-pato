@@ -1321,9 +1321,11 @@ function Purchase({
   onCrearInsumo = upsertIngredient,
   onFetchSuppliers = fetchSuppliers,
   onSaveSupplier = upsertSupplier,
-  // La foto del ticket necesita un bucket de Storage, que el edificio todavía
-  // no tiene. Con esto en false la sección no se muestra y no se exige.
+  // Con esto en false la sección del comprobante no se muestra y no se exige.
   permiteComprobante = true,
+  // Dónde va la foto del ticket. Default legacy (bucket recipe-images); el
+  // edificio inyecta el suyo, que la guarda en la carpeta del tenant.
+  onSubirComprobante = uploadLogoImage,
 }) {
   const [supId, setSupId] = useState("");
   const [supName, setSupName] = useState("");
@@ -1357,7 +1359,7 @@ function Purchase({
   const handleReceiptUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingReceipt(true);
-    const result = await uploadLogoImage(file);
+    const result = await onSubirComprobante(file);
     setUploadingReceipt(false);
     if (result?.__error) { showToast(result.__error); return; }
     if (result) { setReceiptUrl(result); showToast("Ticket cargado ✓"); }
