@@ -398,19 +398,80 @@ En **la-nona-pato**, pestaña Ventas → solapa Clientes:
    tocar un cliente (apagados en el edificio).
 4. En **cochi**: los clientes de la-nona-pato no se ven (mismo dueño).
 
-## Etapa 5b — La cuenta del comprador en el catálogo
+## Etapa 5b — La cuenta del comprador ✅ HECHA (18/ago)
 
 | | |
 |---|---|
-| Tablas | `addresses`, `favorites` (con RLS por `user_id`) |
-| Toca | `AuthContext.jsx`, `MyAccount.jsx`, guest RPCs, `CheckoutScreen.jsx` |
+| Tablas | `addresses`, `favorites` (migración 0035), RLS por `user_id` |
+| Service | `account.js` — bifurca por `business.platform`, como `fetchCatalog` |
+| Pantallas | `AuthContext` y `MyAccount`, sin consultas inline |
 
-Pendiente y **más grande de lo que el plan sugería**: hoy AuthContext consulta
-`addresses`/`favorites` que en el edificio no existen (falla en silencio), el
-historial por teléfono usa RPCs del legacy (`get_phone_customer_orders`), y
-MyAccount lee `recipes` para los favoritos. Ojo al encararla:
-`CheckoutScreen.jsx` es el archivo que se corrompe (CLAUDE.md) — Python
-heredoc, no Edit.
+Arreglaba **tres roturas silenciosas** del edificio: AuthContext consultaba
+`addresses`/`favorites`, que no existían; MyAccount leía `recipes` para los
+favoritos; y un comprador logueado **no podía ver sus propios pedidos**,
+porque la única policy de select de `orders` era para miembros del negocio.
+Ninguna tiraba error: un `.select()` que falla devuelve `{error}`, así que la
+cuenta quedaba vacía y parecía que el usuario no tenía nada.
+
+**`addresses` y `favorites` NO llevan `tenant_id`, y es a propósito.** La
+regla del repo ("toda tabla nueva: tenant_id + RLS por tenant") vale para las
+tablas del NEGOCIO. Estas son de la PERSONA: una dirección es de quien vive
+ahí, no de la panadería. Con `tenant_id`, el mismo comprador tendría que
+volver a escribir su dirección en cada local de la plataforma. El aislamiento
+lo da `user_id` — cada uno ve lo suyo y **ni el dueño del local ve la libreta
+de direcciones de sus clientes** (lo que necesita para entregar viaja en el
+pedido, en `orders.delivery_address`).
+
+**`profiles` pasó a ser una fila por PERSONA.** Nació en 0008 para el dueño,
+con `tenant_id` y sin policy de INSERT: un comprador no podía tener perfil.
+Ahora suma `name`/`phone`/`nickname` y puede crear el suyo (`id = auth.uid()`).
+`profiles.tenant_id` queda por compatibilidad pero **no es la verdad de qué
+administra alguien**: Ricky es dueño de 6 tenants y esa columna guarda uno
+solo. Esa verdad vive en `tenant_members`. Por lo mismo `updateProfile` hace
+**upsert** en el edificio: con `update` el comprador guardaba su nombre, veía
+el éxito, y no se persistía nada.
+
+**Se tocó una policy de la tabla de plata**, así que el test incluye la
+no-regresión: el dueño **sigue viendo los dos pedidos** de su local. Lo que se
+suma es el caso del dueño del pedido, sin aflojar nada de lo anterior.
+
+**Verificado contra la base** (BEGIN/ROLLBACK, 10 casos con dos compradores
+sintéticos): Ana guarda su dirección y no puede escribir la de Beto; favorito
+duplicado rechazado; Ana ve su pedido pero no el de un invitado; Beto no ve
+nada de Ana; el dueño sigue viendo los pedidos pero **no** la libreta de Ana;
+y el anónimo no ve nada.
+
+> **Trampa del test:** al pasar a rol `anon` hay que **limpiar
+> `request.jwt.claims`**. Si quedan las del usuario anterior, `auth.uid()`
+> sigue devolviendo su id y el "anónimo" ve todo — parece un agujero de
+> seguridad y es el test mal escrito. Me pasó en esta etapa.
+
+### Pendiente con decisión de por medio: historial por teléfono
+
+En el edificio, el historial de un invitado (sin cuenta) **devuelve vacío a
+propósito**. El legacy lo resuelve con `get_phone_customer_orders`, un RPC
+SECURITY DEFINER que matchea el teléfono: cualquiera que escriba un número
+ajeno ve esos pedidos. En un solo negocio es un riesgo acotado; en una
+plataforma con muchos locales es el mismo agujero multiplicado. Portarlo tal
+cual sería heredar la decisión sin tomarla.
+
+Las salidas, para elegir una: (a) portarlo igual, asumiendo el riesgo;
+(b) scopearlo al tenant y a los últimos N días, que achica la ventana sin
+cerrarla; (c) pedir un dato más (el código del pedido), que lo cierra pero
+suma fricción. **Mientras no se decida, el invitado no ve historial** — que es
+exactamente lo que pasa hoy, sólo que ahora está documentado.
+
+### Qué probar
+
+En el catálogo de **la-nona-pato**, con una cuenta (no invitado):
+1. Mi cuenta → Direcciones → agregar una. Recargar: sigue ahí.
+2. Ir a pagar con envío: la dirección guardada aparece para elegir.
+3. Marcar un producto como favorito → pestaña Favoritos lo muestra con su
+   precio y foto. Desmarcarlo lo saca.
+4. Hacer un pedido logueado → Mi cuenta → Historial lo muestra.
+5. **Negativo:** con otra cuenta, ninguna de esas cosas se ve.
+6. **Negativo:** en el panel del negocio, el CRM sigue mostrando los clientes
+   (no se rompió `orders`).
 
 ---
 

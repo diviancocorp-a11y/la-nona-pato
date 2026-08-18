@@ -10,6 +10,7 @@ import PushOptInBanner from "../catalog-pro/PushOptInBanner";
 import { lookupCustomerByPhone, phoneLogin, cleanPhone, blockPhone, isPhoneBlocked, upsertCustomer } from "../services/phoneAuth";
 import { setGuestUser } from "../lib/guestUser";
 import { Avatar, AVATARS, AVATAR_KEYS, getLocalAvatarKey, setLocalAvatarKey, avatarKeyFor } from "../lib/avatars.jsx";
+import { fetchFavoriteProducts } from '../services/account';
 
 const TABS = ["perfil", "direcciones", "historial", "favoritos", "cupones", "referidos"];
 const TAB_ICONS = { perfil: "👤", direcciones: "📍", historial: "📦", favoritos: "❤️", cupones: "🎟️", referidos: "🎁" };
@@ -123,16 +124,9 @@ export default function MyAccount() {
   // Load favorite products
   useEffect(() => {
     if (tab === "favoritos" && favorites.length > 0) {
-      const fetchFavProducts = async () => {
-        const { data, error } = await supabase
-          .from('recipes')
-          .select('id, name, sale_price, image_url, category')
-          .in('id', favorites);
-        if (!error && data) {
-          setFavProducts(data);
-        }
-      };
-      fetchFavProducts();
+      // Via services/account: en el edificio los productos viven en
+      // `products` con `price`, no en `recipes` con `sale_price`.
+      fetchFavoriteProducts(favorites).then(setFavProducts);
     } else if (tab === "favoritos" && favorites.length === 0) {
       setFavProducts([]);
     }

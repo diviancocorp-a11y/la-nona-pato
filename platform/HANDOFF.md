@@ -44,11 +44,14 @@ app, con piernas sólo para marketing).
 adentro, y el insumo sin clasificar sigue cayendo en `dry` sólo en gastro.
 499 tests.
 
-**Trampa para el que escriba tests:** en el helper `src/test/_chain.js` todos
-los métodos del builder son **el mismo** `vi.fn` (todos devuelven `self`), así
-que `.in` acumula también los `.eq` y los `.order`. Un `not.toHaveBeenCalled()`
-no puede pasar nunca y `mock.calls[0]` no es la llamada que buscás: hay que
-filtrar por argumento.
+**Trampa para el que escriba tests: ARREGLADA el 18/ago.** En
+`src/test/_chain.js` todos los métodos del builder eran **el mismo** `vi.fn`,
+así que `.in` acumulaba también los `.eq` y los `.order`, y un
+`not.toHaveBeenCalled()` no podía pasar nunca. Ahora cada método tiene su
+propio mock (siguen devolviendo `self`, así que encadenar funciona igual).
+Se corrió la suite entera al cambiarlo: 569 tests, ninguno dependía de la
+acumulación. Los tests viejos que filtran por argumento siguen siendo
+correctos, sólo que ya no hace falta.
 
 ---
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useGuestUser, clearGuestUser } from "../lib/guestUser.js";
+import * as account from "../services/account";
 
 const AuthContext = createContext(null);
 
@@ -56,19 +57,18 @@ export function AuthProvider({ children }) {
   };
   const session = buildSession();
 
+  // Las consultas viven en services/account.js, que bifurca legacy/edificio:
+  // en el edificio los favoritos son product_id (no recipe_id) y el
+  // historial resuelve por otras columnas. Antes esto consultaba tablas que
+  // en el edificio no existian y fallaba EN SILENCIO — un .select() con
+  // error devuelve {error}, no tira, asi que la cuenta quedaba vacia.
   const loadUserData = async (userId) => {
     if (!userId) {
       setProfile(null); setAddresses([]); setFavorites([]); return;
     }
     try {
-      const [profRes, addrRes, favRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-        supabase.from("addresses").select("*").eq("user_id", userId).order("created_at"),
-        supabase.from("favorites").select("recipe_id").eq("user_id", userId),
-      ]);
-      if (profRes.data) setProfile(profRes.data);
-      if (addrRes.data) setAddresses(addrRes.data);
-      if (favRes.data) setFavorites(favRes.data.map(f => f.recipe_id));
+      const { profile: p, addresses: a, favorites: f } = await account.fetchUserData(userId);
+      setProfile(p); setAddresses(a); setFavorites(f);
     } catch (e) {
       console.warn("Error cargando datos de usuario:", e);
     }
@@ -142,73 +142,47 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (data) => {
     if (!user) return false;
-    const { error } = await supabase.from("profiles").update({
-      ...data, updated_at: new Date().toISOString(),
-    }).eq("id", user.id);
-    if (!error) { setProfile(p => ({ ...p, ...data })); return true; }
-    return false;
+    const ok = await account.updateProfile(user.id, data);
+    if (ok) setProfile(p => ({ ...p, ...data }));
+    return ok;
   };
 
   const addAddress = async (addr) => {
     if (!user) return null;
-    const { data, error } = await supabase.from("addresses").insert({
-      user_id: user.id,
-      label: addr.label || "Casa",
-      address: addr.address,
-      lat: addr.lat || null,
-      lng: addr.lng || null,
-      notes: addr.notes || null,
-    }).select().single();
-    if (!error && data) { setAddresses(p => [...p, data]); return data; }
-    return null;
+    const data = await account.addAddress(user.id, addr);
+    if (data) setAddresses(p => [...p, data]);
+    return data;
   };
 
   const removeAddress = async (id) => {
     if (!user) return false;
-    const { error } = await supabase.from("addresses").delete().eq("id", id).eq("user_id", user.id);
-    if (!error) { setAddresses(p => p.filter(a => a.id !== id)); return true; }
-    return false;
+    const ok = await account.removeAddress(user.id, id);
+    if (ok) setAddresses(p => p.filter(a => a.id !== id));
+    return ok;
   };
 
   const updateAddress = async (id, data) => {
     if (!user) return false;
-    const { error } = await supabase.from("addresses").update(data).eq("id", id).eq("user_id", user.id);
-    if (!error) { setAddresses(p => p.map(a => a.id === id ? { ...a, ...data } : a)); return true; }
-    return false;
+    const ok = await account.updateAddress(user.id, id, data);
+    if (ok) setAddresses(p => p.map(a => a.id === id ? { ...a, ...data } : a));
+    return ok;
   };
 
   const toggleFavorite = async (recipeId) => {
     if (!user) return false;
     const isFav = favorites.includes(recipeId);
-    if (isFav) {
-      const { error } = await supabase.from("favorites").delete().eq("user_id", user.id).eq("recipe_id", recipeId);
-      if (!error) setFavorites(p => p.filter(id => id !== recipeId));
-    } else {
-      const { error } = await supabase.from("favorites").insert({ user_id: user.id, recipe_id: recipeId });
-      if (!error) setFavorites(p => [...p, recipeId]);
-    }
+    const ok = await account.toggleFavorite(user.id, recipeId, isFav);
+    // Antes el estado local cambiaba aunque el insert fallara: el corazon
+    // quedaba pintado y al recargar no estaba.
+    if (!ok) return false;
+    setFavorites(p => isFav ? p.filter(id => id !== recipeId) : [...p, recipeId]);
     return true;
   };
 
   const isFavorite = (recipeId) => favorites.includes(recipeId);
 
-  const getOrderHistory = async () => {
-    // Phone-only: RPC SECURITY DEFINER que matchea orders.customer_phone
-    // (los pedidos del catalogo phone-only se guardan con customer_phone).
-    if (!user && phoneSession?.phone) {
-      const { data } = await supabase
-        .rpc("get_phone_customer_orders", { phone_search: phoneSession.phone });
-      return data || [];
-    }
-    if (!user) return [];
-    const { data } = await supabase
-      .from("orders")
-      .select("id, date, total, status, created_at, delivery, payment, customer")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    return data || [];
-  };
+  const getOrderHistory = () =>
+    account.fetchOrderHistory({ user, phone: phoneSession?.phone });
 
   return (
     <AuthContext.Provider value={{
