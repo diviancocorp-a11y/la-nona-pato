@@ -66,8 +66,37 @@ export async function resolveTenantSlug() {
   return inflight;
 }
 
+let cachedId;            // id del tenant de este host, para pantallas del panel
+
+/**
+ * tenant_id de ESTE host. Solo sirve LOGUEADO Y SIENDO MIEMBRO: lee `tenants`
+ * con la RLS puesta, asi que a un tercero le devuelve null. Es a proposito —
+ * lo usan las pantallas del panel, y el que no es del negocio no tiene por
+ * que editar sus paginas ni sus QRs.
+ *
+ * Lo publico (catalogo) NO pasa por aca: va por RPCs que reciben el slug
+ * (get_catalog, get_info_page, resolve_qr). Asi no hace falta exponer un
+ * endpoint nuevo solo para traducir slug -> uuid.
+ *
+ * @returns {Promise<string|null>}
+ */
+export async function resolveTenantId() {
+  if (cachedId !== undefined) return cachedId;
+  const slug = await resolveTenantSlug();
+  if (!slug) { cachedId = null; return cachedId; }
+  try {
+    const { data, error } = await supabase
+      .from('tenants').select('id').eq('slug', slug).maybeSingle();
+    cachedId = (!error && data?.id) ? data.id : null;
+  } catch {
+    cachedId = null;
+  }
+  return cachedId;
+}
+
 /** Solo para tests: vuelve al estado sin resolver. */
 export function _resetTenantCache() {
   cachedSlug = undefined;
+  cachedId = undefined;
   inflight = null;
 }

@@ -67,8 +67,8 @@ const VentasPanel = lazy(() => import('../components/admin/platform/VentasPanel'
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
 const CAPACIDADES_EDIFICIO = {
-  qrs: false,        // tabla dynamic_qrs
-  paginas: false,    // tabla info_pages
+  qrs: true,         // tabla dynamic_qrs (migracion 0037)
+  paginas: true,     // tabla info_pages (migracion 0037)
   pasarelas: false,  // tabla payment_integrations
   canales: false,    // tabla delivery_channels
   riesgo: false,     // el reset borra tablas del ERP viejo

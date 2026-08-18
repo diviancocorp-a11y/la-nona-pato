@@ -506,9 +506,49 @@ workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
 
 Cada uno es independiente y chico. Se hacen cuando se piden:
 
-~~merma~~ ✅ · ~~imágenes propias~~ ✅ · ~~push~~ ✅ · QRs dinámicos ·
-páginas de info · usuarios y roles (`tenant_members` ya existe, falta la UI) ·
-menu engineering · analytics
+~~merma~~ ✅ · ~~imágenes propias~~ ✅ · ~~push~~ ✅ · ~~QRs
+dinámicos~~ ✅ · ~~páginas de info~~ ✅ · **usuarios y roles — lo único que
+queda** · menu engineering y analytics: ya viven en el Resumen del mes
+
+### Páginas de info y QRs ✅ (18/ago) — las últimas capacidades apagadas
+
+| | |
+|---|---|
+| Tablas | `info_pages`, `dynamic_qrs` (migración 0037) |
+| RPCs públicos | `get_info_page`, `resolve_qr` |
+| Pantallas | las del legacy, ahora contra `services/infoPages.js` y `qrs.js` |
+
+Van juntas porque son la misma forma: **contenido del tenant que un visitante
+sin sesión tiene que poder leer**. De ahí los dos caminos: el panel lee las
+tablas con RLS por tenant; el visitante entra por RPC con el **slug** del
+negocio, igual que `get_catalog`.
+
+**`resolve_qr` resuelve y cuenta la visita en UNA llamada.** En el legacy son
+dos (leer el destino, después un RPC para sumar): desde un teléfono recién
+escaneando, la segunda a veces no llega porque el browser ya navegó. Por eso
+`incrementQrVisit` **no hace nada** en el edificio — llamarlo igual contaría
+doble cada escaneo.
+
+**El slug es único POR TENANT**, no global: dos negocios pueden tener su
+página `como-llegar` sin pisarse.
+
+**`resolveTenantId()` nuevo en `activeTenant.js`**: lee `tenants` con la RLS
+puesta, así que solo funciona logueado y siendo miembro — que es exactamente
+quién edita páginas y QRs. Lo público no pasa por ahí: va por los RPCs con
+slug, y así no hubo que exponer un endpoint nuevo para traducir slug→uuid.
+
+**Verificado contra la base** (8 casos): el anónimo lee la página visible, no
+lee la oculta, el mismo slug en otro negocio devuelve lo del otro negocio, no
+puede leer la tabla directo ni escribirla; resuelve el QR propio, no el de
+otro negocio, y la visita queda contada.
+
+**Qué probar** en la-nona-pato → Configuración:
+1. Aparecen "QRs dinámicos" y "Páginas informativas" (antes estaban ocultas).
+2. Crear una página → abrir `la-nona-pato.divianco.app/info/<slug>` en una
+   ventana privada (sin sesión): se ve.
+3. Marcarla como no visible → la misma URL deja de mostrarla.
+4. Crear un QR → abrir `/q/<slug>` → redirige, y el contador sube **de a uno**.
+5. **Negativo:** esa misma URL en `cochi.divianco.app` no encuentra nada.
 
 ### Push ✅ (18/ago) — el negocio se entera de que entró un pedido
 

@@ -6,8 +6,8 @@
 // Ruta: /info/:slug
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
 import AgeGate from "../catalog-pro/AgeGate";
+import { fetchPublicInfoPage } from "../services/infoPages";
 
 export default function InfoPage() {
   const { slug } = useParams();
@@ -20,17 +20,13 @@ export default function InfoPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    supabase
-      .from("info_pages")
-      .select("slug, title, blocks, requires_age_gate")
-      .eq("slug", slug)
-      .eq("visible", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!alive) return;
-        setPage(data);
-        setLoading(false);
-      });
+    // Via services/infoPages: en el edificio la pagina se pide por RPC con
+    // el slug del negocio (el visitante no tiene sesion ni tenant_id).
+    fetchPublicInfoPage(slug).then((data) => {
+      if (!alive) return;
+      setPage(data);
+      setLoading(false);
+    });
     return () => { alive = false; };
   }, [slug]);
 
