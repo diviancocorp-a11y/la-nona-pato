@@ -8,6 +8,181 @@
 
 ---
 
+## 18/ago/2026 — EL ERP QUEDO COMPLETO Y LA PERIFERIA CERRADA
+
+Sesion larga: 12 commits, migraciones **0032 a 0038**, 3 edge functions.
+El edificio pasó de "panel de productos y pedidos" a **ERP entero**: Etapas 4
+(ventas y P&L), 5a (CRM) y 5b (cuenta del comprador), mas TODA la periferia
+(merma, imagenes propias, push, QRs, paginas de info, equipo). Ademas Dico
+capa 1 y el arreglo de las `og:` tags.
+
+### Lo mas reutilizable que salio
+
+**Antes de asumir que un RPC devuelve algo, mirarlo.** Escribi las RPCs de
+push pidiendo `tenant_id` asumiendo que `get_tenant_brand` devolvia el `id`.
+**No lo devuelve.** Verificarlo antes cambio el diseño: las RPCs publicas del
+edificio reciben el **slug**, que ya viaja en la URL, y asi no hubo que
+exponer un endpoint nuevo solo para traducir slug→uuid. Vale para
+`upsert_push_subscription`, `get_info_page` y `resolve_qr`.
+
+**Dos caminos de lectura, no uno.** Todo lo que un visitante SIN SESION tiene
+que ver (paginas de info, QRs, catalogo) va por RPC con el slug; lo que edita
+un miembro va por tabla con RLS. Mezclarlos obliga a exponer de mas.
+
+**Portar no es copiar: revisar que se hereda.** Dos agujeros del legacy que
+NO se portaron, los dos por la misma razon (lo que en una app de un negocio
+esta acotado, en una plataforma se multiplica):
+
+1. `admin-users` **pisa la contraseña** de un email que ya tiene cuenta. Aca
+   cualquier dueño podria "agregar a su equipo" a otra persona y quedarse con
+   su cuenta, incluidos los negocios que ella administra.
+2. `upsert_push_subscription` aceptaba `role` sin validar. Los push de admin
+   llevan nombre del cliente y monto.
+
+### Hecho (todo aplicado, commiteado y pusheado)
+
+**Etapa 4 — ventas y P&L (0032).** `sales` + RPC `complete_order`: completar
+un pedido cambia el estado y asienta sus ventas en UNA transaccion (en el
+legacy es un bucle de `createSale` desde el navegador). El costo se congela
+dos veces: `submit-order` lo escribe al crear el pedido y `complete_order` lo
+recalcula si vino en 0. El P&L del mes va **sin** el colchon de pricing — es
+el doble conteo que ya se arreglo una vez el 12/jun.
+
+**Etapa 5a — CRM (sin tabla nueva).** Correccion al plan: el CRM del legacy no
+lee una tabla de clientes, **agrega sobre `orders`**. `addresses`/`favorites`
+eran de otra mitad (la 5b).
+
+**Etapa 5b — cuenta del comprador (0035).** Arreglaba **tres roturas
+silenciosas**: `addresses`/`favorites` no existian, MyAccount leia `recipes`,
+y —la que no estaba en el plan— **un comprador logueado no podia ver sus
+propios pedidos** porque la unica policy de select de `orders` era para
+miembros. Ninguna daba error: un `.select()` que falla devuelve `{error}`.
+`addresses` y `favorites` **sin `tenant_id` a proposito**: son de la persona,
+no del negocio. Se toco `orders_select`, asi que el test incluye la
+no-regresion del dueño.
+
+**Periferia completa:**
+
+- **Merma (0033)** — RPC `register_waste`, asiento + descuento juntos.
+- **Imagenes propias (0034)** — bucket `tenant-images`, UNO para todos,
+  aislado por carpeta `<tenant_id>/`. Un bucket por tenant obligaria a
+  provisionar infraestructura en cada alta self-service. El alta de producto
+  pedia "Imagen (URL)": un panadero no tiene una URL.
+- **Push (0036)** — UNA VAPID para toda la plataforma (identifica al SERVIDOR,
+  no al negocio). `send-push` corta con 400 sin tenant: un fallback a "todos"
+  seria notificarle a los clientes de otro local.
+- **QRs y paginas (0037)** — `resolve_qr` resuelve y cuenta la visita en UNA
+  llamada; desde un telefono recien escaneando, un segundo request a veces no
+  llega. Por eso `incrementQrVisit` **no hace nada** en el edificio.
+- **Equipo (0038)** — `tenant-users` + `find_user_id_by_email` (solo
+  service_role: expuesto a `authenticated` seria un oraculo de emails
+  registrados). No se puede sacar ni degradar al ultimo dueño.
+
+**`og:` tags por tenant.** Compartir cualquier local por WhatsApp mostraba
+"Cochi". La causa NO era el endpoint sino el ruteo: **Vercel resuelve el
+filesystem antes que los rewrites**, y para `/` ya existe `index.html`, asi
+que la regla por User-Agent nunca se evaluaba. Se resolvio con
+**`middleware.js`** (Edge Middleware), que corre antes del filesystem. Va
+defensivo: try/catch y cualquier duda termina en dejar pasar — corre en TODAS
+las visitas de documento y una excepcion ahi tira el sitio entero.
+
+**Reset de contraseña**: `/entrar` detecta `type=recovery` en el hash.
+
+**morning-health reescrito**: miraba los 3 legacy pausados, o sea rojo todas
+las mañanas. Ahora mira lo vivo (landing, tenants con conteo de productos,
+`submit-order`, drift del snapshot, Sentry 24h).
+
+**Dico capa 1**: `src/components/dico/DicoCara.jsx` + `dico.css`, 5 estados,
+enchufado en `DicoAvisos` con la expresion atada al nivel del aviso mas grave
+— o sea la misma informacion que el color. **SVG y no video**: los mp4 no
+tienen canal alfa (el "fondo transparente" sale blanco; harian falta WebM/VP9
+para Chrome y HEVC para Safari) y 13 clips pesan mas que toda la app, que se
+usa desde el telefono de una cocina.
+
+**Tooling**: `_chain.js` daba a todos los metodos del builder el MISMO
+`vi.fn`, asi que un `not.toHaveBeenCalled()` no podia pasar nunca. Arreglado
+(la trampa estaba anotada en este handoff y cai en ella igual).
+
+### Verificado
+
+**En produccion, con curl:** las `og:` tags por tenant (UA de WhatsApp da "La
+Nona Pato", de Telegram en cochi da "Cochi", el humano recibe la SPA con 200);
+los guards de las 3 edge functions (sin tenant 400, sin auth 401, y **con la
+anon key —que es publica y viaja en el bundle— 401**); catalogo 200.
+
+**Contra la base, con BEGIN/ROLLBACK:** ~50 casos entre las 7 migraciones. Lo
+importante: aislamiento entre negocios en storage, push, paginas y QRs;
+no-regresion del dueño al tocar `orders_select`; el colado que pide rol admin
+queda como customer; anon no ve ni escribe nada.
+
+**Estado de la base al cierre:** 7 tablas nuevas, 6 RPCs, bucket. Todo ahi.
+
+**569 tests + build.** Una corrida fallo una vez y paso las 3 siguientes:
+**hay flakiness**, no identificada.
+
+### LO QUE NO SE PROBO (importante)
+
+1. **Push de punta a punta: `push_subscriptions` tiene CERO filas.** Nadie
+   activo el banner todavia, asi que no llego ninguna notificacion nunca. La
+   VAPID publica esta en el bundle; la privada solo se puede comprobar con una
+   llamada autorizada. **Hasta que alguien active el banner y entre un pedido,
+   esto no esta probado.**
+2. **Dico no se vio nunca con ojos humanos.** El pane del navegador no
+   renderiza archivos locales. El ajuste fino de las curvas sale de mirarlo.
+3. Las pantallas nuevas (equipo, QRs, paginas, favoritos, direcciones) estan
+   deployadas pero **nadie las uso con datos reales**. Las listas de que probar
+   estan al final de cada seccion del `PLAN-ERP.md`.
+
+### Pendiente inmediato (en orden)
+
+1. **Probar lo de arriba.** Son 3 etapas y toda la periferia sin tocar por un
+   usuario real. La leccion de la Etapa 3 fue exactamente esa: probarla saco
+   cuatro correcciones.
+2. **MercadoPago multi-tenant** — lo mas grande que queda y lo que mas plata
+   mueve: un negocio que no cobra online pierde ventas. OAuth por tenant.
+3. Canales de venta y zona de riesgo (los `false` que quedan en
+   `CAPACIDADES_EDIFICIO`).
+4. Packs de rubro: agenda (barberia), variantes (retail), caja.
+5. **Dico capa 3 (LLM)** — ya desbloqueada: su plan pedia Etapas 4 y 5, que
+   estan. Pero antes conviene que el P&L se valide con datos reales: una IA
+   que opina sobre numeros no probados dice cosas equivocadas con seguridad.
+
+### Bloqueado por Ricky
+
+- **Activar el banner de push y hacer un pedido.** Sin eso, push no esta
+  probado (ver arriba). Las VAPID ya estan cargadas en Supabase y Vercel.
+- **Mirar a Dico** y decir que se siente mal. Ricky genero 3 videos de
+  animacion con sus prompts; **el asistente no puede reproducir video**, asi
+  que si hay que ajustar curvas hace falta que describa el movimiento o mande
+  capturas.
+- **Decision: historial por telefono del invitado.** Hoy devuelve vacio A
+  PROPOSITO. El RPC del legacy deja ver los pedidos de cualquier numero que
+  se escriba; en una plataforma con muchos locales es el mismo agujero
+  multiplicado. Tres salidas planteadas en el `PLAN-ERP.md` (portarlo igual /
+  scopear a tenant + ultimos N dias / pedir el codigo de pedido).
+- **Decision: que pasa con `main`.** Sigue congelada sirviendo a los 3 legacy.
+  Cuanto mas conviven las ramas, mas se parece a una bifurcacion permanente.
+- **Secrets opcionales del morning-health**: `PLATFORM_SUPABASE_*` (activa el
+  check de drift) y `SENTRY_*` (activa el de errores) en GitHub Actions. Sin
+  ellos anda igual, saltea esos dos checks. **OJO**: el cron corre desde
+  `main`; hasta el merge, probarlo con workflow_dispatch eligiendo la rama.
+
+### Trampas nuevas para el que siga
+
+- **Al probar aislamiento, ojo con dos cosas.** (a) El dueño de prueba es
+  miembro de los 6 tenants, asi que "escribir en la carpeta de cochi" **esta
+  permitido** y parece un bug: hay que crear un tenant sin membresia dentro de
+  la transaccion. (b) Al pasar a rol `anon` hay que **limpiar
+  `request.jwt.claims`**; si quedan las del usuario anterior, `auth.uid()`
+  sigue devolviendo su id y el "anonimo" ve todo.
+- **Los deploys NO salen del push.** Van por CLI
+  (`npx.cmd vercel --prod --scope diviancocorp-a11ys-projects --yes`). Se
+  verifico: hubo commits pusheados sin deployar durante horas.
+- **PowerShell rompe los here-strings** con parentesis o comillas en el texto.
+  Para commits largos, `git commit -F archivo.txt`.
+
+---
+
 ## 16/ago/2026 (noche) — CORRECCIONES DE LA ETAPA 3, PROBADA EN PRODUCCION
 
 Ricky probó la Etapa 3 con datos reales y salieron cuatro cosas. Migración
