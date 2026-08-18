@@ -61,7 +61,11 @@ function Users({ showToast, onBack, currentUserId }) {
     const res = await createAdminUser(email.trim(), password, role);
     setBusy(false);
     if (res.ok) {
-      showToast?.(res.reused ? 'Usuario existente: acceso otorgado y password actualizada' : 'Usuario creado con acceso al admin');
+      // El mensaje lo manda el server: en el edificio una cuenta que ya
+      // existia NO cambia de contrasena (eso seria tomarle la cuenta), y el
+      // texto tiene que decir la verdad de lo que paso.
+      showToast?.(res.message
+        || (res.reused ? 'Ya tenía cuenta: le dimos acceso' : 'Usuario creado con acceso al panel'));
       setEmail(''); setPassword(''); setRole('staff'); setShowForm(false);
       load();
     } else {

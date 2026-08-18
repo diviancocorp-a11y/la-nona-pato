@@ -507,8 +507,50 @@ workflow_dispatch eligiendo la rama `platform/runtime-tenant`.
 Cada uno es independiente y chico. Se hacen cuando se piden:
 
 ~~merma~~ ✅ · ~~imágenes propias~~ ✅ · ~~push~~ ✅ · ~~QRs
-dinámicos~~ ✅ · ~~páginas de info~~ ✅ · **usuarios y roles — lo único que
-queda** · menu engineering y analytics: ya viven en el Resumen del mes
+dinámicos~~ ✅ · ~~páginas de info~~ ✅ · ~~usuarios y roles~~ ✅ ·
+menu engineering y analytics: ya viven en el Resumen del mes.
+**LA PERIFERIA ESTÁ CERRADA.**
+
+### Equipo del negocio ✅ (18/ago) — el último ítem
+
+| | |
+|---|---|
+| RPC | `find_user_id_by_email` (migración 0038), **solo service_role** |
+| Función | `tenant-users`, deployada con `verify_jwt=false` |
+| Pantalla | `Users.jsx` del legacy, entra por Configuración → Equipo |
+
+**Un agujero del legacy que NO se portó.** `admin-users`, al agregar a alguien
+cuyo email ya tiene cuenta, **le pisa la contraseña** con la que escribe quien
+lo agrega. En una app de un solo negocio el daño está acotado. En la
+plataforma sería mucho peor: cualquier dueño podría escribir el email de otra
+persona, "agregarla a su equipo", y quedarse con su contraseña — o sea tomarle
+la cuenta, incluidos los negocios que ella administra. **Regla nueva: si el
+email ya tiene cuenta, nunca se le toca la contraseña.** Se lo suma al equipo
+y entra con la que ya usaba; el toast lo dice (antes decía "password
+actualizada", que ahora sería mentira).
+
+**`find_user_id_by_email` en vez de `listUsers`.** El legacy trae las primeras
+200 cuentas y busca en memoria: con una sola base de un negocio alcanza, pero
+en la plataforma el que queda afuera de esas 200 aparece como inexistente y se
+le crea una cuenta duplicada. Con el índice de `auth.users` es O(1). Va
+**solo para service_role**: expuesto a `authenticated` sería un oráculo para
+averiguar qué direcciones están registradas.
+
+**Nunca dejar el negocio sin dueño:** no se puede sacar ni degradar al último
+owner. Sin eso, un dueño puede sacarse a sí mismo y el local queda sin nadie
+que pueda administrarlo.
+
+**Verificado**: los 4 casos del RPC contra la base (service role lo usa, email
+inexistente da null, `authenticated` y `anon` rechazados) y los guards de la
+función en producción (sin token 401, con la anon key 401).
+
+**Qué probar** en la-nona-pato → Configuración → Equipo:
+1. Agregar a alguien con un email nuevo + contraseña → aparece en la lista.
+2. Agregar un email que YA tiene cuenta → el mensaje dice que entra con la
+   que ya usaba (y esa persona **debe poder seguir entrando** con su clave).
+3. Intentar sacarte a vos mismo siendo el único dueño → "No podés dejar el
+   negocio sin dueño".
+4. **Negativo:** entrar con una cuenta staff → la lista no carga (403).
 
 ### Páginas de info y QRs ✅ (18/ago) — las últimas capacidades apagadas
 

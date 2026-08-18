@@ -1,0 +1,127 @@
+/* Dico — animaciones de la capa 1.
+ *
+ * Todo es transform y opacity: son las dos propiedades que el browser anima
+ * sin recalcular layout. Dico puede estar en pantalla mientras el operador
+ * scrollea una lista de 40 productos desde un telefono.
+ *
+ * transform-box: fill-box hace que transform-origin sea relativo a CADA
+ * forma y no al viewBox entero. Sin eso, un scale(1.1) sobre un ojo lo manda
+ * a la otra punta del SVG.
+ */
+
+.dico * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ── Respiracion: el cuerpo boya y la cara llega tarde ──
+   Los 0,12s de diferencia son el follow-through: es lo que hace que se
+   sienta masa y no un PNG que se traslada. */
+.dico-cuerpo { animation: dico-boya 3.2s ease-in-out infinite; }
+.dico-cara   { animation: dico-boya-cara 3.2s ease-in-out infinite; }
+
+@keyframes dico-boya {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes dico-boya-cara {
+  0%, 100% { transform: translateY(0); }
+  54%      { transform: translateY(-6px); }
+}
+
+/* ── Parpadeo con scaleY, nunca con opacity ──
+   Un ojo que se desvanece parece un fantasma; un ojo que se aplasta parece
+   un parpado. */
+.dico-ojo { animation: dico-parpado 4.6s infinite; }
+@keyframes dico-parpado {
+  0%, 91%, 100% { transform: scaleY(1); }
+  93%, 95%      { transform: scaleY(0.08); }
+}
+
+/* El canto solo asoma cuando Dico gira. */
+.dico-canto { opacity: 0; transition: opacity .45s, transform .45s; }
+
+.dico-ceja { opacity: 0; transform: translateY(4px); transition: all .3s ease; }
+.dico-boca { transition: d .3s ease; }
+.dico-brazo { transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.dico-brazo--izq { transform-origin: 20% 20%; }
+.dico-brazo--der { transform-origin: 80% 20%; }
+
+/* ─────────────────────────── ESTADOS ─────────────────────────── */
+
+/* ESPERANDO — mira de un lado a otro, como buscando algo.
+   La cara viaja 3 veces lo que el cuerpo y se angosta al llegar al borde:
+   ese parallax + escorzo es lo que convierte un circulo en una esfera. */
+.dico--esperando .dico-cuerpo { animation: dico-mira-cuerpo 3.4s ease-in-out infinite; }
+.dico--esperando .dico-cara   { animation: dico-mira-cara 3.4s ease-in-out infinite; }
+.dico--esperando .dico-canto  { animation: dico-mira-canto 3.4s ease-in-out infinite; }
+
+@keyframes dico-mira-cuerpo {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  30%      { transform: translateX(-3px) rotate(-3deg); }
+  70%      { transform: translateX(3px) rotate(3deg); }
+}
+@keyframes dico-mira-cara {
+  0%, 100% { transform: translateX(0) scaleX(1); }
+  30%      { transform: translateX(-11px) scaleX(.9); }
+  70%      { transform: translateX(11px) scaleX(.9); }
+}
+@keyframes dico-mira-canto {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  30%      { opacity: 1; transform: translateX(2px) scaleX(-1); }
+  70%      { opacity: 1; transform: translateX(-2px); }
+}
+
+/* CONTENTO — un salto con squash & stretch.
+   Se aplasta ANTES de saltar (anticipacion) y otra vez al aterrizar. Si se
+   estira a lo alto, se angosta a lo ancho: el volumen se conserva o deja de
+   parecer materia. */
+.dico--contento .dico-cuerpo { animation: dico-salto .6s ease-in-out; }
+.dico--contento .dico-cara   { animation: dico-salto-cara .6s ease-in-out; }
+.dico--contento .dico-boca   { d: path("M46 74 Q60 90 74 74"); }
+.dico--contento .dico-brazo--der { transform: rotate(-135deg); }
+
+@keyframes dico-salto {
+  0%   { transform: scale(1, 1) translateY(0); }
+  18%  { transform: scale(1.1, .88) translateY(3px); }
+  55%  { transform: scale(.94, 1.08) translateY(-11px); }
+  80%  { transform: scale(1.05, .95) translateY(0); }
+  100% { transform: scale(1, 1) translateY(0); }
+}
+@keyframes dico-salto-cara {
+  0%   { transform: translateY(0); }
+  22%  { transform: translateY(4px); }
+  58%  { transform: translateY(-15px); }
+  84%  { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+
+/* PREOCUPADO — se encoge, aparecen las cejas y la boca se achica.
+   Sin lagrimas ni temblor: el que lo mira ya sabe que algo salio mal, no
+   hace falta dramatizarlo. */
+.dico--preocupado .dico-cuerpo { animation: none; transform: scale(.96); }
+.dico--preocupado .dico-cara   { animation: none; transform: translateY(3px) scale(.95); }
+.dico--preocupado .dico-boca   { d: path("M50 80 Q60 73 70 80"); }
+.dico--preocupado .dico-ceja   { opacity: 1; transform: translateY(0); }
+.dico--preocupado .dico-brazo  { transform: rotate(0) translateY(3px); }
+
+/* PREGUNTA — cabeza ladeada, una ceja arriba. Para confirmar algo que no
+   tiene vuelta atras. */
+.dico--pregunta .dico-cuerpo { animation: none; transform: rotate(-7deg); }
+.dico--pregunta .dico-cara   { animation: none; transform: rotate(-4deg) translateX(-2px); }
+.dico--pregunta .dico-boca   { d: path("M50 78 Q60 76 70 79"); }
+.dico--pregunta .dico-ceja--der { opacity: 1; transform: translateY(-3px); }
+
+/* ── Menos movimiento: quieto, no "mas suave" ──
+   Quien activa esta preferencia muchas veces lo hace por mareo o migrana.
+   Una animacion lenta sigue siendo una animacion. */
+@media (prefers-reduced-motion: reduce) {
+  .dico *,
+  .dico-cuerpo,
+  .dico-cara,
+  .dico-ojo,
+  .dico-canto {
+    animation: none !important;
+    transition: none !important;
+  }
+}

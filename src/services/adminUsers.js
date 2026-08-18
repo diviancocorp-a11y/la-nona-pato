@@ -1,12 +1,26 @@
 // src/services/adminUsers.js
-// Gestion de usuarios del admin via edge function admin-users (Sprint 1).
-// Solo owners pueden operar (la function valida el JWT contra admin_users).
+// Gestion del equipo que entra al panel.
+//
+// Dos funciones distintas, no una con ifs: en el legacy los permisos viven en
+// `admin_users` (una lista global del negocio); en el edificio, en
+// `tenant_members` (una fila por persona POR NEGOCIO). La misma persona puede
+// ser duena de un local y staff de otro, y eso el modelo viejo no lo expresa.
 import { supabase } from '../lib/supabase';
+import business from '@business';
+import { resolveTenantSlug } from '../lib/activeTenant';
+
+const esPlataforma = () => business?.platform === true;
 
 async function call(action, payload = {}) {
-  const { data, error } = await supabase.functions.invoke('admin-users', {
-    body: { action, ...payload },
-  });
+  const cuerpo = { action, ...payload };
+  let fn = 'admin-users';
+  if (esPlataforma()) {
+    fn = 'tenant-users';
+    const slug = await resolveTenantSlug();
+    if (!slug) return { ok: false, error: 'No se pudo identificar el negocio' };
+    cuerpo.tenant_slug = slug;
+  }
+  const { data, error } = await supabase.functions.invoke(fn, { body: cuerpo });
   if (error) {
     // FunctionsHttpError: el body real viene en error.context
     let message = error.message || 'Error de conexion';
@@ -27,7 +41,11 @@ export async function listAdminUsers() {
   return call('list');
 }
 
-/** Crea (o reusa) un usuario y le da acceso al admin con el rol indicado. */
+/**
+ * Da acceso al panel. Si el email YA tiene cuenta en la plataforma se lo suma
+ * al equipo SIN tocarle la contrasena — entra con la que ya usaba. La
+ * respuesta trae `reused: true` y un mensaje para avisarlo.
+ */
 export async function createAdminUser(email, password, role = 'staff') {
   return call('create', { email, password, role });
 }

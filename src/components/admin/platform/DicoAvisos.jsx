@@ -4,15 +4,25 @@
  * Presentacion pura: toda la logica vive en `modules/dico/reglas.js`, que son
  * funciones puras y testeables sin React ni base.
  *
- * SIN el personaje todavia: el arte de Dico no esta en el repo como asset. El
- * lugar esta reservado (`.dico-cara`) para que entre sin tocar el layout — no
- * quise dibujar un placeholder que despues haya que buscar y sacar.
+ * El personaje entro el 18/ago: `DicoCara` en SVG (capa 1 del PLAN-DICO). La
+ * expresion sale del nivel del aviso mas grave — si hay algo roto Dico esta
+ * preocupado, si solo hay sugerencias esta esperando. No es decoracion: es la
+ * misma informacion que el color, para el que no distingue el naranja del
+ * verde.
  *
  * Se puede cerrar, y eso importa: un panel que te reta y no se puede callar
  * se deja de mirar. Vuelve solo cuando cambia lo que tiene para decir.
  */
 import { useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
+import DicoCara from '../../dico/DicoCara';
+
+// Que cara pone segun lo mas grave que tenga para decir.
+const CARA_POR_NIVEL = {
+  alerta: 'preocupado',
+  aviso: 'pregunta',
+  sugerencia: 'esperando',
+};
 
 const COLOR = {
   alerta: { fg: 'var(--ag-c-orders)', bg: 'var(--ag-c-orders-soft)' },
@@ -33,11 +43,11 @@ export default function DicoAvisos({ onIr, ...datos }) {
     <div style={{ padding: '12px 16px 0' }}>
       <div className="ag-card" style={{ padding: '12px 14px', borderTop: `3px solid ${COLOR[avisos[0].nivel].fg}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          {/* Reservado para la cara de Dico */}
-          <div className="dico-cara" aria-hidden="true" style={{
-            width: 26, height: 26, borderRadius: 999, flexShrink: 0,
-            background: 'var(--ag-bg-soft)', border: '1px solid var(--ag-line)',
-          }} />
+          <DicoCara
+            size={30}
+            estado={CARA_POR_NIVEL[avisos[0].nivel] || 'idle'}
+            title={`Dico: ${avisos.length} ${avisos.length === 1 ? 'cosa para mirar' : 'cosas para mirar'}`}
+          />
           <div style={{ flex: 1, fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ag-ink-3)' }}>
             Dico
           </div>

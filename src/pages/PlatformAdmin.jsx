@@ -63,6 +63,9 @@ const FinanzasPanel = lazy(() => import('../components/admin/platform/FinanzasPa
 // Ventas: SalesView + MonthSummary del legacy (Etapa 4). Lazy: MonthSummary
 // arrastra los analisis USAR y el exportador de informes.
 const VentasPanel = lazy(() => import('../components/admin/platform/VentasPanel'));
+// Equipo: pantalla del legacy tal cual. El service bifurca a tenant-users,
+// que scopea todo al negocio de este host.
+const Users = lazy(() => import('../components/admin/Users'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -541,6 +544,15 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'usuarios' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <Users
+                showToast={msg}
+                onBack={() => setTab('config')}
+                currentUserId={session?.user?.id}
+              />
+            </Suspense>
+          )}
           {tab === 'config' && (
             sett
               ? (
@@ -551,6 +563,7 @@ export default function PlatformAdmin() {
                     showToast={msg}
                     onSave={guardarSettings}
                     capacidades={CAPACIDADES_EDIFICIO}
+                    onAbrirUsuarios={() => setTab('usuarios')}
                     onBack={() => setTab('products')}
                   />
                 </Suspense>

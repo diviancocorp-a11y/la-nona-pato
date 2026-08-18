@@ -80,6 +80,9 @@ function Settings({
   settings, setSettings, showToast, section = null, onBack,
   onSave = updateSettings,
   capacidades,
+  // El edificio abre la gestion del equipo desde aca; el admin legacy la
+  // tiene en su menu ☰, asi que por defecto esta fila NO se muestra.
+  onAbrirUsuarios = null,
 }) {
   const cap = { ...CAPACIDADES_COMPLETAS, ...(capacidades || {}) };
   const confirmSlide = useConfirm();
@@ -270,6 +273,13 @@ function Settings({
                 }} />
               }
             />
+            {onAbrirUsuarios && <SettingsRow
+              state="crm"
+              icon={<Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />}
+              label="Equipo"
+              hint="Quién más puede entrar al panel y con qué permisos"
+              onClick={onAbrirUsuarios}
+            />}
             {cap.riesgo && <SettingsRow
               danger
               icon={<Icon d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />}

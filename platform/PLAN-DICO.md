@@ -26,7 +26,35 @@ el cuerpo sin piernas.
 El orden no es de importancia: es de **costo y riesgo**. Las dos primeras no
 usan IA y son las que dan casi todo el valor percibido.
 
-### Capa 1 — Dico como cara de la app
+### Capa 1 — Dico como cara de la app ✅ PRIMERA VERSIÓN (18/ago)
+
+`src/components/dico/DicoCara.jsx` + `dico.css`. Cinco estados: `idle`,
+`esperando`, `contento`, `preocupado`, `pregunta`. Ya está enchufado en
+`DicoAvisos`: la expresión sale del nivel del aviso más grave, así que **es la
+misma información que el color** para quien no distingue el naranja del verde.
+
+**SVG y no video, por dos razones concretas:** los mp4 **no tienen canal
+alfa** (el "fondo transparente" del prompt sale blanco — haría falta WebM/VP9
+para Chrome *y* HEVC para Safari, o sea dos codificaciones de cada clip), y 13
+videos pesan más que toda la app, que se usa desde el teléfono de una cocina.
+Esto pesa kilobytes y cambia de estado sin cargar nada.
+
+**Sin piernas**, como decía el plan: adentro Dico vive a 30px al lado de un
+aviso, y a ese tamaño las piernas son dos palitos ilegibles. La versión con
+piernas y zapatos (la imagen que pasó Ricky) queda para marketing.
+
+Respeta `prefers-reduced-motion`: quien pidió menos movimiento ve a Dico
+**quieto**, no una animación más lenta — esa preferencia suele activarse por
+mareo o migraña.
+
+**Pendiente de mirada humana:** no pude verificarlo visualmente (el pane del
+navegador no renderiza archivos locales). El banco de pruebas con los cinco
+estados quedó en el scratchpad de la sesión; el ajuste fino de las curvas sale
+de verlo, no de leerlo.
+
+<details>
+<summary>El razonamiento original</summary>
+
 
 Loading, estados vacíos, errores, confirmaciones, éxito. Cero IA, cero costo
 por uso, no depende de ninguna etapa del ERP.
@@ -44,6 +72,8 @@ app ya tiene hoy:
 
 Es la misma información con otra sensación. **Se puede hacer en cualquier
 momento y no bloquea nada.**
+
+</details>
 
 ### Capa 2 — Dico que suelta datos, sin LLM ✅ PRIMERA VERSIÓN (16/ago)
 
@@ -63,8 +93,8 @@ Tres cosas que quedaron decididas y conviene no reabrir:
 - **Sin receta no opina del margen.** Con costo 0 el margen daría 100% y todo
   parecería rentabilísimo — la misma decisión que ya se tomó en el costeo.
 
-Falta: el arte. El lugar está reservado (`.dico-cara` en `DicoAvisos.jsx`) y
-no se puso un placeholder para no tener que ir a buscarlo después.
+El arte entró el 18/ago: el hueco reservado lo ocupa `DicoCara` (capa 1),
+con la expresión atada al nivel del aviso más grave.
 
 #### El truco 2.5D (decidido 16/ago, arte en manos de Ricky)
 
