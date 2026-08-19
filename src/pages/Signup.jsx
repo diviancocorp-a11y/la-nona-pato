@@ -11,12 +11,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { slugify, validateSlug } from '../lib/slugify';
 import { slugDisponible, registrarNegocio } from '../services/signup';
+import { modosDisponibles, canalesSugeridos } from '../modules/registry';
+import { paisesDisponibles, monedaDe, zonaDe, PAIS_POR_DEFECTO } from '../modules/paises';
 
 const VERTICALES = [
   { id: 'gastro', emoji: '🍔', nombre: 'Gastronomía', detalle: 'Carta, pedidos, recetas' },
   { id: 'barber', emoji: '✂️', nombre: 'Barbería', detalle: 'Turnos y servicios' },
   { id: 'retail', emoji: '👕', nombre: 'Indumentaria', detalle: 'Talles, colores y stock' },
 ];
+
+// Los canales NO se preguntan en el alta a proposito. Son diez y esta pantalla
+// promete "un minuto": cada campo mas es gente que la abandona. Se derivan de
+// rubro + modo (canalesSugeridos) y se editan despues en configuracion, que es
+// donde el dueño ya sabe lo que necesita. Modo y pais si se preguntan porque
+// cambian que modulos existen y con que moneda trabaja todo el panel.
+const MODOS = modosDisponibles();
+const PAISES = paisesDisponibles();
 
 const C = {
   bg: '#0f0e0d', card: 'rgba(255,255,255,0.05)', line: 'rgba(255,255,255,0.12)',
@@ -45,6 +55,8 @@ export default function Signup() {
   const [slug, setSlug] = useState('');
   const [slugTocado, setSlugTocado] = useState(false);
   const [vertical, setVertical] = useState('gastro');
+  const [modo, setModo] = useState('fisico');
+  const [country, setCountry] = useState(PAIS_POR_DEFECTO);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -75,6 +87,9 @@ export default function Signup() {
     return () => clearTimeout(debounce.current);
   }, [slug, validacionLocal.ok]);
 
+  // Para avisar en el pais donde todavia no se factura, en vez de prometerlo.
+  const paisElegido = PAISES.find((p) => p.id === country);
+
   const puedeEnviar =
     bizName.trim().length >= 2 &&
     validacionLocal.ok && dispo === true &&
@@ -86,11 +101,18 @@ export default function Signup() {
     e.preventDefault();
     if (!puedeEnviar) return;
     setEnviando(true); setError(null);
-    const r = await registrarNegocio({ email, password, bizName, vertical, slug });
+    const r = await registrarNegocio({
+      email, password, bizName, vertical, slug,
+      operationMode: modo,
+      country,
+      currency: monedaDe(country),
+      timezone: zonaDe(country),
+      channels: canalesSugeridos(vertical, modo),
+    });
     setEnviando(false);
     if (!r.ok) { setError(r.error); return; }
     setListo(true);
-  }, [puedeEnviar, email, password, bizName, vertical, slug]);
+  }, [puedeEnviar, email, password, bizName, vertical, slug, modo, country]);
 
   const wrap = {
     minHeight: '100dvh', background: C.bg, color: C.tx,
@@ -157,6 +179,49 @@ export default function Signup() {
               );
             })}
           </div>
+        </Campo>
+
+        <Campo
+          label="¿Cómo atendés?"
+          hint="Define si vas a manejar mesas, caja y gente en el local."
+        >
+          <div style={{ display: 'flex', gap: 8 }}>
+            {MODOS.map((m) => {
+              const activo = modo === m.id;
+              return (
+                <button
+                  type="button" key={m.id} onClick={() => setModo(m.id)}
+                  style={{
+                    flex: 1, padding: '11px 8px', borderRadius: 11, cursor: 'pointer',
+                    background: activo ? 'rgba(232,185,71,0.14)' : C.card,
+                    border: `1.5px solid ${activo ? C.ac : C.line}`,
+                    color: C.tx, textAlign: 'left', font: 'inherit',
+                  }}
+                >
+                  <div style={{ fontSize: 12.5, fontWeight: 650 }}>{m.label}</div>
+                  <div style={{ fontSize: 11, color: C.t2, marginTop: 3, lineHeight: 1.35 }}>{m.hint}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Campo>
+
+        <Campo
+          label="¿En qué país?"
+          hint={paisElegido && !paisElegido.factura
+            ? `Podés operar y cobrar. La facturación electrónica todavía no está disponible en ${paisElegido.label}.`
+            : 'Define tu moneda, tu huso horario y cómo se factura.'}
+        >
+          <select
+            style={{ ...inputStyle, appearance: 'none' }}
+            value={country} onChange={(e) => setCountry(e.target.value)}
+          >
+            {PAISES.map((p) => (
+              <option key={p.id} value={p.id} style={{ background: C.bg, color: C.tx }}>
+                {p.label} — {p.currency}
+              </option>
+            ))}
+          </select>
         </Campo>
 
         <Campo label="La dirección de tu local">
