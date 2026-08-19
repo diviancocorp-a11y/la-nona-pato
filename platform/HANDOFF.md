@@ -8,6 +8,228 @@
 
 ---
 
+## 19/ago/2026 — EL LOCAL FISICO: ETAPAS 0, 6a-6e (migraciones 0039-0048)
+
+Sesion larga: 11 commits, **10 migraciones aplicadas**, 663 tests. El edificio
+paso de "ERP a distancia" a tener sucursales, salon, caja, propinas y personal.
+
+> **Doc de la etapa: `platform/PLAN-LOCAL-Y-ROLES.md` (v2).** Ahi esta el
+> criterio que ordena todo y el registro de que se acepto y que se recorto de
+> la revision contra Square/Toast/Fresha/Shopify/7shifts. Leerlo antes de
+> seguir con 6f o 6g.
+
+### ATENCION: la base esta ADELANTADA respecto de produccion
+
+| | Donde esta |
+|---|---|
+| Base (`wwwzdgprsooyjgkuyoav`) | migracion **0048**, todo aplicado |
+| Produccion (Vercel) | commit **483892c**, o sea hasta 6b |
+| Rama `platform/runtime-tenant` | commit **a6cf0d1** (6e) |
+
+**6c, 6d y 6e NO estan en produccion.** Son 7 commits sin deployar. No rompe
+nada —las migraciones son aditivas y ninguna pantalla vieja usa las tablas
+nuevas— pero lo que se ve en divianco.app no es lo que dice el repo.
+
+Para deployar: `npm run deploy` (encadena Vercel + edge functions).
+
+### El criterio que ordeno la etapa
+
+**Barato ahora y caro despues -> entra ya, aunque no tenga pantalla.** Todo lo
+que cambia la FORMA del dato (branch_id, ledger, business_date, audit log,
+claves de idempotencia) se migro ahora; migrarlo con dos anios de operacion
+cargada es reescribir. Lo que cuesta lo mismo siempre (pantallas, algoritmos)
+espera al cliente que lo pida.
+
+Ese criterio salio de discutir una revision externa que proponia agregar doce
+cosas mas. Cada una era correcta por separado; sumadas eran mas trabajo que
+todo lo construido hasta hoy, con cero clientes usando el edificio.
+
+### Hecho
+
+**Etapa 0 — idempotencia (0040) y audit log (0043).** El diagnostico previo
+decia "falta idempotencia". Verificado contra el codigo: NO era eso.
+`complete_order`, `signup_tenant` y `mp-webhook` ya la tenian y bien. Faltaba
+en `submit-order`, `register_waste` y `register_purchase`. La clave se ata al
+CONTENIDO de la operacion: generarla por llamada no sirve (dos clicks = dos
+claves) y guardarla por sesion tampoco (la segunda compra del dia devolveria
+la primera). Las firmas viejas de las RPC se eliminaron: si quedaran, una
+llamada sin clave las elegiria por sobrecarga y perderia la garantia en
+silencio.
+
+El audit log es un trigger generico (no uno por tabla, que se desincroniza) y
+guarda el DIFF `{columna: {antes, despues}}`, no la fila: una fila de settings
+tiene 50 columnas y guardarla entera hace el log ilegible.
+
+**6a — los ejes del alta (0039).** `operation_mode` (fisico/virtual/hibrido),
+`channels[]`, `country`, `currency`, `timezone`. Modo y canales son DOS cosas
+porque los canales son varios a la vez; meterlos en uno obligaria a inventar
+`fisico_con_delivery`. El pais es el punto de entrada del adaptador fiscal:
+solo AR tiene integracion y la UI lo dice en vez de prometerlo.
+
+**6b — sucursales (0041) y el libro del stock (0042).** `branch_id` en lo que
+ocurre EN un lugar, no en lo que es del negocio: un cliente que compra en dos
+locales es un cliente, no dos. `business_date` calcula el dia operativo en la
+zona del local y con hora de corte configurable.
+
+El stock dejo de ser un numero: `inventory_movements` + `inventory_balances`
+mantenido por trigger. El libro es de SOLO AGREGAR —se corrige con asiento
+contrario— porque si se pudiera editar, el saldo cacheado quedaria mintiendo.
+`ingredients.stock` NO se elimino: corre en paralelo hasta compararlo con
+datos reales. Cambiar la fuente de verdad del stock a ciegas es el error caro.
+
+**0044 — ninguna operacion nueva queda sin sucursal.** Con un trigger y no
+tocando cada escritor: son media docena y crecen.
+
+**6c — recursos y reservas (0045).** `appointments` ya tenia desde 0005 un
+EXCLUDE que impide turnos solapados del mismo barbero; se agrego el equivalente
+por recurso y se reuso todo lo demas. `staff_id` paso a nullable (una reserva
+de mesa no tiene barbero) con un CHECK que exige al menos uno de los dos. El
+status paso a flujo real: `booked -> confirmed -> arrived -> in_service ->
+done`. Las senias se modelaron aunque el cobro llegue con MercadoPago. Waitlist
+como entidad: `status='left'` es demanda perdida.
+
+`MapaDeMesas.jsx`: coordenadas en PORCENTAJE (el mismo plano en el monitor y
+en el telefono), dos modos sobre el mismo plano y **arrastre apagado por
+defecto** — un toque torcido no puede mover una mesa en hora pico. Dibujar el
+salon es opcional: lo no ubicado se reserva igual.
+
+**6d — caja, comanda y Dicotip (0046, 0047).** `cash_sessions` existia desde
+0004 sin usarse. Se agrego el indice unico de UNA caja abierta por sucursal, y
+el esperado suma SOLO efectivo: lo de tarjeta no esta en el cajon y sumarlo
+haria que el arqueo diera mal siempre.
+
+No hay estado "cuenta abierta" (`orders.status` ya tiene `active`) ni tabla
+para dividir la cuenta (`payments` ya soporta varios pagos por pedido).
+
+Propinas como DOMINIO, no como campo: `employee_direct` (Dicotip, no pasa por
+la caja), `employee_pool`, `merchant_collected`. Sin distinguirlos, el local
+declara propinas que no recibio o el mozo cobra dos veces. `get_tip_target` es
+publica y por SLUG, y devuelve el alias del mozo y NADA mas de el.
+
+**6e — personal (0048).** Turnos con EXCLUDE por persona, disponibilidad
+declarada por el EMPLEADO, ausencias, fichaje y costo laboral.
+
+**La biometria no entra nunca.** WebAuthn guarda clave publica y contador; la
+huella no sale del telefono. Geocerca y selfie quedaron como senial opcional:
+acumular ubicacion e imagen de cada empleado todos los dias para resolver "que
+no fiche un companiero" es desproporcionado cuando la passkey ya lo resuelve.
+
+`labor_cost_vs_sales` cruza horas FICHADAS (no programadas: lo programado es
+una intencion) por costo/hora contra las ventas del dia operativo.
+
+**Reclasificacion del checker de columnas.** Los 4 avisos eran tres problemas
+distintos: `activeTenant.js` mal clasificado; `account.js` e `infoPages.js`
+son DUALES (bifurcan por `business.platform`) y el checker no lo contemplaba
+—se agrego `DUAL_PATHS`, validados contra la union—; y el snapshot LEGACY
+estaba viejo (5/jun, sin `waste_log`, `info_pages`, `push_subscriptions`).
+
+### Verificado
+
+**En produccion, con curl:** el checkout con la misma clave dos veces devuelve
+el MISMO orderId con `deduplicated:true` y un solo pedido en la base. El alta
+en divianco.app/registro muestra los 7 campos, 3 modos y 9 paises.
+
+**Contra la base, con datos reales y limpieza** (~60 casos): merma y compra
+idempotentes; el libro contesta "purchase 20, waste -3, adjustment -2 = 15";
+rechaza update y delete; doble reserva de la misma mesa rechazada por el
+EXCLUDE; `available_resources` no ofrece la mesa de 8 para 2 personas; arqueo
+con faltante guarda -200 y cerrar de nuevo no lo pisa; la propina directa no
+cambia el esperado en caja; turno solapado rechazado; jornada 20:00-04:00 da 8
+horas y el MISMO dia operativo; costo laboral 12%; `staff_credentials` sin
+ninguna columna biometrica (verificado contra `information_schema`).
+
+**663 tests, build, 4 checks del pre-commit y lint en verde.**
+
+### Tres bugs que aparecieron probando (y no antes)
+
+1. **La clave del libro no incluia la cosa movida.** Una compra de 3 insumos
+   con una sola clave chocaba en la segunda linea y el guard devolvia el
+   movimiento de la primera: **la compra entraba INCOMPLETA y sin error**.
+2. **Las escrituras nuevas quedaban sin `branch_id`.** El backfill de 0041
+   llenaba lo historico pero no lo nuevo. Se detecto probando el checkout
+   contra produccion. Arreglado en 0044.
+3. **El CHECK del fichaje era `>` estricto.** Con una salida en el mismo
+   instante que la entrada, el empleado quedaba con el fichaje ABIERTO PARA
+   SIEMPRE, y una jornada abierta sigue sumando horas. Pasa a `>=`.
+
+Los tres se encontraron ejecutando, no leyendo. Es el argumento a favor de
+probar cada migracion contra la base antes de commitear.
+
+### Lo que quedo A MEDIAS (decirlo con esas palabras)
+
+- **No se puede crear una mesa desde la UI.** El boton "Nueva mesa" muestra un
+  toast que dice que llega con el editor. Las 5 de `barberia-demo` se cargaron
+  por SQL. Falta el formulario de alta de recursos.
+- **No hay pantalla de cobro.** `register_payment` y `order_balance` existen en
+  `platformCaja.js` pero nadie los llama todavia: la caja abre, arquea y
+  cierra, pero el cobro sigue sin UI.
+- **No hay pantalla para armar la semana.** `PersonalPanel` acepta un
+  `onVerSemana` que el panel no le pasa. Se puede fichar y ver el costo, no
+  programar turnos.
+- **Dicotip no tiene ni QR impreso ni pantalla publica.** Las RPC
+  (`get_tip_target`, `submit_service_review`, `register_tip`) estan probadas
+  contra la base, pero falta la pagina que abre el cliente al escanear.
+- **`agenda` y `variants` siguen en `implementado: false`.** Sus tablas estan
+  desde 0005 y 0007; falta la UI. Un modulo en la nav sin pantalla es peor que
+  uno ausente.
+- **Ninguna pantalla de 6c/6d/6e se vio renderizada en un navegador.** El panel
+  pide sesion y el asistente no la tiene: la verificacion fue por tests de
+  render (34 casos). Si algo se ve mal, hay que mirarlo.
+
+### Pendiente inmediato (en orden)
+
+1. **Deployar.** `npm run deploy`. Hay 7 commits sin publicar.
+2. **Cerrar los a-medias de arriba**, empezando por el alta de mesas y la
+   pantalla de cobro: sin esas dos, 6c y 6d no se pueden usar de verdad.
+3. **6f — vistas por rol.** El esquema completo (7 roles, que ve cada uno,
+   donde abre) esta en la seccion 8 de `PLAN-LOCAL-Y-ROLES.md`. Incluye ampliar
+   `tenant_members.role` y pasar a una fila por (tenant, usuario, sucursal) con
+   `roles[]`.
+4. **6g — opportunity engine.** Las reglas de Dico hoy son 9 y **todas son de
+   higiene** ("te falta el precio"). La segunda familia —stock muerto, demanda
+   perdida, clientes fuera de frecuencia, ocupacion baja— esta desbloqueada por
+   los datos que dejo esta sesion.
+5. **MercadoPago multi-tenant.** Sigue siendo lo mas grande que falta y lo que
+   mas plata mueve. Bloquea las senias de reserva y el pre-cobro anti no-show.
+
+### Bloqueado por Ricky
+
+- **Deployar** (ver arriba). El asistente no puede: el clasificador de permisos
+  bloquea el comando de Vercel.
+- **El encuadre legal de la propina electronica.** El modelo contempla
+  distribucion y settlement, pero la regulacion 2024 + LCT es cumplimiento, no
+  arquitectura, y **no esta verificada**. Antes de que un mozo cobre por
+  Dicotip, tiene que mirarlo un contador.
+- **Verificar que "Dicotip" este libre** como marca y dominio. Va impreso en
+  cada ticket. (El nombre anterior, "Tipco", ya estaba tomado.)
+- **Probar el salon, la caja y el fichaje con datos reales.** Es la leccion que
+  se repite: la Etapa 3 dio 4 correcciones al probarla, y esta sesion dio 3
+  bugs mas al ejecutar contra la base. Nada de 6c-6e lo uso una persona.
+- **Push sigue sin probarse de punta a punta** (`push_subscriptions` en cero,
+  pendiente desde el 18/ago).
+
+### Trampas nuevas para el que siga
+
+- **El snapshot legacy no se puede regenerar**: los 3 proyectos estan pausados.
+  Si falta una tabla, las columnas salen de `supabase/migrations/`.
+- **Hay DOS `submit-order`** con codigo distinto: `supabase/functions/`
+  (legacy) y `platform/functions/` (edificio). `scripts/deploy-functions.mjs`
+  apunta al legacy; el del edificio es `platform/scripts/deploy-functions.mjs`,
+  que arma un workdir temporal porque el CLI busca en `supabase/functions/`.
+  Usar el equivocado sube el codigo legacy al edificio **sin fallar**.
+- **La flakiness de los tests existe y se manifesto**: el pre-commit fallo una
+  vez en los smoke tests (`utils.test.js` + `schemas.test.js`) y paso a la
+  siguiente sin cambiar nada. Tambien habia 4 `async` sin `await` en
+  `mapaDeMesas.test.jsx` que daban timeouts — se sacaron, pero el fallo del
+  smoke es otro caso y sigue sin identificar.
+- **Al probar RPC con el MCP de Supabase** hay que simular la sesion con
+  `set_config('request.jwt.claims', ...)`: el MCP corre sin `auth.uid()` y
+  todos los guards de membresia cortan. Y **no usar `raise` para revertir**: se
+  lleva puesta la tabla temporal de resultados y el test devuelve vacio. Hay
+  que limpiar con `delete` explicito.
+
+---
+
 ## 18/ago/2026 — EL ERP QUEDO COMPLETO Y LA PERIFERIA CERRADA
 
 Sesion larga: 12 commits, migraciones **0032 a 0038**, 3 edge functions.
