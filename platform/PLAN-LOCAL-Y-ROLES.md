@@ -453,13 +453,24 @@ bloquea (ledger, scope, canales).
 
 ## 8. Etapas
 
-**0 — Transversal.** Idempotencia donde falta, `business_date`, audit log.
+> **Estado al 19/ago/2026:** Etapa 0, 6a y 6b **hechas y aplicadas**
+> (migraciones 0039-0043). Sigue 6c.
+>
+> Lo que quedo pendiente a proposito: `ingredients.stock` se mantiene y se
+> escribe igual que antes — el libro corre en paralelo hasta que se compare
+> contra el numero viejo con datos reales. Cambiar la fuente de verdad del
+> stock a ciegas es el error caro.
 
-**6a — Core contextual.** `vertical`, `country`, `currency`, `operation_mode`,
+
+**0 — Transversal. HECHA (0040, 0043).** Idempotencia homogeneizada en
+`submit-order`, `register_waste` y `register_purchase`; `business_date`
+por sucursal; audit log con trigger generico.
+
+**6a — Core contextual. HECHA (0039).** `vertical`, `country`, `currency`, `operation_mode`,
 `channels[]`. Registry con las cuatro dimensiones. Alta en 3 pasos. Constantes
 por pais; solo AR con fiscal.
 
-**6b — Sucursales e inventario.** `branches` (con `timezone`), `branch_id`
+**6b — Sucursales e inventario. HECHA (0041, 0042).** `branches` (con `timezone`), `branch_id`
 donde corresponde, y la transicion del stock a `inventory_movement` +
 `inventory_balance`.
 
