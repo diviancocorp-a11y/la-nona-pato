@@ -12,6 +12,12 @@
       "notes",
       "created_at"
     ],
+    "admin_users": [
+      "user_id",
+      "role",
+      "created_at",
+      "added_by"
+    ],
     "category_groups": [
       "id",
       "name",
@@ -89,6 +95,16 @@
       "recipe_id",
       "created_at"
     ],
+    "info_pages": [
+      "id",
+      "slug",
+      "title",
+      "blocks",
+      "requires_age_gate",
+      "visible",
+      "created_at",
+      "updated_at"
+    ],
     "ingredients": [
       "id",
       "name",
@@ -162,6 +178,18 @@
       "created_at",
       "updated_at",
       "nickname"
+    ],
+    "push_subscriptions": [
+      "id",
+      "user_id",
+      "phone",
+      "role",
+      "endpoint",
+      "keys_p256dh",
+      "keys_auth",
+      "user_agent",
+      "created_at",
+      "last_seen_at"
     ],
     "recipe_ingredients": [
       "recipe_id",
@@ -252,11 +280,14 @@
       "coupon_default_pct",
       "birthday_coupon_pct"
     ],
-    "admin_users": [
-      "user_id",
-      "role",
-      "created_at",
-      "added_by"
+    "waste_log": [
+      "id",
+      "ingredient_id",
+      "qty",
+      "reason",
+      "note",
+      "date",
+      "created_at"
     ]
   }
 }

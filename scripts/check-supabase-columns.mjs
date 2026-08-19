@@ -18,7 +18,9 @@
 // consulta en funcion del schema equivocado.
 //
 // Que archivo se valida contra cual lo decide PLATFORM_PATHS. Si agregas un
-// archivo que le habla al edificio, sumalo ahi.
+// archivo que le habla al edificio, sumalo ahi. Y hay un tercer caso: los
+// archivos DUALES, que bifurcan por `business.platform` y tienen los dos
+// caminos escritos — esos van en DUAL_PATHS y se validan contra la union.
 //
 // Skip por archivo: // @skip-columns-check
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -27,6 +29,7 @@ import { join, extname } from 'node:path';
 /* ── Rutas que le hablan al EDIFICIO. Todo lo demas se valida contra el
       legacy. Prefijos: terminar en "/" marca un directorio entero. ── */
 const PLATFORM_PATHS = [
+  'src/lib/activeTenant.js',
   'src/services/platformAdmin.js',
   'src/services/platformSettings.js',
   'src/services/platformInventory.js',
@@ -42,6 +45,23 @@ const PLATFORM_PATHS = [
   'src/hooks/usePlatformTenant.js',
   'src/pages/PlatformAdmin.jsx',
   'src/components/admin/platform/',
+];
+
+/* ── Archivos que le hablan a las DOS bases. No es un error de clasificacion:
+      bifurcan por `business.platform` y tienen los dos caminos escritos, uno
+      para el catalogo del edificio y otro para el legacy.
+
+      Mandarlos a PLATFORM_PATHS haria fallar su rama legacy, y dejarlos en
+      legacy hace fallar la del edificio. Se validan contra la UNION: una
+      columna que exista en cualquiera de los dos pasa.
+
+      Es menos estricto a proposito. La alternativa era @skip-columns-check,
+      que saltea el archivo ENTERO y no valida nada — y un archivo que bifurca
+      es justamente donde mas facil se cuela una columna del schema
+      equivocado. ── */
+const DUAL_PATHS = [
+  'src/services/account.js',
+  'src/services/infoPages.js',
 ];
 
 function loadSchema(file, label) {
@@ -60,11 +80,30 @@ if (!LEGACY && !PLATFORM) process.exit(0);
 
 const norm = (p) => p.replace(/\\/g, '/');
 
+function unirTablas(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const out = {};
+  for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    out[t] = [...new Set([...(a[t] || []), ...(b[t] || [])])];
+  }
+  return out;
+}
+
 function schemaFor(file) {
   const f = norm(file);
-  const isPlatform = PLATFORM_PATHS.some(p =>
-    p.endsWith('/') ? f.includes(p) : f.endsWith(p)
-  );
+  const coincide = (p) => (p.endsWith('/') ? f.includes(p) : f.endsWith(p));
+
+  if (DUAL_PATHS.some(coincide)) {
+    return {
+      tables: unirTablas(PLATFORM, LEGACY),
+      label: 'edificio+legacy',
+      snapshot: 'los dos snapshots',
+      dual: true,
+    };
+  }
+
+  const isPlatform = PLATFORM_PATHS.some(coincide);
   return isPlatform
     ? { tables: PLATFORM, label: 'edificio', snapshot: 'scripts/platform-schema.json' }
     : { tables: LEGACY, label: 'legacy', snapshot: 'scripts/supabase-schema.json' };
@@ -146,7 +185,9 @@ for (const file of files) {
   if (!schema.tables) continue; // snapshot de ese lado no disponible
 
   const tableNames = new Set(Object.keys(schema.tables));
-  const cruzadas = schema.label === 'legacy' ? SOLO_PLATFORM : SOLO_LEGACY;
+  const cruzadas = schema.dual
+    ? new Set()
+    : (schema.label === 'legacy' ? SOLO_PLATFORM : SOLO_LEGACY);
   const constantes = constantesDe(src);
 
   let match;
