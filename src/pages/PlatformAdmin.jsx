@@ -39,6 +39,10 @@ import { fetchDefaultBranch } from '../services/platformInventoryLedger';
 import {
   fetchTurnoAbierto, fetchTurnos, abrirTurno, cerrarTurno, esperadoEnCaja,
 } from '../services/platformCaja';
+import {
+  fetchPersonal, fetchFichajesAbiertos, ficharEntrada, ficharSalida,
+  fetchCostoLaboral,
+} from '../services/platformPersonal';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -78,6 +82,8 @@ const Users = lazy(() => import('../components/admin/Users'));
 const MapaDeMesas = lazy(() => import('../components/admin/platform/MapaDeMesas'));
 // Caja: el turno con su arqueo. Lazy por lo mismo que el salon.
 const CajaPanel = lazy(() => import('../components/admin/platform/CajaPanel'));
+// Equipo: quien esta trabajando y cuanto cuesta el turno (6e).
+const PersonalPanel = lazy(() => import('../components/admin/platform/PersonalPanel'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -106,6 +112,7 @@ const ICONOS = {
   ventas: ChartIcon,
   mesas: MesasIcon,
   caja: CajaIcon,
+  personal: PersonalIcon,
 };
 
 function Centered({ children }) {
@@ -135,6 +142,9 @@ export default function PlatformAdmin() {
   const [turno, setTurno] = useState(null);
   const [turnosPrevios, setTurnosPrevios] = useState([]);
   const [esperado, setEsperado] = useState(0);
+  const [equipo, setEquipo] = useState([]);
+  const [fichajes, setFichajes] = useState([]);
+  const [costoLaboral, setCostoLaboral] = useState(null);
   const [reservasHoy, setReservasHoy] = useState([]);
   const [utilizacion, setUtilizacion] = useState(null);
 
@@ -275,6 +285,31 @@ export default function PlatformAdmin() {
     setEsperado(abierto ? await esperadoEnCaja(abierto.id) : 0);
   }, [tenantId]);
 
+  /* ── Equipo (6e) ── */
+  const loadEquipo = useCallback(async () => {
+    if (!tenantId) return;
+    const b = await fetchDefaultBranch(tenantId);
+    const [gente, abiertos] = await Promise.all([
+      fetchPersonal(tenantId, b?.id),
+      fetchFichajesAbiertos(tenantId, b?.id),
+    ]);
+    setEquipo(gente);
+    setFichajes(abiertos);
+    // El dia operativo sale de la sucursal, no de la fecha del navegador: un
+    // turno que cruza medianoche pertenece a la jornada anterior (0041).
+    setCostoLaboral(b ? await fetchCostoLaboral(b.id, new Date().toISOString().slice(0, 10)) : null);
+  }, [tenantId]);
+
+  const onFichar = useCallback(async (staffId, estaAdentro) => {
+    const b = await fetchDefaultBranch(tenantId);
+    const r = estaAdentro
+      ? await ficharSalida(tenantId, staffId)
+      : await ficharEntrada(tenantId, staffId, { branchId: b?.id });
+    if (r.__error) { msg(r.message); return; }
+    msg(estaAdentro ? 'Salida registrada' : 'Entrada registrada');
+    loadEquipo();
+  }, [tenantId, loadEquipo]);
+
   const onAbrirCaja = useCallback(async (monto, notas) => {
     const b = await fetchDefaultBranch(tenantId);
     const r = await abrirTurno(tenantId, b?.id, monto, notas);
@@ -316,7 +351,8 @@ export default function PlatformAdmin() {
     loadMerma();
     loadSalon();
     loadCaja();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon, loadCaja]);
+    loadEquipo();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon, loadCaja, loadEquipo]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -601,6 +637,16 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'personal' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <PersonalPanel
+                personal={equipo}
+                fichajesAbiertos={fichajes}
+                costoLaboral={costoLaboral}
+                onFichar={onFichar}
+              />
+            </Suspense>
+          )}
           {tab === 'caja' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
               <CajaPanel
@@ -723,6 +769,15 @@ function BoxIcon() {
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function PersonalIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
     </svg>
   );
 }

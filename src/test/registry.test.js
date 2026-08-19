@@ -114,9 +114,15 @@ describe('tipoPorDefecto', () => {
 describe('modulos', () => {
   it('solo devuelve los implementados', () => {
     const ids = modulosDe('barber').map(m => m.id);
-    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja']);
+    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja', 'personal']);
     // agenda esta declarada para barberia pero su calendario todavia no existe
     expect(ids).not.toContain('agenda');
+  });
+
+  it('el equipo NO necesita salon: una dark kitchen tambien tiene gente', () => {
+    // Lo que cambia con el modo es la caja, no el equipo: la gente tiene
+    // horarios y costo por hora aunque no entre nadie al local.
+    expect(modulosDe('gastro', 'virtual').map(m => m.id)).toContain('personal');
   });
 
   it('caja necesita salon: un negocio a distancia no la ve', () => {

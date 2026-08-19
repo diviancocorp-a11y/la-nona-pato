@@ -67,6 +67,13 @@ export const MODULOS = {
     // cobra, pero no abre ni cierra una caja fisica.
     requiereSalon: true,
   },
+  personal: {
+    id: 'personal',
+    label: 'Equipo',
+    implementado: true,      // Etapa 6e (migracion 0048)
+    // No requiere salon: una dark kitchen tambien tiene gente con horarios y
+    // costo por hora. Lo que cambia con el modo es la caja, no el equipo.
+  },
   mesas: {
     id: 'mesas',
     label: 'Salón',
@@ -105,7 +112,7 @@ export const RUBROS = {
     // de la gastronomia: separa comida, packaging y personal de cocina. A una
     // barberia no se le pide clasificar un gasto en "Comida — Lacteos".
     contabilidadUsar: true,
-    modulos: ['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja', 'mesas'],
+    modulos: ['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja', 'mesas', 'personal'],
   },
 
   barber: {
@@ -127,7 +134,7 @@ export const RUBROS = {
     // necesita saber cuando se le acaban — eso es una compra que ingresa
     // mercaderia, no un gasto suelto. Lo que no tiene es una receta que diga
     // cuanto gel lleva un corte: por eso `receta` sigue sin estar.
-    modulos: ['products', 'orders', 'agenda', 'stock', 'finanzas', 'ventas', 'caja'],
+    modulos: ['products', 'orders', 'agenda', 'stock', 'finanzas', 'ventas', 'caja', 'personal'],
   },
 
   retail: {
@@ -143,7 +150,7 @@ export const RUBROS = {
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'stock', 'requires_age_gate'],
-    modulos: ['products', 'orders', 'variants', 'stock', 'finanzas', 'ventas', 'caja'],
+    modulos: ['products', 'orders', 'variants', 'stock', 'finanzas', 'ventas', 'caja', 'personal'],
   },
 };
 
