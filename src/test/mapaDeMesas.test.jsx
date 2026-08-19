@@ -41,7 +41,7 @@ describe('MapaDeMesas', () => {
     expect(screen.getByLabelText(/Mesa 1.*Libre/)).toBeInTheDocument();
   });
 
-  it('en servicio, tocar una mesa la selecciona y NO la mueve', async () => {
+  it('en servicio, tocar una mesa la selecciona y NO la mueve', () => {
     // El riesgo real: un toque torcido en un telefono moviendo el salon en
     // plena hora pico.
     const onSeleccionar = vi.fn();
@@ -53,7 +53,7 @@ describe('MapaDeMesas', () => {
     expect(onMover).not.toHaveBeenCalled();
   });
 
-  it('en modo acomodar, tocar NO dispara la seleccion', async () => {
+  it('en modo acomodar, tocar NO dispara la seleccion', () => {
     const onSeleccionar = vi.fn();
     render(<MapaDeMesas recursos={[mesa()]} onSeleccionar={onSeleccionar} onMover={vi.fn()} />);
 
@@ -62,7 +62,7 @@ describe('MapaDeMesas', () => {
     expect(onSeleccionar).not.toHaveBeenCalled();
   });
 
-  it('el modo acomodar se avisa y se puede salir', async () => {
+  it('el modo acomodar se avisa y se puede salir', () => {
     render(<MapaDeMesas recursos={[mesa()]} onMover={vi.fn()} />);
     const boton = screen.getByRole('button', { name: /Acomodar salón/i });
 
@@ -74,7 +74,7 @@ describe('MapaDeMesas', () => {
     expect(screen.queryByText(/Arrastrá las mesas/i)).not.toBeInTheDocument();
   });
 
-  it('una mesa sin ubicar aparece en la bandeja y sigue siendo usable', async () => {
+  it('una mesa sin ubicar aparece en la bandeja y sigue siendo usable', () => {
     // Dibujar el salon es OPCIONAL. Obligar a hacerlo antes de tomar la primera
     // reserva seria absurdo, asi que lo no ubicado tiene que verse igual.
     const onSeleccionar = vi.fn();

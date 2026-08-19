@@ -36,6 +36,9 @@ import {
   fetchResources, moveResource, fetchAppointments, fetchUtilization,
 } from '../services/platformScheduling';
 import { fetchDefaultBranch } from '../services/platformInventoryLedger';
+import {
+  fetchTurnoAbierto, fetchTurnos, abrirTurno, cerrarTurno, esperadoEnCaja,
+} from '../services/platformCaja';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -73,6 +76,8 @@ const Users = lazy(() => import('../components/admin/Users'));
 // Salon: el plano del local (Etapa 6c). Lazy porque solo lo ve un negocio
 // fisico y arrastra su propio editor de arrastre.
 const MapaDeMesas = lazy(() => import('../components/admin/platform/MapaDeMesas'));
+// Caja: el turno con su arqueo. Lazy por lo mismo que el salon.
+const CajaPanel = lazy(() => import('../components/admin/platform/CajaPanel'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -100,6 +105,7 @@ const ICONOS = {
   finanzas: MoneyIcon,
   ventas: ChartIcon,
   mesas: MesasIcon,
+  caja: CajaIcon,
 };
 
 function Centered({ children }) {
@@ -126,6 +132,9 @@ export default function PlatformAdmin() {
   // una sola, nunca se muestra selector — ver platform/PLAN-LOCAL-Y-ROLES.md.
   const [branch, setBranch] = useState(null);
   const [recursos, setRecursos] = useState([]);
+  const [turno, setTurno] = useState(null);
+  const [turnosPrevios, setTurnosPrevios] = useState([]);
+  const [esperado, setEsperado] = useState(0);
   const [reservasHoy, setReservasHoy] = useState([]);
   const [utilizacion, setUtilizacion] = useState(null);
 
@@ -251,6 +260,40 @@ export default function PlatformAdmin() {
     setUtilizacion(ut);
   }, [tenantId]);
 
+  /* ── Caja (6d) ──
+     El esperado se recalcula al abrir la pantalla y a pedido: es lo que el
+     cajero compara contra la plata que tiene en la mano. */
+  const loadCaja = useCallback(async () => {
+    if (!tenantId) return;
+    const b = await fetchDefaultBranch(tenantId);
+    const [abierto, previos] = await Promise.all([
+      fetchTurnoAbierto(tenantId, b?.id),
+      fetchTurnos(tenantId, b?.id, { limit: 10 }),
+    ]);
+    setTurno(abierto);
+    setTurnosPrevios((previos || []).filter(t => t.status === 'closed'));
+    setEsperado(abierto ? await esperadoEnCaja(abierto.id) : 0);
+  }, [tenantId]);
+
+  const onAbrirCaja = useCallback(async (monto, notas) => {
+    const b = await fetchDefaultBranch(tenantId);
+    const r = await abrirTurno(tenantId, b?.id, monto, notas);
+    if (r.__error) { msg(r.message); return; }
+    msg('Caja abierta');
+    loadCaja();
+  }, [tenantId, loadCaja]);
+
+  const onCerrarCaja = useCallback(async (contado, notas) => {
+    if (!turno) return;
+    const r = await cerrarTurno(turno.id, contado, notas);
+    if (r.__error) { msg(r.message); return; }
+    const d = Number(r.turno?.difference) || 0;
+    // El resultado del arqueo se dice, no se esconde detras de un "listo".
+    msg(d === 0 ? 'Caja cerrada, cerró justo'
+      : `Caja cerrada · ${d < 0 ? 'faltan' : 'sobran'} ${Math.abs(d)}`);
+    loadCaja();
+  }, [turno, loadCaja]);
+
   const moverRecurso = useCallback(async (id, pos) => {
     const ok = await moveResource(tenantId, id, pos);
     // Optimista: el arrastre ya movio el elemento en pantalla. Si el guardado
@@ -272,7 +315,8 @@ export default function PlatformAdmin() {
     loadItemsPedidos();
     loadMerma();
     loadSalon();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon]);
+    loadCaja();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon, loadCaja]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -557,6 +601,18 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'caja' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <CajaPanel
+                turno={turno}
+                esperado={esperado}
+                turnosPrevios={turnosPrevios}
+                onAbrir={onAbrirCaja}
+                onCerrar={onCerrarCaja}
+                onRefrescarEsperado={loadCaja}
+              />
+            </Suspense>
+          )}
           {tab === 'finanzas' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
               <FinanzasPanel
@@ -667,6 +723,15 @@ function BoxIcon() {
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function CajaIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="8" width="18" height="12" rx="2" />
+      <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+      <line x1="7" y1="13" x2="17" y2="13" />
     </svg>
   );
 }

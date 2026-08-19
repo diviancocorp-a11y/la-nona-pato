@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-19",
-  "_migrations_through": "0045",
+  "_migrations_through": "0047",
   "tables": {
     "addresses": [
       "id",
@@ -70,7 +70,9 @@
       "difference",
       "status",
       "notes",
-      "branch_id"
+      "branch_id",
+      "closed_by",
+      "business_day"
     ],
     "coupons": [
       "id",
@@ -216,7 +218,10 @@
       "user_id",
       "coupon_id",
       "client_request_id",
-      "branch_id"
+      "branch_id",
+      "resource_id",
+      "staff_id",
+      "cash_session_id"
     ],
     "payment_methods": [
       "id",
@@ -236,7 +241,8 @@
       "method_id",
       "amount",
       "paid_at",
-      "branch_id"
+      "branch_id",
+      "client_request_id"
     ],
     "product_ingredients": [
       "tenant_id",
@@ -346,6 +352,17 @@
       "created_at",
       "branch_id"
     ],
+    "service_reviews": [
+      "id",
+      "tenant_id",
+      "branch_id",
+      "order_id",
+      "staff_id",
+      "rating",
+      "comment",
+      "created_at",
+      "client_request_id"
+    ],
     "settings": [
       "tenant_id",
       "biz_name",
@@ -403,7 +420,8 @@
       "color",
       "active",
       "created_at",
-      "branch_id"
+      "branch_id",
+      "payout_alias"
     ],
     "store_credits": [
       "id",
@@ -457,6 +475,22 @@
       "currency",
       "timezone",
       "channels"
+    ],
+    "tips": [
+      "id",
+      "tenant_id",
+      "branch_id",
+      "order_id",
+      "kind",
+      "recipient_staff_id",
+      "amount",
+      "source",
+      "payment_method",
+      "distribution_rule",
+      "settlement_status",
+      "settled_at",
+      "client_request_id",
+      "created_at"
     ],
     "waitlist_entries": [
       "id",

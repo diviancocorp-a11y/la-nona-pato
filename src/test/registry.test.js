@@ -114,10 +114,16 @@ describe('tipoPorDefecto', () => {
 describe('modulos', () => {
   it('solo devuelve los implementados', () => {
     const ids = modulosDe('barber').map(m => m.id);
-    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas', 'ventas']);
-    // agenda y caja estan declaradas para barberia pero todavia no existen
+    expect(ids).toEqual(['products', 'orders', 'stock', 'finanzas', 'ventas', 'caja']);
+    // agenda esta declarada para barberia pero su calendario todavia no existe
     expect(ids).not.toContain('agenda');
-    expect(ids).not.toContain('caja');
+  });
+
+  it('caja necesita salon: un negocio a distancia no la ve', () => {
+    // Un local que solo vende a distancia cobra, pero no abre ni cierra una
+    // caja fisica. Lo decide el modo, no el rubro.
+    expect(modulosDe('barber', 'fisico').map(m => m.id)).toContain('caja');
+    expect(modulosDe('barber', 'virtual').map(m => m.id)).not.toContain('caja');
   });
 
   // Etapa 4: una barberia y una tienda tambien venden — el historial y el

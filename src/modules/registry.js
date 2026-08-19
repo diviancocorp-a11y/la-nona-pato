@@ -62,7 +62,7 @@ export const MODULOS = {
   caja: {
     id: 'caja',
     label: 'Caja',
-    implementado: false,     // payment_methods + cash_sessions + payments (0004)
+    implementado: true,      // Etapa 6d (migracion 0046)
     // Turno de caja, arqueo y cierre. Un negocio que solo vende a distancia
     // cobra, pero no abre ni cierra una caja fisica.
     requiereSalon: true,
