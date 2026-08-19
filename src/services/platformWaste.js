@@ -11,6 +11,7 @@
 // Este archivo esta en PLATFORM_PATHS (scripts/check-supabase-columns.mjs).
 
 import { supabase } from '../lib/supabase';
+import { claveDeIdempotencia, reiniciarClave } from '../lib/idempotencia.js';
 
 const COLS = 'id, tenant_id, ingredient_id, qty, reason, note, date, created_at';
 
@@ -54,12 +55,23 @@ export async function registerWaste(tenantId, ingredientId, qty, reason, note) {
     p_qty: Number(qty),
     p_reason: reason || 'otro',
     p_note: note || null,
+    // Idempotencia (0040): un reintento con la misma clave devuelve la merma
+    // ya asentada en vez de descontar el stock dos veces. La clave sale del
+    // contenido: dos roturas iguales del mismo insumo siguen siendo dos
+    // mermas distintas porque la clave se reinicia al guardar bien (abajo).
+    p_client_request_id: claveDeIdempotencia(
+      'merma', [tenantId, ingredientId, Number(qty), reason || 'otro', note || null]),
   });
 
   if (error) {
+    // NO se reinicia la clave: si esto fue un fallo de red, el reintento tiene
+    // que llevar la misma para que el server lo reconozca como el mismo envio.
     const codigo = Object.keys(MENSAJES).find(c => error.message.includes(c));
     console.error('registerWaste:', codigo ? MENSAJES[codigo] : error.message);
     return false;
   }
+  // Guardo bien: lo proximo que cargue el usuario es otra merma, aunque
+  // escriba exactamente lo mismo (se rompieron dos veces, pasa).
+  reiniciarClave('merma');
   return true;
 }

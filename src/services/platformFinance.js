@@ -14,6 +14,7 @@
 // medio, los libros quedan partidos.
 
 import { supabase } from '../lib/supabase';
+import { claveDeIdempotencia, reiniciarClave } from '../lib/idempotencia.js';
 
 const COLS = 'id, tenant_id, date, description, amount, category, expense_type, usar_category, supplier, supplier_id, payment_method, payment_account_id, installment_current, installment_total, items, receipt_url, no_receipt, created_by, created_at, voided_at, voided_by, voided_reason, voids_expense_id';
 
@@ -204,12 +205,20 @@ export async function registerPurchase(tenantId, {
     p_payment_account_id: paymentAccountId || null,
     p_receipt_url: receiptUrl || null,
     p_no_receipt: !!noReceipt,
+    // Idempotencia (0040): sin esto, un reintento ingresaba la mercaderia dos
+    // veces y asentaba el gasto dos veces.
+    p_client_request_id: claveDeIdempotencia(
+      'compra', [tenantId, date || null, lineas, supplierId || null, paymentMethod || 'efectivo']),
   });
 
   if (error) {
+    // Sin reiniciar la clave: un reintento por red caida tiene que llevar la
+    // misma para no ingresar la mercaderia dos veces.
     console.error('registerPurchase:', error.message);
     const codigo = Object.keys(MENSAJES_COMPRA).find(c => error.message.includes(c));
     return { __error: codigo || 'db', message: MENSAJES_COMPRA[codigo] || error.message };
   }
+  // La compra entro: la proxima es otra compra aunque repita proveedor e items.
+  reiniciarClave('compra');
   return { ok: true, expenses: data || [] };
 }

@@ -57,8 +57,38 @@ describe('registerWaste', () => {
       p_qty: 2.5,
       p_reason: 'vencimiento',
       p_note: 'nota',
+      // Etapa 0: sin esto, un reintento descontaba el stock dos veces. El
+      // valor es un uuid nuevo por operacion, asi que se compara la forma.
+      p_client_request_id: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
     });
     expect(ok).toBe(true);
+  });
+
+  it('el reintento de la MISMA merma lleva la misma clave', async () => {
+    // Es la garantia entera: si la clave cambiara entre intentos, el server no
+    // podria reconocer que es el mismo envio y descontaria dos veces.
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'network' } });
+
+    await registerWaste(TENANT, 'i1', 2.5, 'vencimiento', 'nota');
+    await registerWaste(TENANT, 'i1', 2.5, 'vencimiento', 'nota');
+
+    const [, primera] = mockRpc.mock.calls[0];
+    const [, segunda] = mockRpc.mock.calls[1];
+    expect(segunda.p_client_request_id).toBe(primera.p_client_request_id);
+  });
+
+  it('tras guardar bien, la merma siguiente es otra', async () => {
+    // Dos roturas iguales del mismo insumo el mismo dia son dos mermas, no un
+    // duplicado: se rompieron dos veces.
+    mockRpc.mockResolvedValue({ data: [{ id: 'w1' }], error: null });
+
+    await registerWaste(TENANT, 'i1', 2.5, 'vencimiento', 'nota');
+    await registerWaste(TENANT, 'i1', 2.5, 'vencimiento', 'nota');
+
+    const [, primera] = mockRpc.mock.calls[0];
+    const [, segunda] = mockRpc.mock.calls[1];
+    expect(segunda.p_client_request_id).not.toBe(primera.p_client_request_id);
   });
 
   it('un error de la RPC devuelve false, no revienta', async () => {

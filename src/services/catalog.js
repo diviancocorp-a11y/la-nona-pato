@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { OrderInputSchema, CouponValidateSchema, validateInput } from '../lib/schemas/index.js';
 import { setGuestUser } from '../lib/guestUser.js';
 import { resolveTenantSlug } from '../lib/activeTenant.js';
+import { claveDeIdempotencia, reiniciarClave } from '../lib/idempotencia.js';
 import business from '@business';
 
 /**
@@ -123,6 +124,17 @@ export async function fetchCatalog() {
   }
 }
 
+// Lo que hace que dos envios sean "el mismo pedido": quien, como y que. No
+// entra el timestamp a proposito — si entrara, un reintento seria un pedido
+// nuevo y la garantia no serviria para nada.
+function firmaDelPedido(p) {
+  return [
+    p.phone, p.delivery, p.payment, p.address,
+    (p.items || []).map(i => [i.recipeId, i.qty]),
+    p.coupon_code, p.tip_pct, p.delivery_cost,
+  ];
+}
+
 /**
  * Envía un pedido nuevo via Edge Function server-side.
  * El servidor calcula precios, valida cupones y gestiona el CRM.
@@ -175,6 +187,7 @@ export async function submitOrder(orderData) {
         address: validated.address || null,
         delivery_cost: validated.delivery_cost || 0,
         tip_pct: validated.tip_pct || 0,
+        client_request_id: claveDeIdempotencia('checkout', firmaDelPedido(validated)),
       },
     });
 
@@ -197,6 +210,10 @@ export async function submitOrder(orderData) {
       console.error('submitOrder server error:', data?.error);
       return { ok: false, orderId: null, error: data?.error || null };
     }
+
+    // El pedido entro (o ya estaba). Lo proximo que arme este cliente es un
+    // pedido nuevo, aunque repita exactamente los mismos items.
+    reiniciarClave('checkout');
 
     // Upsert al CRM (tabla customers) con dedup-aware: busca por phone
     // primero, despues por email. Centraliza la identidad para el guest

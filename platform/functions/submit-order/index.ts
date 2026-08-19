@@ -77,6 +77,37 @@ Deno.serve(async (req) => {
     const tenantId = tenant.id;
     const cfg = tenant.settings || {};
 
+    // ── Idempotencia (Etapa 0) ──────────────────────────────────────
+    // El navegador genera una clave por checkout. Sin esto, un doble click o
+    // un reintento de red creaban DOS pedidos, los dos cobrados.
+    //
+    // El chequeo va aca arriba a proposito: un reintento no vuelve a recalcular
+    // precios ni a consumir el cupon. Igual queda el insert protegido por el
+    // indice unico para la carrera de dos requests en paralelo, que este select
+    // no puede ver.
+    //
+    // UUID v4 solamente: la clave entra a una consulta tipada uuid y un valor
+    // arbitrario haria fallar el pedido con un error de casteo de Postgres.
+    const rawKey = String(body.client_request_id || "").trim();
+    const clientRequestId =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawKey)
+        ? rawKey.toLowerCase()
+        : null;
+
+    if (clientRequestId) {
+      const { data: yaExiste } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("tenant_id", tenantId)
+        .eq("client_request_id", clientRequestId)
+        .maybeSingle();
+      if (yaExiste) {
+        // Mismo shape que la respuesta normal: el cliente no distingue entre
+        // "se creo" y "ya estaba", que es justamente lo que se busca.
+        return jsonRes({ ok: true, orderId: yaExiste.id, deduplicated: true });
+      }
+    }
+
     // ── Deal del dia por categoria (misma logica que el legacy) ─────
     const catGroups = cfg.cat_groups || [];
     const dailyDeals = cfg.daily_deals || {};
@@ -235,10 +266,24 @@ Deno.serve(async (req) => {
         total: finalTotal,
         coupon_id: validCouponId,
         user_id: userId,
+        client_request_id: clientRequestId,
       })
       .select("id")
       .single();
     if (orderError || !order) {
+      // 23505 aca solo puede ser el indice unico de client_request_id: dos
+      // requests con la misma clave entraron en paralelo y el select de arriba
+      // no llego a ver al otro. El que pierde devuelve el pedido del que gano
+      // en vez de un 500 — para el cliente es el mismo pedido.
+      if (orderError?.code === "23505" && clientRequestId) {
+        const { data: elOtro } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("tenant_id", tenantId)
+          .eq("client_request_id", clientRequestId)
+          .maybeSingle();
+        if (elOtro) return jsonRes({ ok: true, orderId: elOtro.id, deduplicated: true });
+      }
       console.error("Error creando pedido:", orderError);
       return jsonRes({ error: "Error al crear el pedido" }, 500);
     }
