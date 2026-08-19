@@ -42,5 +42,5 @@ coverage/
 # Claude Code: las skills se comparten, la config local no
 .claude/settings.local.json
 
-# Temporales del CLI de Supabase (los deja )
+# Temporales del CLI de Supabase (los deja el deploy de functions)
 supabase/.temp/
