@@ -19,7 +19,10 @@
     "prepare": "husky",
     "check:schema": "node scripts/check-schema-sync.mjs",
     "check:freshness": "node scripts/check-schema-freshness.mjs",
-    "schema:sync": "node scripts/schema-sync.mjs"
+    "schema:sync": "node scripts/schema-sync.mjs",
+    "deploy": "npm run deploy:web && npm run deploy:functions",
+    "deploy:web": "vercel --prod --scope diviancocorp-a11ys-projects --yes",
+    "deploy:functions": "node platform/scripts/deploy-functions.mjs --all"
   },
   "dependencies": {
     "@sentry/react": "^10.57.0",
