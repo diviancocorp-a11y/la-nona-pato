@@ -69,8 +69,8 @@ export const MODULOS = {
   },
   mesas: {
     id: 'mesas',
-    label: 'Mapa de mesas',
-    implementado: false,     // Etapa 6c
+    label: 'Salón',
+    implementado: true,      // Etapa 6c (migracion 0045)
     requiereSalon: true,
   },
 };

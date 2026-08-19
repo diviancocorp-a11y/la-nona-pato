@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-19",
-  "_migrations_through": "0044",
+  "_migrations_through": "0045",
   "tables": {
     "addresses": [
       "id",
@@ -25,7 +25,14 @@
       "status",
       "notes",
       "created_at",
-      "branch_id"
+      "branch_id",
+      "resource_id",
+      "source",
+      "party_size",
+      "deposit_amount",
+      "deposit_status",
+      "cancellation_policy",
+      "client_request_id"
     ],
     "audit_log": [
       "id",
@@ -306,6 +313,25 @@
       "hits",
       "window_start"
     ],
+    "resources": [
+      "id",
+      "tenant_id",
+      "branch_id",
+      "kind",
+      "name",
+      "zone",
+      "capacity",
+      "min_party",
+      "max_party",
+      "combinable",
+      "pos_x",
+      "pos_y",
+      "shape",
+      "width",
+      "height",
+      "active",
+      "created_at"
+    ],
     "sales": [
       "id",
       "tenant_id",
@@ -431,6 +457,25 @@
       "currency",
       "timezone",
       "channels"
+    ],
+    "waitlist_entries": [
+      "id",
+      "tenant_id",
+      "branch_id",
+      "customer_name",
+      "customer_phone",
+      "party_size",
+      "service_id",
+      "staff_id",
+      "zone",
+      "notes",
+      "status",
+      "promised_wait_min",
+      "created_at",
+      "notified_at",
+      "resolved_at",
+      "resulting_appointment_id",
+      "client_request_id"
     ],
     "waste_log": [
       "id",

@@ -32,6 +32,10 @@ import { fetchSales, createSale, completeOrder } from '../services/platformSales
 import { fetchCustomerStats } from '../services/platformCrm';
 import { fetchWaste, registerWaste } from '../services/platformWaste';
 import { uploadTenantImage } from '../services/platformStorage';
+import {
+  fetchResources, moveResource, fetchAppointments, fetchUtilization,
+} from '../services/platformScheduling';
+import { fetchDefaultBranch } from '../services/platformInventoryLedger';
 import { fetchSettings, saveSettings, fetchTenantBrand } from '../services/platformSettings';
 import { getTenantSlugSync } from '../lib/activeTenant';
 import {
@@ -66,6 +70,9 @@ const VentasPanel = lazy(() => import('../components/admin/platform/VentasPanel'
 // Equipo: pantalla del legacy tal cual. El service bifurca a tenant-users,
 // que scopea todo al negocio de este host.
 const Users = lazy(() => import('../components/admin/Users'));
+// Salon: el plano del local (Etapa 6c). Lazy porque solo lo ve un negocio
+// fisico y arrastra su propio editor de arrastre.
+const MapaDeMesas = lazy(() => import('../components/admin/platform/MapaDeMesas'));
 
 // Lo que el edificio todavia no tiene tabla para sostener. Cada false se
 // convierte en true cuando llegue su etapa (platform/PLAN-ERP.md).
@@ -92,6 +99,7 @@ const ICONOS = {
   stock: StockIcon,
   finanzas: MoneyIcon,
   ventas: ChartIcon,
+  mesas: MesasIcon,
 };
 
 function Centered({ children }) {
@@ -113,6 +121,13 @@ export default function PlatformAdmin() {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('ag-theme') || 'light'; } catch { return 'light'; }
   });
+
+  // Salon (6c). `branch` es la sucursal por defecto: mientras el negocio tenga
+  // una sola, nunca se muestra selector — ver platform/PLAN-LOCAL-Y-ROLES.md.
+  const [branch, setBranch] = useState(null);
+  const [recursos, setRecursos] = useState([]);
+  const [reservasHoy, setReservasHoy] = useState([]);
+  const [utilizacion, setUtilizacion] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -212,6 +227,39 @@ export default function PlatformAdmin() {
     setRecetas(agruparPorProducto(await fetchProductIngredients(tenantId)));
   }, [tenantId]);
 
+  /* ── Salon (6c) ──
+     Se carga junto: sin la sucursal no hay a que pedirle recursos, y sin la
+     fecha operativa de esa sucursal la utilizacion del dia daria mal (el dia
+     no es el dia UTC — ver migracion 0041). */
+  const loadSalon = useCallback(async () => {
+    if (!tenantId) return;
+    const b = await fetchDefaultBranch(tenantId);
+    setBranch(b);
+    if (!b) return;
+    const hoy = new Date();
+    const desde = new Date(hoy); desde.setHours(0, 0, 0, 0);
+    const hasta = new Date(hoy); hasta.setHours(23, 59, 59, 999);
+    const [rs, aps, ut] = await Promise.all([
+      fetchResources(tenantId, b.id),
+      fetchAppointments(tenantId, {
+        branchId: b.id, desde: desde.toISOString(), hasta: hasta.toISOString(),
+      }),
+      fetchUtilization(b.id, hoy.toISOString().slice(0, 10)),
+    ]);
+    setRecursos(rs);
+    setReservasHoy(aps);
+    setUtilizacion(ut);
+  }, [tenantId]);
+
+  const moverRecurso = useCallback(async (id, pos) => {
+    const ok = await moveResource(tenantId, id, pos);
+    // Optimista: el arrastre ya movio el elemento en pantalla. Si el guardado
+    // falla se recarga, que es lo unico honesto — dejarlo donde el dedo lo
+    // solto mostraria un salon que no existe en la base.
+    if (!ok) { msg('No se pudo guardar la posición'); loadSalon(); }
+    return ok;
+  }, [tenantId, loadSalon]);
+
   useEffect(() => {
     if (!ready || !tenantId) return;
     loadProducts();
@@ -223,7 +271,8 @@ export default function PlatformAdmin() {
     loadVentas();
     loadItemsPedidos();
     loadMerma();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma]);
+    loadSalon();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -495,6 +544,19 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'mesas' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <MapaDeMesas
+                recursos={recursos}
+                reservas={reservasHoy}
+                utilizacion={utilizacion}
+                onMover={moverRecurso}
+                terminologia={{ plural: 'Mesas', singular: 'mesa' }}
+                onSeleccionar={(r) => msg(`${r.name} · ${r.capacity} lugares`)}
+                onNuevo={() => msg('El alta de mesas llega con el editor del salón')}
+              />
+            </Suspense>
+          )}
           {tab === 'finanzas' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
               <FinanzasPanel
@@ -605,6 +667,15 @@ function BoxIcon() {
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+function MesasIcon() {
+  return (
+    <svg className="ag-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="7" cy="7" r="3" />
+      <circle cx="17" cy="7" r="3" />
+      <rect x="4" y="14" width="16" height="6" rx="1.5" />
     </svg>
   );
 }

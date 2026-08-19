@@ -37,6 +37,7 @@ const PLATFORM_PATHS = [
   'src/services/platformCrm.js',
   'src/services/platformWaste.js',
   'src/services/platformInventoryLedger.js',
+  'src/services/platformScheduling.js',
   'src/hooks/usePlatformTenant.js',
   'src/pages/PlatformAdmin.jsx',
   'src/components/admin/platform/',
