@@ -51,8 +51,12 @@ const PROJECT_REF = "wwwzdgprsooyjgkuyoav";
 // Toda function publica nueva va aca.
 const NO_VERIFY_JWT = new Set([
   "submit-order",
-  "send-push",     // auth interna: service role o JWT admin
-  "tenant-users",  // auth interna: JWT owner del tenant
+  "send-push",      // auth interna: service role o JWT admin
+  "tenant-users",   // auth interna: JWT owner del tenant
+  "mp-connect",     // auth interna: JWT owner del tenant (redirige dinero)
+  "mp-status",      // no devuelve secretos; lo consulta el catalogo publico
+  "mp-preference",  // la paga un cliente sin cuenta
+  "mp-webhook",     // lo llama MercadoPago: valida firma, no sesion
 ]);
 
 function parseArgs(argv) {

@@ -34,6 +34,7 @@ export default {
   datos: {                       // opcional: sólo si la pantalla consulta
     tablas: { mi_tabla: [ /* filas */ ] },
     rpc: { mi_rpc: (args) => 42 },
+    functions: { 'mi-edge-function': async (body) => ({ ok: true }) },
   },
 };
 ```
@@ -50,5 +51,10 @@ El fake aplica `eq` y ordena. Nada más. Si una pantalla necesita algo que no
 hace, la respuesta es probarla contra la base, no agrandar el fake hasta que
 sea un motor de consultas peor.
 
-Las RPC que la escena no declara devuelven un error que lo dice con nombre y
-apellido, en vez de fallar en silencio.
+Las RPC y edge functions que la escena no declara devuelven un error que lo
+dice con nombre y apellido, en vez de fallar en silencio.
+
+Todo va por `datos` y nada por asignación directa al fake: el glob evalúa
+**todas** las escenas al cargar, así que una que le asigne algo al módulo
+compartido se lo pisa a las demás. Pasó: la pantalla de cobros recibía el
+router de la de equipo.

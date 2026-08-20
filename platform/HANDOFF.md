@@ -8,6 +8,81 @@
 
 ---
 
+## 19/ago/2026 (noche) — MERCADOPAGO POR TENANT (migracion 0051)
+
+Lo mas grande que faltaba. El edificio pasa a poder **cobrarle a un cliente
+real**: cada negocio cobra en SU cuenta de MercadoPago.
+
+### Estado
+
+| | Donde esta |
+|---|---|
+| Base | migracion **0051**, aplicada |
+| Rama | commit de esta sesion |
+| Produccion | **falta deployar** — web y edge functions |
+
+`npm run deploy`. **Las 4 functions nuevas (`mp-connect`, `mp-status`,
+`mp-preference`, `mp-webhook`) no existen en Supabase hasta que corra el deploy
+de functions**, asi que hasta entonces la pantalla de cobros no conecta nada.
+
+### Como quedo
+
+**Token manual, no OAuth.** MP no habilita OAuth para apps de tipo "Integracion
+propia", que es lo que crea su wizard por default. El negocio copia su Access
+Token de produccion y lo pega. Es lo que ya resolvio el legacy y lo que hacen
+Tienda Nube y compania.
+
+**El token es inalcanzable desde el cliente.** `payment_integrations` tiene RLS
+habilitada y **cero policies a proposito**: ni el duenio del negocio puede
+leerla. Solo la service role, desde edge functions. Verificado ejecutando: el
+duenio lee 0 filas, no puede insertar y su update afecta 0 filas.
+
+**El agujero del legacy que NO se porto:** `mp-connect-manual` no verifica quien
+la llama. En una app de un negocio el danio esta acotado; aca cualquiera podria
+apuntar el cobro de OTRO negocio a su propia cuenta de MP y quedarse con sus
+ventas. `mp-connect` verifica que quien llama sea OWNER de ese negocio.
+
+**El webhook y el problema circular.** La notificacion de MP no dice de que
+negocio es, y para preguntarle a MP por el pago hace falta el token de ese
+negocio. Se rompe con el `?tenant=` que `mp-preference` pone en la
+notification_url: esa pista NO se cree —se usa para elegir con que token
+preguntar— y despues se verifica que el pedido sea de ese negocio. Si no
+coincide, se descarta.
+
+**Los importes no vienen del browser.** `mp-preference` arma la preferencia con
+lo que dice la base. Si el precio viajara desde el cliente, cualquiera pagaria
+$1 un pedido de $20.000 y el webhook lo aprobaria sin notar nada.
+
+**Firma del webhook**: si el negocio cargo el secreto, se valida el HMAC de
+`x-signature`. Si no, se sigue igual y queda en el log.
+
+### Lo que falta y hay que decir
+
+- **Nada de esto se probo contra MercadoPago de verdad.** Se probo la RLS
+  contra la base y la pantalla en la vitrina, pero no hay una cuenta de MP
+  conectada. El primer cobro real es la prueba que falta.
+- **El token se guarda EN CLARO.** Lo que lo protege es que la tabla es
+  inalcanzable desde el cliente. Cifrarlo con Vault es el paso siguiente y no
+  se hizo para no atar la primera version a una pieza mas.
+- **Solo Argentina.** `mp-connect` rechaza cuentas de otro pais (`site_id`
+  distinto de MLA) y tenants con `country` distinto de AR.
+- **La pantalla de "pedido" a la que vuelve el comprador** (`/pedido/:id?pago=ok`)
+  no se verifico que exista en el catalogo del edificio.
+
+### Trampas nuevas
+
+- **Las escenas de la vitrina se pisaban entre si.** El glob evalua TODAS al
+  cargar, asi que una escena que le asignaba `supabase.functions` al fake se lo
+  robaba a las demas: la pantalla de cobros recibia el router de la de equipo y
+  contestaba "accion desconocida". Ahora las functions se declaran en
+  `datos.functions`, como las tablas.
+- **`payment_integrations` existe en el legacy y NUNCA se versiono** en
+  `supabase/migrations/`. Se creo a mano, como paso con `info_pages`. Se agrego
+  al snapshot legacy para que el checker no avise para siempre, pero la
+  migracion sigue sin existir.
+
+---
+
 ## 19/ago/2026 (tarde) — COBRO, MESAS Y ETAPA 6f (migraciones 0049-0050)
 
 Cuatro commits. El edificio pasa de "construido" a **entregable a un local con

@@ -288,6 +288,20 @@
       "note",
       "date",
       "created_at"
+    ],
+    "payment_integrations": [
+      "id",
+      "provider",
+      "access_token",
+      "refresh_token",
+      "external_user_id",
+      "scopes",
+      "public_key",
+      "expires_at",
+      "is_active",
+      "connected_at",
+      "updated_at",
+      "metadata"
     ]
   }
 }

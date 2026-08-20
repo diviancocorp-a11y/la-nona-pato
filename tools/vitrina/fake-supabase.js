@@ -19,12 +19,14 @@
 // Lo que la escena activa cargo. Se llena desde main.jsx antes de montar.
 let TABLAS = {};
 let RPCS = {};
+let FUNCIONES = {};
 
-export function cargarEscena({ tablas = {}, rpc = {} } = {}) {
+export function cargarEscena({ tablas = {}, rpc = {}, functions = {} } = {}) {
   // Copia profunda barata: las escenas mutan sus filas (cobrar agrega un pago)
   // y al cambiar de escena hay que volver al estado inicial.
   TABLAS = JSON.parse(JSON.stringify(tablas));
   RPCS = rpc;
+  FUNCIONES = functions;
 }
 
 export function filasDe(tabla) {
@@ -102,6 +104,24 @@ export const supabase = {
     const salida = typeof fn === 'function' ? await fn(args) : fn;
     if (salida && salida.__error) return { data: null, error: { message: salida.__error } };
     return { data: salida, error: null };
+  },
+
+  // Las edge functions se declaran como DATO de la escena, igual que las
+  // tablas. Antes cada escena le asignaba `supabase.functions` a mano, y como
+  // el glob evalua TODAS al cargar, la ultima en hacerlo le pisaba el fake a
+  // las demas: la pantalla de cobros recibia el router de la de equipo y
+  // contestaba "accion desconocida".
+  functions: {
+    async invoke(nombre, opciones = {}) {
+      const fn = FUNCIONES[nombre];
+      if (!fn) {
+        return {
+          data: { error: `la escena no define la edge function ${nombre}` },
+          error: null,
+        };
+      }
+      return { data: await fn(opciones.body || {}), error: null };
+    },
   },
 
   auth: {

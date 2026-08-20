@@ -21,7 +21,7 @@ export default defineConfig({
       enforce: 'pre',
       async resolveId(source, importer, options) {
         // El propio fake no se intercepta a si mismo.
-        if (importer && importer.includes('fake-supabase')) return null;
+        if (importer && /fake-(supabase|tenant)/.test(importer)) return null;
         // Se compara la ruta RESUELTA y no el texto del import: los archivos
         // que viven en `src/lib/` lo importan como './supabase', que no se
         // parece en nada a 'lib/supabase' y se colaba sin interceptar. El
@@ -29,9 +29,17 @@ export default defineConfig({
         const r = await this.resolve(source, importer, { ...options, skipSelf: true });
         if (!r) return null;
         const normal = r.id.replace(/\\/g, '/');
-        return /\/src\/lib\/supabase\.js$/.test(normal)
-          ? path.join(aca, 'fake-supabase.js')
-          : null;
+        if (/\/src\/lib\/supabase\.js$/.test(normal)) {
+          return path.join(aca, 'fake-supabase.js');
+        }
+        // `activeTenant` resuelve el negocio por HOSTNAME, y en localhost no
+        // hay ninguno: sin esto, toda pantalla que pregunte de que negocio es
+        // recibe null y se dibuja como si el negocio no existiera. Parece un
+        // bug del componente y es de la vitrina.
+        if (/\/src\/lib\/activeTenant\.js$/.test(normal)) {
+          return path.join(aca, 'fake-tenant.js');
+        }
+        return null;
       },
     },
   ],

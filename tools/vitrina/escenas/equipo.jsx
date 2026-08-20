@@ -1,9 +1,8 @@
 // El equipo de un local gastronomico, con los roles de 6f.
 //
-// El service pega contra una edge function y no contra la base, asi que el
-// fake de supabase no alcanza: se mockea `functions.invoke` a mano.
+// El service pega contra una edge function y no contra la base: la escena
+// declara que contesta esa function en `datos.functions`.
 import EquipoDelNegocio from 'app/components/admin/platform/EquipoDelNegocio.jsx';
-import { supabase } from '../fake-supabase.js';
 
 const MIEMBROS = [
   {
@@ -24,28 +23,28 @@ const MIEMBROS = [
   },
 ];
 
-// La vitrina no habla con Supabase: se le da a `invoke` lo que devolveria.
-supabase.functions = {
-  invoke: async (_fn, { body }) => {
-    if (body.action === 'list') return { data: { ok: true, users: MIEMBROS }, error: null };
+// La vitrina no habla con Supabase: la escena declara que contesta la function.
+const FUNCIONES = {
+  'tenant-users': async (body) => {
+    if (body.action === 'list') return { ok: true, users: MIEMBROS };
     if (body.action === 'set_role') {
       const m = MIEMBROS.find(x => x.user_id === body.user_id);
       if (m) m.roles = body.roles;
-      return { data: { ok: true }, error: null };
+      return { ok: true };
     }
     if (body.action === 'create') {
       MIEMBROS.push({
         user_id: `u${MIEMBROS.length + 1}`, email: body.email,
         roles: body.roles, branch_ids: [body.branch_id], created_at: 'hoy',
       });
-      return { data: { ok: true }, error: null };
+      return { ok: true };
     }
     if (body.action === 'remove') {
       const i = MIEMBROS.findIndex(x => x.user_id === body.user_id);
       if (i >= 0) MIEMBROS.splice(i, 1);
-      return { data: { ok: true }, error: null };
+      return { ok: true };
     }
-    return { data: { ok: false, error: 'accion desconocida' }, error: null };
+    return { ok: false, error: 'accion desconocida' };
   },
 };
 
@@ -61,4 +60,5 @@ export default {
     showToast: (m) => console.log('toast:', m),
     onBack: () => {},
   },
+  datos: { functions: FUNCIONES },
 };

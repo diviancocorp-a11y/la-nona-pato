@@ -83,6 +83,9 @@ function Settings({
   // El edificio abre la gestion del equipo desde aca; el admin legacy la
   // tiene en su menu ☰, asi que por defecto esta fila NO se muestra.
   onAbrirUsuarios = null,
+  // El edificio tiene su propia pantalla de cobros (una cuenta de MP POR
+  // negocio); el legacy usa la de `gateways`. Mismo acople que Usuarios.
+  onAbrirPasarelas = null,
 }) {
   const cap = { ...CAPACIDADES_COMPLETAS, ...(capacidades || {}) };
   const confirmSlide = useConfirm();
@@ -206,7 +209,7 @@ function Settings({
               icon={<Icon d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M1 10h22" />}
               label="Pasarelas de pago"
               hint="Conectar MercadoPago para cobrar online"
-              onClick={() => goTo('gateways')}
+              onClick={onAbrirPasarelas || (() => goTo('gateways'))}
             />}
             {cap.canales && <SettingsRow
               state="prep"

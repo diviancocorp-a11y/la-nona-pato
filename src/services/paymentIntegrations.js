@@ -7,6 +7,15 @@
 
 import { supabase } from "../lib/supabase";
 import { captureException } from "../lib/observability.js";
+import business from "@business";
+import { getTenantSlugSync } from "../lib/activeTenant";
+
+// ── DUAL ──
+// El legacy cobra con UNA cuenta de MP (la del negocio, sin tenant_id). El
+// edificio tiene una POR negocio, asi que sus functions necesitan saber de
+// quien es el cobro. Son functions distintas y no un parametro de mas: la del
+// edificio ademas verifica que el pedido pertenezca a ese negocio.
+const esPlataforma = () => business?.platform === true;
 
 /**
  * Devuelve la integración activa de un provider, o null si no hay.
@@ -49,10 +58,16 @@ export async function disconnectIntegration(provider) {
  */
 export async function fetchMpStatusPublic() {
   try {
-    const { data, error } = await supabase.functions.invoke("mp-status", { body: {} });
+    const body = esPlataforma() ? { tenant_slug: getTenantSlugSync() } : {};
+    const { data, error } = await supabase.functions.invoke("mp-status", { body });
     if (error) {
       console.warn("fetchMpStatusPublic:", error.message);
       return { active: false };
+    }
+    // El edificio contesta `conectado`; el legacy, `active`. Se normaliza aca
+    // para que el catalogo no tenga que saber contra cual esta hablando.
+    if (esPlataforma()) {
+      return { active: !!data?.conectado, ...(data || {}) };
     }
     return data || { active: false };
   } catch (e) {
@@ -115,9 +130,14 @@ export async function completeMercadoPagoOAuth({ code, redirectUri }) {
  * Llamar desde el Catalog público cuando el cliente eligió pagar con MP.
  */
 export async function createMpPreference(orderId) {
-  const { data, error } = await supabase.functions.invoke("create-payment-preference", {
-    body: { orderId },
-  });
+  const fn = esPlataforma() ? "mp-preference" : "create-payment-preference";
+  // El importe NO viaja: lo saca la function de la base. Si viniera de aca,
+  // cualquiera pagaria $1 un pedido de $20.000.
+  const body = esPlataforma()
+    ? { tenant_slug: getTenantSlugSync(), order_id: orderId }
+    : { orderId };
+
+  const { data, error } = await supabase.functions.invoke(fn, { body });
   if (error) { console.error("createMpPreference:", error.message); return null; }
   return data;
 }

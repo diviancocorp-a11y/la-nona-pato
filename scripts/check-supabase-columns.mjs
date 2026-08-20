@@ -31,6 +31,7 @@ import { join, extname } from 'node:path';
 const PLATFORM_PATHS = [
   'src/lib/activeTenant.js',
   'src/services/platformAdmin.js',
+  'src/services/platformPagos.js',
   'src/services/platformSettings.js',
   'src/services/platformInventory.js',
   'src/services/platformRecipes.js',
@@ -61,6 +62,7 @@ const PLATFORM_PATHS = [
       es justamente donde mas facil se cuela una columna del schema
       equivocado. ── */
 const DUAL_PATHS = [
+  'src/services/paymentIntegrations.js',  // MP: una cuenta en legacy, una por tenant en el edificio
   'src/services/account.js',
   'src/services/infoPages.js',
 ];

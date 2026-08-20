@@ -88,6 +88,9 @@ const Users = lazy(() => import('../components/admin/platform/EquipoDelNegocio')
 const MapaDeMesas = lazy(() => import('../components/admin/platform/MapaDeMesas'));
 // El alta de mesas viaja con el salon: quien no tiene local no lo baja nunca.
 const EditorDeMesa = lazy(() => import('../components/admin/platform/EditorDeMesa'));
+// Cobros online: se abre una vez en la vida del negocio, asi que no tiene por
+// que estar en el chunk que se carga siempre.
+const CobrosOnline = lazy(() => import('../components/admin/platform/CobrosOnline'));
 // Caja: el turno con su arqueo. Lazy por lo mismo que el salon.
 const CajaPanel = lazy(() => import('../components/admin/platform/CajaPanel'));
 // Equipo: quien esta trabajando y cuanto cuesta el turno (6e).
@@ -98,7 +101,7 @@ const PersonalPanel = lazy(() => import('../components/admin/platform/PersonalPa
 const CAPACIDADES_EDIFICIO = {
   qrs: true,         // tabla dynamic_qrs (migracion 0037)
   paginas: true,     // tabla info_pages (migracion 0037)
-  pasarelas: false,  // tabla payment_integrations
+  pasarelas: true,   // tabla payment_integrations (migracion 0051)
   canales: false,    // tabla delivery_channels
   riesgo: false,     // el reset borra tablas del ERP viejo
 };
@@ -817,6 +820,11 @@ export default function PlatformAdmin() {
               />
             </Suspense>
           )}
+          {tab === 'cobros' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
+              <CobrosOnline showToast={msg} onBack={() => setTab('config')} />
+            </Suspense>
+          )}
           {tab === 'usuarios' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
               <Users
@@ -841,6 +849,7 @@ export default function PlatformAdmin() {
                     onSave={guardarSettings}
                     capacidades={CAPACIDADES_EDIFICIO}
                     onAbrirUsuarios={() => setTab('usuarios')}
+                    onAbrirPasarelas={() => setTab('cobros')}
                     onBack={() => setTab('products')}
                   />
                 </Suspense>
