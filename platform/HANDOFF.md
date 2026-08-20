@@ -8,6 +8,64 @@
 
 ---
 
+## 20/ago/2026 — AUDITORIA DE ESTADO: dos "pendientes" ya estaban hechos
+
+Se reviso que falta para vender y aparecio que **el HANDOFF arrastraba como
+pendientes cosas resueltas**. Verificado contra produccion y contra el codigo,
+no contra este documento:
+
+| Lo que decia el HANDOFF | La realidad |
+|---|---|
+| "Falta el formulario de contrasena nueva tras el reset" | **Existe** en `Login.jsx`: detecta `type=recovery`, valida coincidencia y largo, y hasta usa un mensaje ambiguo al pedir el reset para no revelar que direcciones tienen cuenta |
+| "Las `og:` tags son las del build" | **Resuelto** por `middleware.js` + `api/og.js`. Verificado con curl y UA de WhatsApp: `cochi.divianco.app` devuelve "Cochi" y `la-nona-pato` devuelve "La Nona Pato" |
+| "5 tenants sin fila en `tenant_members`" | Corregido antes: los 7 tienen duenio |
+
+**La leccion es de proceso, no de codigo:** planificar leyendo el HANDOFF en vez
+de la realidad hace perder tiempo en cosas hechas — y casi lo pierde de nuevo
+hoy. Los pendientes verificables (migraciones sin aplicar, tablas vacias,
+rutas que no existen) se comprueban antes de listarlos.
+
+### Lo unico que se toco
+
+`Login.jsx` detectaba la recuperacion leyendo `type=recovery` del hash en el
+primer render. Eso es **ganarle una carrera** al cliente de Supabase, que
+procesa y limpia ese hash apenas puede. Si la pierde, la persona ve el login
+comun con una sesion de recuperacion abierta, escribe la contraseña vieja —la
+que no recuerda, por eso pidio el reset— y no entra. Se sumo el evento
+`PASSWORD_RECOVERY` de `onAuthStateChange`, que es el que Supabase emite para
+esto y no depende del hash. 7 tests nuevos.
+
+### Estado real para vender
+
+**Lo que anda en produccion, verificado hoy:** las 7 edge functions ACTIVE (las
+4 de MP en v1), la landing de `divianco.app`, el catalogo de un tenant con sus
+10 productos y su footer legal, y las `og:` por tenant.
+
+**Lo que no existe:** forma de cobrarle al cliente. La columna `tenants.plan`
+existe y **no hace nada**: los 7 dicen `free`. No hay limites por plan, ni
+suscripcion, ni facturacion. Toda la infraestructura de MercadoPago sirve para
+que el TENANT le cobre a sus compradores, no para que Dico le cobre al tenant.
+
+**Lo que no se uso nunca:** 1 pedido real en toda la base, 2 ventas, 0 cuentas
+de MP conectadas, 0 suscripciones push. Nada de 6c-6g paso por manos reales.
+
+### Del linter de seguridad (advisors), lo que vale
+
+- `payment_integrations`, `push_subscriptions` y `rate_limits` figuran como
+  "RLS sin policies". En los tres es **a proposito** (se accede por RPC o por
+  service role). No tocar.
+- **Funciones de trigger expuestas como RPC**: `auditar`, `completar_sucursal`,
+  `touch_tenant_on_order`, `touch_tenant_on_product`,
+  `aplicar_movimiento_al_saldo`, `crear_settings_de_tenant`,
+  `espejar_settings_a_tenant` son ejecutables por `anon`. Son triggers: nadie
+  deberia poder invocarlos. Se cierra con un `revoke execute`.
+- `search_path` mutable en `tocar_settings_updated_at` y
+  `libro_es_de_solo_agregar`.
+- **Leaked password protection desactivada** en el edificio (un clic en el
+  dashboard, Auth > Settings). Ya estaba pendiente para los 3 legacy.
+
+---
+
 ## 19/ago/2026 (noche) — MERCADOPAGO POR TENANT (migracion 0051)
 
 Lo mas grande que faltaba. El edificio pasa a poder **cobrarle a un cliente

@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { iniciarSesion, destinoTrasLogin, pedirResetPassword, cambiarPassword } from '../services/signup';
+import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0f0e0d', line: 'rgba(255,255,255,0.12)',
@@ -52,6 +53,21 @@ export default function Login() {
   const [password2, setPassword2] = useState('');
 
   useEffect(() => { document.title = 'Entrar — Dico'; }, []);
+
+  // Red de seguridad para lo de arriba: leer el hash es GANARLE UNA CARRERA al
+  // cliente de Supabase, que lo procesa y lo limpia apenas puede. Si nos gana
+  // —y con la conexion justa nos gana— la persona ve el login comun con una
+  // sesion de recuperacion abierta, escribe la contraseña VIEJA que no
+  // recuerda, y no entra.
+  //
+  // `PASSWORD_RECOVERY` es el evento que Supabase emite para exactamente esto,
+  // y no depende de que el hash siga ahi.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') setModoNueva(true);
+    });
+    return () => sub?.subscription?.unsubscribe();
+  }, []);
 
   const guardarNueva = useCallback(async (e) => {
     e.preventDefault();
