@@ -76,10 +76,14 @@ $1 un pedido de $20.000 y el webhook lo aprobaria sin notar nada.
   robaba a las demas: la pantalla de cobros recibia el router de la de equipo y
   contestaba "accion desconocida". Ahora las functions se declaran en
   `datos.functions`, como las tablas.
-- **`payment_integrations` existe en el legacy y NUNCA se versiono** en
-  `supabase/migrations/`. Se creo a mano, como paso con `info_pages`. Se agrego
-  al snapshot legacy para que el checker no avise para siempre, pero la
-  migracion sigue sin existir.
+- **`payment_integrations` existia en el legacy sin migracion.** Se creo a mano,
+  como paso con `info_pages`. **Versionada el 20/ago** en
+  `supabase/migrations/20260820_version_payment_integrations.sql`, reconstruida
+  desde el codigo que la usa (los 3 proyectos estan pausados, no es un volcado).
+  Todo idempotente: sobre los tenants que ya la tienen no cambia nada.
+  Queda anotado ahi, sin resolver: en el legacy el `access_token` es legible por
+  cualquier admin del negocio. En el edificio no (0051, RLS sin policies).
+  Cerrarlo exige la base despierta para poder probarlo.
 
 ---
 
