@@ -18,11 +18,28 @@
  *
  * Coordenadas en PORCENTAJE, no en pixeles: el mismo plano se ve en el monitor
  * del mostrador y en el telefono del mozo.
+ *
+ * ZONAS: UN PLANO POR ZONA, NO UN PLANO CON ZONAS ADENTRO
+ * Los porcentajes son relativos a la zona, no al local. Un salon de cuatro
+ * zonas dibujado en un lienzo unico le da un cuarto de pantalla a cada una y
+ * en un telefono las mesas quedan del tamanio de una moneda. Con una pestania
+ * por zona, cada zona usa el ancho completo.
+ *
+ * Esto se decidio ANTES de que nadie dibujara su salon a proposito: cambiarlo
+ * despues invalida las coordenadas ya guardadas —una mesa al 80% del local no
+ * esta al 80% del patio— y obliga al cliente a redibujar todo a mano.
+ *
+ * Las pestanias aparecen recien con dos zonas. Un bar de ocho mesas no tiene
+ * por que enterarse de que las zonas existen.
  */
 import { useState, useRef, useCallback, useMemo } from 'react';
 
 // Los estados que puede tener una mesa AHORA. El color es lo que se lee de
 // lejos; el texto esta igual porque el color solo no es accesible.
+// Las mesas que el negocio no asigno a ninguna zona necesitan un lugar donde
+// caer: sin esto desaparecerian del plano en cuanto exista una segunda zona.
+const SIN_ZONA = 'Sin zona';
+
 const ESTADOS = {
   libre:     { label: 'Libre',     bg: 'var(--ag-ok-bg, #e8f5e9)',  fg: 'var(--ag-ok, #2e7d32)',  borde: '#4caf50' },
   reservada: { label: 'Reservada', bg: 'var(--ag-warn-bg, #fff8e1)', fg: 'var(--ag-warn, #ef6c00)', borde: '#ffb300' },
@@ -87,16 +104,46 @@ export default function MapaDeMesas({
 }) {
   const [editando, setEditando] = useState(false);
   const [seleccionada, setSeleccionada] = useState(null);
+  const [zonaActiva, setZonaActiva] = useState(null);
   const lienzo = useRef(null);
   const arrastre = useRef(null);
 
-  const { colocados, sinColocar } = useMemo(() => ({
-    colocados: recursos.filter(r => r.pos_x != null && r.pos_y != null),
-    sinColocar: recursos.filter(r => r.pos_x == null || r.pos_y == null),
-  }), [recursos]);
-
+  // Las zonas salen de TODOS los recursos, no solo de los que estan en el
+  // plano: una mesa recien creada todavia no tiene posicion y su zona tiene
+  // que existir igual, o la pestania desaparece mientras se la esta cargando.
   const zonas = useMemo(
-    () => [...new Set(colocados.map(r => r.zone).filter(Boolean))], [colocados]);
+    () => [...new Set(recursos.map(r => r.zone).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es')),
+    [recursos]);
+
+  const haySinZona = useMemo(() => recursos.some(r => !r.zone), [recursos]);
+  // Con una sola zona no hay nada que elegir, y las pestanias solo estorban.
+  const pestanias = zonas.length + (haySinZona ? 1 : 0) > 1
+    ? [...zonas, ...(haySinZona ? [SIN_ZONA] : [])]
+    : [];
+
+  // La zona elegida deja de existir cuando se renombra o se vacia la ultima
+  // mesa: sin este ajuste el plano queda en blanco sin explicacion.
+  const zonaVigente = pestanias.length
+    ? (pestanias.includes(zonaActiva) ? zonaActiva : pestanias[0])
+    : null;
+
+  // Sin pestanias no hay zona "abierta", pero eso NO quiere decir que la mesa
+  // nueva vaya sin zona: si el local tiene una sola, la hereda. Mandar null
+  // ahi le crearia al negocio una pestania "Sin zona" con la mesa que acaba de
+  // cargar, que es justo lo que las zonas venian a evitar.
+  const zonaParaNueva = zonaVigente === SIN_ZONA ? null
+    : (zonaVigente ?? (zonas.length === 1 ? zonas[0] : null));
+
+  const { colocados, sinColocar } = useMemo(() => {
+    const deLaZona = zonaVigente === null
+      ? recursos
+      : recursos.filter(r => (r.zone || SIN_ZONA) === zonaVigente);
+    return {
+      colocados: deLaZona.filter(r => r.pos_x != null && r.pos_y != null),
+      sinColocar: deLaZona.filter(r => r.pos_x == null || r.pos_y == null),
+    };
+  }, [recursos, zonaVigente]);
 
   // El arrastre se sigue con pointer events y setPointerCapture: asi el gesto
   // no se pierde si el dedo sale de la mesa, que en un telefono pasa siempre.
@@ -133,6 +180,25 @@ export default function MapaDeMesas({
     window.addEventListener('pointerup', soltar);
   }, [onMover]);
 
+  // Tocar un lugar vacio del plano crea la mesa AHI. Cargar un salon son veinte
+  // mesas: hacer "boton -> formulario -> bandeja -> arrastrar" veinte veces
+  // cansa a la tercera, y ademas deja la posicion sin poner.
+  const crearAca = useCallback((ev) => {
+    if (!editando || !onNuevo || !lienzo.current) return;
+    // Solo el lienzo: un toque sobre una mesa es para agarrarla, no para
+    // crear otra encima.
+    if (ev.target !== lienzo.current) return;
+    const caja = lienzo.current.getBoundingClientRect();
+    const x = ((ev.clientX - caja.left) / caja.width) * 100;
+    const y = ((ev.clientY - caja.top) / caja.height) * 100;
+    onNuevo({
+      pos_x: Math.round(Math.min(98, Math.max(2, x)) * 10) / 10,
+      pos_y: Math.round(Math.min(98, Math.max(2, y)) * 10) / 10,
+      // La zona no se pregunta: se hereda de la pestania que esta abierta.
+      zone: zonaParaNueva,
+    });
+  }, [editando, onNuevo, zonaParaNueva]);
+
   const wrap = { display: 'grid', gap: 14 };
 
   return (
@@ -156,7 +222,10 @@ export default function MapaDeMesas({
         )}
         <div style={{ flex: 1 }} />
         <button
-          type="button" onClick={onNuevo}
+          type="button"
+          // Sin posicion: cae en la bandeja. Es el camino para cargar las mesas
+          // sin dibujar el plano, que sigue siendo valido.
+          onClick={() => onNuevo?.({ zone: zonaParaNueva })}
           style={{
             padding: '8px 13px', borderRadius: 9, cursor: 'pointer', font: 'inherit',
             border: '1px solid var(--ag-line, rgba(0,0,0,0.15))',
@@ -179,16 +248,43 @@ export default function MapaDeMesas({
         </button>
       </header>
 
+      {pestanias.length > 0 && (
+        <div
+          role="tablist" aria-label="Zonas del local"
+          style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}
+        >
+          {pestanias.map(z => {
+            const activa = z === zonaVigente;
+            return (
+              <button
+                key={z} type="button" role="tab" aria-selected={activa}
+                onClick={() => { setZonaActiva(z); setSeleccionada(null); }}
+                style={{
+                  padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
+                  font: 'inherit', fontSize: 13.5, fontWeight: activa ? 650 : 400,
+                  border: activa ? '1px solid transparent' : '1px solid var(--ag-line, rgba(0,0,0,0.15))',
+                  background: activa ? 'var(--ag-ink, #1a1a1a)' : 'transparent',
+                  color: activa ? '#fff' : 'inherit',
+                }}
+              >
+                {z}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {editando && (
         <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ag-ink-3, #666)' }}>
-          Arrastrá las {terminologia.plural.toLowerCase()} para acomodarlas como están en tu local.
-          Se guarda solo.
+          Arrastrá las {terminologia.plural.toLowerCase()} para acomodarlas como están en tu local,
+          o tocá un lugar vacío para agregar una. Se guarda solo.
         </p>
       )}
 
       {/* ── El plano ── */}
       <div
         ref={lienzo}
+        onClick={crearAca}
         style={{
           position: 'relative',
           width: '100%',
@@ -208,32 +304,19 @@ export default function MapaDeMesas({
           <div style={{
             position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
             textAlign: 'center', padding: 20, color: 'var(--ag-ink-3, #666)', fontSize: 14,
+            // Sin esto el cartel se come el toque y no se puede crear la
+            // primera mesa justo cuando el plano esta vacio.
+            pointerEvents: 'none',
           }}>
             <div>
               <div style={{ fontSize: 30, marginBottom: 6 }}>🗺️</div>
               Todavía no dibujaste tu salón.<br />
-              {sinColocar.length > 0
-                ? <>Tocá <strong>Acomodar salón</strong> y arrastrá las de abajo.</>
-                : <>Empezá creando una {terminologia.singular}.</>}
+              {editando
+                ? <>Tocá donde va la primera {terminologia.singular}.</>
+                : <>Tocá <strong>Acomodar salón</strong> para empezar.</>}
             </div>
           </div>
         )}
-
-        {zonas.map(z => {
-          // Etiqueta de zona sobre el promedio de sus mesas: ubica sin obligar
-          // a dibujar poligonos de zona, que seria un editor entero aparte.
-          const suyas = colocados.filter(r => r.zone === z);
-          const x = suyas.reduce((a, r) => a + Number(r.pos_x), 0) / suyas.length;
-          const y = Math.min(...suyas.map(r => Number(r.pos_y)));
-          return (
-            <span key={z} aria-hidden="true" style={{
-              position: 'absolute', left: `${x}%`, top: `${Math.max(2, y - 9)}%`,
-              transform: 'translate(-50%, -50%)',
-              fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
-              color: 'var(--ag-ink-3, #888)', pointerEvents: 'none',
-            }}>{z}</span>
-          );
-        })}
 
         {colocados.map(r => (
           <div key={r.id} data-mesa={r.id} style={{ position: 'absolute', left: `${r.pos_x}%`, top: `${r.pos_y}%` }}>

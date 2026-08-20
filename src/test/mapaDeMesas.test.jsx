@@ -92,7 +92,16 @@ describe('MapaDeMesas', () => {
   it('sin nada ubicado explica que hacer, sin dejar el plano mudo', () => {
     render(<MapaDeMesas recursos={[]} />);
     expect(screen.getByText(/Todavía no dibujaste tu salón/i)).toBeInTheDocument();
-    expect(screen.getByText(/Empezá creando una mesa/i)).toBeInTheDocument();
+    // El cartel dice el gesto que corresponde al modo en el que se esta: en
+    // servicio no se puede crear nada, asi que manda a acomodar primero. El
+    // <strong> lo distingue del boton, que dice lo mismo.
+    expect(screen.getByText('Acomodar salón', { selector: 'strong' })).toBeInTheDocument();
+  });
+
+  it('ya en modo acomodar, el plano vacio invita a tocar donde va la primera', () => {
+    render(<MapaDeMesas recursos={[]} onNuevo={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Acomodar salón' }));
+    expect(screen.getByText(/Tocá donde va la primera mesa/i)).toBeInTheDocument();
   });
 
   it('la utilizacion muestra lo que NO se vendio, no solo el porcentaje', () => {

@@ -53,6 +53,26 @@ export async function fetchResources(tenantId, branchId = null, { soloActivos = 
   return data || [];
 }
 
+/**
+ * El nombre que sigue: "12" -> "13", "Barra 3" -> "Barra 4".
+ *
+ * Vive aca y no en el editor porque quien arma el borrador es el panel, y el
+ * editor va lazy: importarla de ahi arrastraria el componente entero al chunk
+ * principal y el lazy no serviria de nada.
+ *
+ * Devuelve vacio si el ultimo nombre no termina en numero ("Barra", "VIP"):
+ * inventar "Barra2" seria peor que dejar que lo escriba la persona.
+ */
+export function siguienteNombre(recursos = []) {
+  const nombres = recursos.map(r => String(r.name || '')).filter(Boolean);
+  if (!nombres.length) return '1';
+  const m = nombres[nombres.length - 1].match(/^(.*?)(\d+)$/);
+  if (!m) return '';
+  const [, prefijo, num] = m;
+  // Se respeta el relleno de ceros: "mesa 09" sigue en "mesa 10".
+  return `${prefijo}${String(Number(num) + 1).padStart(num.length, '0')}`;
+}
+
 /** Alta o edicion. Sin id crea; con id actualiza. */
 export async function saveResource(tenantId, branchId, recurso) {
   const fila = {
