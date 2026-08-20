@@ -8,6 +8,116 @@
 
 ---
 
+## 19/ago/2026 (tarde) — COBRO, MESAS Y ETAPA 6f (migraciones 0049-0050)
+
+Cuatro commits. El edificio pasa de "construido" a **entregable a un local con
+empleados**: hasta hoy, darle el panel a un mozo era darle el P&L.
+
+### Estado
+
+| | Donde esta |
+|---|---|
+| Base (`wwwzdgprsooyjgkuyoav`) | migracion **0050**, todo aplicado |
+| Rama `platform/runtime-tenant` | **8423418** |
+| Produccion (Vercel) | commit **483892c** — **12 commits atras** |
+
+**Falta deployar.** `npm run deploy`. El asistente no puede: el clasificador de
+permisos bloquea el comando de Vercel.
+
+### Hecho
+
+**Pantalla de cobro (6d cerrada).** `register_payment` y `order_balance`
+existian desde 6d sin que nadie las llamara. El monto viene cargado con lo que
+falta; dividir la cuenta es escribir menos, sin modo aparte. En efectivo
+calcula el vuelto pero asienta lo COBRADO: guardar el billete entero haria que
+el arqueo diera faltante todos los dias.
+
+**0049 — medios de pago por defecto.** El seed quedo comentado en 0004 para
+correrlo a mano; se corrio una vez y nunca mas. Los dos negocios nacidos del
+alta self-service tenian CERO medios y no podian cobrar nada. Va como trigger
+sobre `tenants`, mismo criterio que 0044.
+
+**Alta de mesas y zonas (6c cerrada).** Sin migracion: todo estaba en 0045. En
+modo acomodar se toca el plano y la mesa nace ahi, con el nombre siguiente y la
+forma heredada. **Las zonas son un plano POR zona, con pestanias, y las
+coordenadas pasaron a ser relativas a la zona** — decidido antes de que nadie
+dibujara en serio, porque cambiarlo despues obliga a redibujar a mano.
+
+**ETAPA 6f — roles con alcance.** `tenant_members` es
+(tenant_id, user_id, branch_id, roles[]). Permisos declarados en
+`src/modules/roles.js`, no en tabla editable. RLS real sobre expenses,
+suppliers, sales, settings, staff, audit_log y cash_sessions. Pantalla de
+equipo propia del edificio. La cocina no ve importes ni anula.
+
+**Vitrina (`npm run vitrina`).** Sirve UNA pantalla sin base ni sesion,
+interceptando `src/lib/supabase.js`. Cierra la deuda de "ninguna pantalla se
+vio renderizada en un navegador". Seis escenas.
+
+### Verificado
+
+**Contra la base, con roles simulados** (`set_config('request.jwt.claims',...)`
++ `set local role authenticated`): un mozo no lee expenses, sales, settings,
+suppliers, audit_log, cash_sessions ni nomina ajena; si ve productos; no carga
+un gasto; al ascenderse a duenio el update afecta 0 filas; cierra un pedido y
+la venta se asienta, y sigue sin ver el facturado.
+
+**En el navegador, via vitrina:** cobro con cuenta dividida (dos medios hasta
+saldar), alta de mesa tocando el plano (queda en 74.8%/79.7%, la zona correcta),
+equipo con roles traducidos por rubro, y pedidos vistos por la cocina sin un
+solo importe.
+
+**726 tests, 4 checks del pre-commit, lint y build en verde.**
+
+### Cuatro bugs que aparecieron ejecutando (ninguno leyendo)
+
+1. **`audit_log` tenia dos policies select.** La nueva y `audit_select`, con el
+   nombre viejo. Las permisivas se combinan con **OR**: la vieja anulaba la
+   restriccion. Ahora se BARREN todas antes de crear las nuevas. Los delete de
+   `staff` y `cash_sessions` tenian el mismo agujero.
+2. **Un mozo no podia cerrar un pedido.** `complete_order` termina en
+   `insert ... returning *` y el RETURNING exige poder LEER la fila; PostgREST
+   lo agrega por defecto. Se resolvio haciendo la funcion definer con guard
+   explicito, no aflojando la lectura de `sales`.
+3. **Con una sola zona, el boton + mandaba `zone: null`**, creando una pestania
+   "Sin zona" espuria. Lo agarro un test.
+4. **La primera prueba de RLS fue un falso positivo**: el miembro ficticio no
+   se habia insertado, asi que "no ve nada" era por no ser miembro.
+
+### Lo que queda de 6f (decirlo con esas palabras)
+
+- **El recorte `propio` esta a medias.** Se implemento el de la cocina (sin
+  importes, sin anular). Falta que el mozo vea SUS mesas y SUS ventas, y que el
+  encargado quede acotado a su sucursal: hoy el filtro es por modulo entero.
+- **`accountant` y `marketer` no tienen pantalla propia.** El contador abre en
+  Ventas, que es lo mas cerca que hay. Su pantalla es la lista de sus negocios
+  (seccion 4.5) y no existe.
+- **El alcance por sucursal no se ejerce en la UI.** `alcanza_branch` existe y
+  las policies de caja lo usan, pero el panel todavia no deja elegir sucursal
+  ni filtra por ella.
+- **`role` sigue en la tabla**, deprecada y sincronizada por trigger. Se elimina
+  cuando produccion este al dia y ningun consumidor la lea.
+
+### Trampas nuevas
+
+- **Reemplazar una policy por nombre no alcanza.** Si la vieja se llamaba
+  distinto, sobrevive y anula la nueva. Barrer y recrear.
+- **`check-supabase-columns.mjs` NO valida los selects embebidos** de PostgREST
+  (`tenant_members(role, roles, branch_id)`). Paso en verde con el snapshot
+  desactualizado, que es justo el bug que ese checker existe para atrapar.
+- **La flakiness de los tests no era azar: era CPU.** Con un dev server
+  corriendo fallan 3-4 al azar por timeout; sin el pasan los 726. `testTimeout`
+  subio a 15s.
+- **Un `insert ... returning` necesita permiso de SELECT**, no solo de INSERT.
+
+### Pendiente inmediato
+
+1. **Deployar** (12 commits). Lo corre Ricky.
+2. Cerrar el recorte `propio` que quedo a medias.
+3. 6g — opportunity engine, desbloqueado por los datos de 6b-6e.
+4. MercadoPago multi-tenant: sigue siendo lo mas grande y lo que mas plata mueve.
+
+---
+
 ## 19/ago/2026 — EL LOCAL FISICO: ETAPAS 0, 6a-6e (migraciones 0039-0048)
 
 Sesion larga: 11 commits, **10 migraciones aplicadas**, 663 tests. El edificio
