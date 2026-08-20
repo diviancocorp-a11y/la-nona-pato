@@ -149,6 +149,13 @@ export default defineConfig(async () => ({
     globals: true,
     setupFiles: './src/test/setup.js',
     include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    // Los 5s por defecto alcanzan de sobra para un test de render... salvo que
+    // haya un `npm run dev` comiendose la maquina, que es justo lo que pasa
+    // cuando se commitea sin cerrar el server. Ahi timeoutean tests distintos
+    // en cada corrida y parece flakiness de los tests: no lo es, es la CPU.
+    // Reproducido el 19/ago: con la vitrina levantada fallan 3-4 al azar, sin
+    // ella pasan los 675.
+    testTimeout: 15000,
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     env: {
       VITE_SUPABASE_URL: 'http://test.local',
