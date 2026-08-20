@@ -13,7 +13,7 @@
  * AdminTopbar/AdminProfileMenu consultan `admin_users`, que en el edificio no
  * existe, y su menu apunta a pantallas legacy.
  */
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 
 import usePlatformTenant from '../hooks/usePlatformTenant';
 import LoginScreen from '../components/admin/LoginScreen';
@@ -33,7 +33,8 @@ import { fetchCustomerStats } from '../services/platformCrm';
 import { fetchWaste, registerWaste } from '../services/platformWaste';
 import { uploadTenantImage } from '../services/platformStorage';
 import {
-  fetchResources, moveResource, fetchAppointments, fetchUtilization,
+  fetchResources, moveResource, saveResource, archiveResource, siguienteNombre,
+  fetchAppointments, fetchUtilization,
 } from '../services/platformScheduling';
 import { fetchDefaultBranch } from '../services/platformInventoryLedger';
 import {
@@ -60,6 +61,7 @@ import {
 import {
   modulosDe, terminologia, tieneModulo, usaContabilidadUsar,
 } from '../modules/registry';
+import { puedeVer, pantallaInicial } from '../modules/roles';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
 // diferencia es que se le inyecta con que guardar y que zonas apagar. Va lazy
@@ -76,10 +78,15 @@ const FinanzasPanel = lazy(() => import('../components/admin/platform/FinanzasPa
 const VentasPanel = lazy(() => import('../components/admin/platform/VentasPanel'));
 // Equipo: pantalla del legacy tal cual. El service bifurca a tenant-users,
 // que scopea todo al negocio de este host.
-const Users = lazy(() => import('../components/admin/Users'));
+// Equipo: pantalla propia del edificio (6f). El `Users` legacy maneja un rol
+// unico y global; aca una persona tiene varios roles y puede estar acotada a
+// una sucursal.
+const Users = lazy(() => import('../components/admin/platform/EquipoDelNegocio'));
 // Salon: el plano del local (Etapa 6c). Lazy porque solo lo ve un negocio
 // fisico y arrastra su propio editor de arrastre.
 const MapaDeMesas = lazy(() => import('../components/admin/platform/MapaDeMesas'));
+// El alta de mesas viaja con el salon: quien no tiene local no lo baja nunca.
+const EditorDeMesa = lazy(() => import('../components/admin/platform/EditorDeMesa'));
 // Caja: el turno con su arqueo. Lazy por lo mismo que el salon.
 const CajaPanel = lazy(() => import('../components/admin/platform/CajaPanel'));
 // Equipo: quien esta trabajando y cuanto cuesta el turno (6e).
@@ -127,7 +134,7 @@ function Centered({ children }) {
 }
 
 export default function PlatformAdmin() {
-  const { session, tenant, role, status, doLogin, doLogout } = usePlatformTenant();
+  const { session, tenant, role, roles, status, doLogin, doLogout } = usePlatformTenant();
 
   const [tab, setTab] = useState('products');
   const [toast, setToast] = useState('');
@@ -147,6 +154,8 @@ export default function PlatformAdmin() {
   const [costoLaboral, setCostoLaboral] = useState(null);
   const [reservasHoy, setReservasHoy] = useState([]);
   const [utilizacion, setUtilizacion] = useState(null);
+  // La mesa que se esta creando o editando. Null = el editor esta cerrado.
+  const [mesaEnEdicion, setMesaEnEdicion] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -329,6 +338,37 @@ export default function PlatformAdmin() {
     loadCaja();
   }, [turno, loadCaja]);
 
+  /* ── Alta y edicion de mesas (6c) ──
+     El borrador hereda forma y capacidad de la ultima cargada y propone el
+     nombre siguiente. Cargar un salon son veinte mesas casi iguales: sin esto
+     son veinte formularios completos. */
+  const nuevaMesa = useCallback((semilla = {}) => {
+    const ultima = recursos[recursos.length - 1];
+    setMesaEnEdicion({
+      kind: 'table',
+      name: siguienteNombre(recursos),
+      capacity: ultima?.capacity || 4,
+      shape: ultima?.shape || 'round',
+      ...semilla,
+    });
+  }, [recursos]);
+
+  const guardarMesa = useCallback(async (datos) => {
+    const b = branch || await fetchDefaultBranch(tenantId);
+    const r = await saveResource(tenantId, b?.id, datos);
+    if (r.__error) return r;
+    msg(datos.id ? 'Mesa guardada' : `${datos.name} agregada`);
+    loadSalon();
+    return r;
+  }, [tenantId, branch, loadSalon]);
+
+  const archivarMesa = useCallback(async (id) => {
+    const ok = await archiveResource(tenantId, id);
+    msg(ok ? 'Mesa dada de baja' : 'No se pudo dar de baja');
+    if (ok) loadSalon();
+    return ok;
+  }, [tenantId, loadSalon]);
+
   const moverRecurso = useCallback(async (id, pos) => {
     const ok = await moveResource(tenantId, id, pos);
     // Optimista: el arrastre ya movio el elemento en pantalla. Si el guardado
@@ -475,6 +515,30 @@ export default function PlatformAdmin() {
   const traerClientes = useCallback(() => fetchCustomerStats(tenantId), [tenantId]);
 
   /* ── Gates ── */
+  // Memo y no un calculo suelto: el efecto de abajo depende de esta lista, y
+  // un array nuevo en cada render lo haria correr para siempre.
+  const tabs = useMemo(() => modulosDe(tenant?.vertical)
+    .filter(m => ICONOS[m.id])
+    // 6f: y de esas, las que este rol puede ver. Un mozo no navega al P&L.
+    // Esto es NAVEGACION, no seguridad: lo que de verdad protege los datos son
+    // las policies de 0050. Si las dos se contradicen, manda la policy.
+    .filter(m => puedeVer(roles, m.id))
+    .map(m => ({
+      id: m.id,
+      // El modulo de catalogo se llama distinto en cada rubro.
+      label: m.id === 'products' ? terminologia(tenant?.vertical).plural : m.label,
+      Icon: ICONOS[m.id],
+    })), [tenant?.vertical, roles]);
+
+  // Donde cae cada uno al entrar (6f). El duenio abre en su negocio, el cajero
+  // en su caja, el mozo en sus mesas. Y si el tab en el que esta deja de estar
+  // disponible —cambio de rol, negocio sin esa pantalla— se corrige solo en
+  // vez de dejar el panel en blanco.
+  useEffect(() => {
+    if (!tabs.length || tabs.some(t => t.id === tab)) return;
+    setTab(pantallaInicial(roles, tabs) || tabs[0].id);
+  }, [tabs, tab, roles]);
+
   if (status === 'checking') return <Centered>Cargando...</Centered>;
   if (status === 'anon') return <LoginScreen onLogin={doLogin} />;
 
@@ -508,14 +572,6 @@ export default function PlatformAdmin() {
   // Que secciones ve este negocio segun su rubro. modulosDe() ya descarta las
   // que todavia no estan implementadas, asi que declarar "agenda" para
   // barberia no ensucia la nav hasta que exista.
-  const tabs = modulosDe(tenant?.vertical)
-    .filter(m => ICONOS[m.id])
-    .map(m => ({
-      id: m.id,
-      // El modulo de catalogo se llama distinto en cada rubro.
-      label: m.id === 'products' ? terminologia(tenant?.vertical).plural : m.label,
-      Icon: ICONOS[m.id],
-    }));
 
   return (
     <ConfirmSlideProvider>
@@ -605,6 +661,12 @@ export default function PlatformAdmin() {
               loading={loadingOrders}
               onSetStatus={handleSetOrderStatus}
               showToast={msg}
+              tenantId={tenantId}
+              roles={roles}
+              hayTurnoAbierto={!!turno}
+              // Cada cobro mueve el esperado del cajon: si la caja no se
+              // refresca, el cajero arquea contra un numero viejo.
+              onCobrado={loadCaja}
             />
           )}
           {tab === 'stock' && (
@@ -632,9 +694,19 @@ export default function PlatformAdmin() {
                 utilizacion={utilizacion}
                 onMover={moverRecurso}
                 terminologia={{ plural: 'Mesas', singular: 'mesa' }}
-                onSeleccionar={(r) => msg(`${r.name} · ${r.capacity} lugares`)}
-                onNuevo={() => msg('El alta de mesas llega con el editor del salón')}
+                onSeleccionar={setMesaEnEdicion}
+                onNuevo={nuevaMesa}
               />
+              {mesaEnEdicion && (
+                <EditorDeMesa
+                  recurso={mesaEnEdicion}
+                  zonas={[...new Set(recursos.map(r => r.zone).filter(Boolean))]}
+                  terminologia={{ plural: 'Mesas', singular: 'mesa' }}
+                  onGuardar={guardarMesa}
+                  onArchivar={archivarMesa}
+                  onCerrar={() => setMesaEnEdicion(null)}
+                />
+              )}
             </Suspense>
           )}
           {tab === 'personal' && (
@@ -711,6 +783,10 @@ export default function PlatformAdmin() {
           {tab === 'usuarios' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--ag-ink-3)' }}>Cargando...</div>}>
               <Users
+                vertical={tenant?.vertical}
+                modo={tenant?.operation_mode}
+                terminos={terminologia(tenant?.vertical)}
+                sucursales={branch ? [branch] : []}
                 showToast={msg}
                 onBack={() => setTab('config')}
                 currentUserId={session?.user?.id}

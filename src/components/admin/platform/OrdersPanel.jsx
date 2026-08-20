@@ -11,6 +11,8 @@ import { useConfirm } from '../../ConfirmSlideProvider';
 import {
   PlatformOrderStatus, OPEN_ORDER_STATUSES, nextOrderStatus, fetchOrderItems,
 } from '../../../services/platformAdmin';
+import PantallaDeCobro from './PantallaDeCobro';
+import { vePrecios } from '../../../modules/roles';
 
 const LABELS = {
   [PlatformOrderStatus.PENDING_PAYMENT]: 'Esperando pago',
@@ -64,10 +66,11 @@ function StatusChip({ status }) {
   );
 }
 
-function OrderCard({ order, onAdvance, onCancel }) {
+function OrderCard({ order, onAdvance, onCancel, onCobrar, conImportes = true }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(null);
   const next = nextOrderStatus(order.status);
+  const puedeCobrar = !!onCobrar && OPEN_ORDER_STATUSES.includes(order.status);
 
   const toggle = async () => {
     const opening = !open;
@@ -98,11 +101,16 @@ function OrderCard({ order, onAdvance, onCancel }) {
             {order.customer_name || 'Sin nombre'}
           </div>
           <div style={{ fontSize: 12, color: 'var(--ag-ink-3)', marginTop: 2 }}>
-            {when(order.created_at)} · {order.delivery === 'envio' ? 'Envío' : 'Retiro'} · {order.payment}
+            {when(order.created_at)} · {order.delivery === 'envio' ? 'Envío' : 'Retiro'}
+            {conImportes && <> · {order.payment}</>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 14, color: 'var(--ag-ink)' }}>{money(order.total)}</div>
+          {/* La cocina no ve importes (nota 1 de la matriz de 6f): prepara, no
+              cobra, y el margen no tiene por que pasar por ahi. */}
+          {conImportes && (
+            <div style={{ fontSize: 14, color: 'var(--ag-ink)' }}>{money(order.total)}</div>
+          )}
           <div style={{ marginTop: 3 }}><StatusChip status={order.status} /></div>
         </div>
       </button>
@@ -114,28 +122,53 @@ function OrderCard({ order, onAdvance, onCancel }) {
           {items?.map(it => (
             <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ag-ink-2)', marginBottom: 4 }}>
               <span>{it.qty}× {it.name_snapshot || 'Producto'}</span>
-              <span>{money(it.subtotal ?? it.unit_price * it.qty)}</span>
+              {conImportes && <span>{money(it.subtotal ?? it.unit_price * it.qty)}</span>}
             </div>
           ))}
 
           <dl style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--ag-ink-3)' }}>
             {order.customer_phone && <Line label="Teléfono" value={order.customer_phone} />}
             {order.delivery === 'envio' && order.delivery_address && <Line label="Dirección" value={order.delivery_address} />}
-            {Number(order.delivery_cost) > 0 && <Line label="Envío" value={money(order.delivery_cost)} />}
-            {Number(order.discount) > 0 && <Line label="Descuento" value={`- ${money(order.discount)}`} />}
-            {Number(order.tip_amount) > 0 && <Line label="Propina" value={money(order.tip_amount)} />}
+            {conImportes && Number(order.delivery_cost) > 0 && <Line label="Envío" value={money(order.delivery_cost)} />}
+            {conImportes && Number(order.discount) > 0 && <Line label="Descuento" value={`- ${money(order.discount)}`} />}
+            {conImportes && Number(order.tip_amount) > 0 && <Line label="Propina" value={money(order.tip_amount)} />}
             {order.note && <Line label="Nota" value={order.note} />}
             {order.is_gift && <Line label="Regalo" value={order.gift_note || 'Sí'} />}
           </dl>
 
+          {/* Cobrar va PRIMERO y en toda la fila: es la accion que se busca en
+              esta tarjeta cuando el pedido esta en curso. Avanzar de estado es
+              frecuente; cobrar es lo que cierra la plata del dia. */}
+          {puedeCobrar && (
+            <button
+              type="button" className="ag-btn-primary"
+              style={{ width: '100%', marginTop: 12 }}
+              onClick={() => onCobrar(order)}
+            >
+              Cobrar {money(order.total)}
+            </button>
+          )}
+
           {(next || order.status !== PlatformOrderStatus.CANCELLED) && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               {next && (
-                <button type="button" className="ag-btn-primary" style={{ flex: 1 }} onClick={() => onAdvance(order, next)}>
+                <button
+                  type="button"
+                  // Con el cobro presente, avanzar de estado baja a secundario:
+                  // dos botones llenos uno encima del otro no dicen cual es el
+                  // que importa.
+                  className={puedeCobrar ? 'ag-btn-ghost' : 'ag-btn-primary'}
+                  style={{ flex: 1 }}
+                  onClick={() => onAdvance(order, next)}
+                >
                   {ADVANCE_LABEL[order.status]}
                 </button>
               )}
-              {order.status !== PlatformOrderStatus.COMPLETED && order.status !== PlatformOrderStatus.CANCELLED && (
+              {/* "Preparar y marcar listo; no cobra ni anula" (nota 2 de la
+                  matriz de 6f). Anular un pedido es una decision de plata. */}
+              {conImportes
+                && order.status !== PlatformOrderStatus.COMPLETED
+                && order.status !== PlatformOrderStatus.CANCELLED && (
                 <button type="button" className="ag-btn-ghost" onClick={() => onCancel(order)}>
                   Cancelar
                 </button>
@@ -157,8 +190,19 @@ function Line({ label, value }) {
   );
 }
 
-export default function OrdersPanel({ orders, loading, onSetStatus, showToast }) {
+export default function OrdersPanel({
+  orders, loading, onSetStatus, showToast,
+  // Cobrar es opcional: sin `tenantId` el panel se comporta como antes. Asi el
+  // catalogo de un negocio que todavia no usa caja no muestra un boton que no
+  // lleva a ningun lado.
+  tenantId = null, hayTurnoAbierto = true, onCobrado,
+  // 6f: sin roles se comporta como antes (todo visible). El recorte es de
+  // pantalla; lo que de verdad protege los datos son las policies de 0050.
+  roles = null,
+}) {
   const confirmSlide = useConfirm();
+  const [cobrando, setCobrando] = useState(null);
+  const conImportes = roles === null ? true : vePrecios(roles);
 
   const openOrders = orders.filter(o => OPEN_ORDER_STATUSES.includes(o.status));
   const closedOrders = orders.filter(o => !OPEN_ORDER_STATUSES.includes(o.status));
@@ -180,6 +224,10 @@ export default function OrdersPanel({ orders, loading, onSetStatus, showToast })
     if (res?.__error) { showToast?.(res.message || 'No se pudo cancelar'); return; }
     showToast?.('Pedido cancelado');
   };
+
+  // Cerrar la cuenta desde el cobro es el mismo camino que "Completar": un solo
+  // lugar decide como se completa un pedido.
+  const completar = (order) => advance(order, PlatformOrderStatus.COMPLETED);
 
   // En flujo, no `ag-page-over`: esa clase es un overlay full-screen que
   // esconde el topbar y el bottom nav (ver la nota en ProductsPanel).
@@ -213,7 +261,13 @@ export default function OrdersPanel({ orders, loading, onSetStatus, showToast })
               En curso <span style={{ opacity: .6 }}>· {openOrders.length}</span>
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {openOrders.map(o => <OrderCard key={o.id} order={o} onAdvance={advance} onCancel={cancel} />)}
+              {openOrders.map(o => (
+                <OrderCard
+                  key={o.id} order={o} onAdvance={advance} onCancel={cancel}
+                  conImportes={conImportes}
+                  onCobrar={tenantId && conImportes ? setCobrando : null}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -224,11 +278,27 @@ export default function OrdersPanel({ orders, loading, onSetStatus, showToast })
               Cerrados <span style={{ opacity: .6 }}>· {closedOrders.length}</span>
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {closedOrders.map(o => <OrderCard key={o.id} order={o} onAdvance={advance} onCancel={cancel} />)}
+              {closedOrders.map(o => (
+                <OrderCard
+                  key={o.id} order={o} onAdvance={advance} onCancel={cancel}
+                  conImportes={conImportes}
+                />
+              ))}
             </div>
           </section>
         )}
       </div>
+
+      {cobrando && (
+        <PantallaDeCobro
+          tenantId={tenantId}
+          pedido={cobrando}
+          hayTurnoAbierto={hayTurnoAbierto}
+          onCerrar={() => setCobrando(null)}
+          onCobrado={onCobrado}
+          onCompletar={completar}
+        />
+      )}
     </div>
   );
 }
