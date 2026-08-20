@@ -1,6 +1,13 @@
 // tenant-users — el equipo de UN negocio del edificio.
 //
 // Body: { tenant_slug, action: 'list'|'create'|'set_role'|'remove', ... }
+//
+// ── 6f: roles[] y sucursal ──
+// `tenant_members` paso a (tenant_id, user_id, branch_id, roles[]): una fila
+// por persona y sucursal, con varios roles. La columna `role` quedo deprecada
+// y la mantiene un trigger, asi que aca SIEMPRE se escribe `roles`: escribir
+// `role` no dispara ese trigger y deja las dos versiones diciendo cosas
+// distintas.
 // Solo un OWNER de ESE negocio pasa. Es edge function y no tabla directa
 // porque hacen falta dos cosas que el cliente no puede: leer los emails de
 // auth.users y crear cuentas.
@@ -31,7 +38,30 @@ function json(payload: unknown, status = 200) {
   });
 }
 
-const ROL = (r: unknown) => (r === "owner" ? "owner" : "staff");
+const VALIDOS = [
+  "owner", "manager", "cashier", "attendant", "kitchen", "marketer", "accountant",
+];
+
+/**
+ * Normaliza lo que llega a un array de roles validos.
+ *
+ * Acepta la forma vieja (`role: 'owner'|'staff'`) para no romper a un cliente
+ * sin deployar: 'staff' era "todo menos gestionar el equipo", y su equivalente
+ * mas cercano hoy es `manager`. Bajarlo a `attendant` le sacaria accesos que
+ * ya tenia.
+ */
+function ROLES(body: Record<string, unknown>): string[] {
+  const crudos = Array.isArray(body.roles)
+    ? body.roles
+    : [body.role === "owner" ? "owner" : body.role === "staff" ? "manager" : body.role];
+  const limpios = [...new Set(
+    crudos.map((r) => String(r || "").trim()).filter((r) => VALIDOS.includes(r)),
+  )];
+  return limpios.length ? limpios : ["attendant"];
+}
+
+/** null = todas las sucursales (el caso del duenio). */
+const BRANCH = (b: unknown) => (typeof b === "string" && b.trim() ? b.trim() : null);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -58,9 +88,12 @@ Deno.serve(async (req) => {
     if (!tenant) return json({ error: "Negocio no encontrado" }, 404);
 
     // Owner de ESTE negocio. Serlo de otro no sirve de nada aca.
-    const { data: callerRow } = await supabase.from("tenant_members")
-      .select("role").eq("tenant_id", tenant.id).eq("user_id", callerId).maybeSingle();
-    if (callerRow?.role !== "owner") {
+    // Owner en CUALQUIERA de sus filas: quien es duenio no deja de serlo por
+    // tener ademas un rol acotado a una sucursal.
+    const { data: callerRows } = await supabase.from("tenant_members")
+      .select("roles").eq("tenant_id", tenant.id).eq("user_id", callerId);
+    const esOwner = (callerRows || []).some((r) => (r.roles || []).includes("owner"));
+    if (!esOwner) {
       return json({ error: "Solo los dueños pueden gestionar el equipo" }, 403);
     }
 
@@ -69,16 +102,35 @@ Deno.serve(async (req) => {
     /* ─────────────────────────── list ─────────────────────────── */
     if (action === "list") {
       const { data: rows, error } = await supabase.from("tenant_members")
-        .select("user_id, role, created_at").eq("tenant_id", tenant.id).order("created_at");
+        .select("user_id, role, roles, branch_id, created_at")
+        .eq("tenant_id", tenant.id).order("created_at");
       if (error) throw error;
 
-      const users = [];
+      // Una persona puede tener varias filas (una por sucursal). Se devuelve
+      // una entrada por persona, con sus roles juntos: la pantalla lista
+      // gente, no filas.
+      const porUsuario = new Map<string, Record<string, unknown>>();
       for (const r of rows || []) {
-        const { data: u } = await supabase.auth.admin.getUserById(r.user_id);
-        users.push({
+        const previo = porUsuario.get(r.user_id);
+        if (previo) {
+          previo.roles = [...new Set([...(previo.roles as string[]), ...(r.roles || [])])];
+          (previo.branch_ids as (string | null)[]).push(r.branch_id);
+          continue;
+        }
+        porUsuario.set(r.user_id, {
           user_id: r.user_id,
           role: r.role,
+          roles: r.roles || [],
+          branch_ids: [r.branch_id],
           created_at: r.created_at,
+        });
+      }
+
+      const users = [];
+      for (const u0 of porUsuario.values()) {
+        const { data: u } = await supabase.auth.admin.getUserById(u0.user_id as string);
+        users.push({
+          ...u0,
           email: u?.user?.email || "(sin email)",
           last_sign_in_at: u?.user?.last_sign_in_at || null,
         });
@@ -90,7 +142,8 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const email = String(body.email || "").trim().toLowerCase();
       const password = String(body.password || "");
-      const role = ROL(body.role);
+      const roles = ROLES(body);
+      const branchId = BRANCH(body.branch_id);
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "Ese email no parece válido" }, 400);
 
       // O(1) por indice. El legacy trae las primeras 200 cuentas y busca en
@@ -114,13 +167,13 @@ Deno.serve(async (req) => {
       // Si ya existia NO se toca su contrasena: ver la nota de arriba.
 
       const { error: upsertErr } = await supabase.from("tenant_members").upsert(
-        { tenant_id: tenant.id, user_id: userId, role },
-        { onConflict: "tenant_id,user_id" },
+        { tenant_id: tenant.id, user_id: userId, branch_id: branchId, roles },
+        { onConflict: "tenant_id,user_id,branch_id" },
       );
       if (upsertErr) throw upsertErr;
 
       return json({
-        ok: true, user_id: userId, email, role, reused,
+        ok: true, user_id: userId, email, roles, branch_id: branchId, reused,
         message: reused
           ? "Esa persona ya tenía cuenta: entra con la contraseña que ya usaba."
           : undefined,
@@ -135,18 +188,20 @@ Deno.serve(async (req) => {
       // Nunca dejar el negocio sin dueño: sin esto, un owner puede sacarse a
       // si mismo y el negocio queda sin nadie que pueda administrarlo.
       const { data: owners } = await supabase.from("tenant_members")
-        .select("user_id").eq("tenant_id", tenant.id).eq("role", "owner");
-      const ownerIds = (owners || []).map((o) => o.user_id);
+        .select("user_id").eq("tenant_id", tenant.id).contains("roles", ["owner"]);
+      const ownerIds = [...new Set((owners || []).map((o) => o.user_id))];
       const sacaAlUltimo = ownerIds.length === 1 && ownerIds[0] === targetId
-        && (action === "remove" || ROL(body.role) !== "owner");
+        && (action === "remove" || !ROLES(body).includes("owner"));
       if (sacaAlUltimo) return json({ error: "No podés dejar el negocio sin dueño" }, 400);
 
       if (action === "set_role") {
-        const role = ROL(body.role);
-        const { error } = await supabase.from("tenant_members").update({ role })
+        const roles = ROLES(body);
+        // Se escribe `roles` y no `role`: es lo que dispara el trigger que
+        // mantiene la columna vieja al dia.
+        const { error } = await supabase.from("tenant_members").update({ roles })
           .eq("tenant_id", tenant.id).eq("user_id", targetId);
         if (error) throw error;
-        return json({ ok: true, user_id: targetId, role });
+        return json({ ok: true, user_id: targetId, roles });
       }
 
       // Quita el acceso a ESTE negocio. La cuenta sigue existiendo: puede ser

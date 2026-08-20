@@ -50,9 +50,26 @@ export async function createAdminUser(email, password, role = 'staff') {
   return call('create', { email, password, role });
 }
 
-/** Cambia el rol owner/staff. */
+/** Cambia el rol owner/staff. Solo legacy: el edificio usa `setMemberRoles`. */
 export async function setAdminRole(userId, role) {
   return call('set_role', { user_id: userId, role });
+}
+
+/* ─────────────────────────── Edificio (6f) ───────────────────────────
+ *
+ * Aca una persona tiene VARIOS roles y puede tenerlos acotados a una
+ * sucursal. Son funciones aparte y no un parametro mas de las de arriba
+ * porque el legacy no tiene ese modelo: alla el rol es uno solo y global.
+ */
+
+/** Suma a alguien al equipo con sus roles. `branchId` null = todas. */
+export async function addMember(email, password, roles, branchId = null) {
+  return call('create', { email, password, roles, branch_id: branchId });
+}
+
+/** Cambia los roles de un miembro. */
+export async function setMemberRoles(userId, roles) {
+  return call('set_role', { user_id: userId, roles });
 }
 
 /** Quita el acceso al admin (no borra la cuenta). */

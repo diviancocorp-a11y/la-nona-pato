@@ -102,6 +102,8 @@ export const RUBROS = {
       buscar: 'Buscar producto...',
       ejemplo: 'Milanesa napolitana',
       ejemploCategoria: 'Principales',
+      // Como se llama en este rubro quien atiende (rol `attendant`, 6f).
+      operario: 'Mozo',
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'requires_age_gate'],
@@ -125,6 +127,7 @@ export const RUBROS = {
       buscar: 'Buscar servicio...',
       ejemplo: 'Corte de pelo',
       ejemploCategoria: 'Cortes',
+      operario: 'Barbero',
     },
     // Un turno no es un producto: el tipo lo distingue en la misma tabla.
     productType: 'service',
@@ -147,6 +150,7 @@ export const RUBROS = {
       buscar: 'Buscar artículo...',
       ejemplo: 'Remera oversize',
       ejemploCategoria: 'Remeras',
+      operario: 'Vendedor',
     },
     productType: 'simple',
     campos: [...CAMPOS_BASE, 'stock', 'requires_age_gate'],

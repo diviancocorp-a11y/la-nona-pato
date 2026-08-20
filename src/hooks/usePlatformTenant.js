@@ -27,6 +27,9 @@ export default function usePlatformTenant() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [tenant, setTenant] = useState(null);
   const [role, setRole] = useState(null);
+  // 6f: una persona puede tener varios roles, y en varias sucursales.
+  const [roles, setRoles] = useState([]);
+  const [branchIds, setBranchIds] = useState([]);
   const [gate, setGate] = useState('checking'); // 'checking' | 'ok' | 'denied' | 'no-tenant'
   const alive = useRef(true);
 
@@ -53,11 +56,17 @@ export default function usePlatformTenant() {
 
   // ── Tenant + rol (depende de la sesion) ──
   const loadTenant = useCallback(async () => {
-    if (!session) { setTenant(null); setRole(null); setGate('checking'); return; }
-    const { tenant: t, role: r, reason } = await fetchMyTenant();
+    if (!session) {
+      setTenant(null); setRole(null); setRoles([]); setBranchIds([]);
+      setGate('checking');
+      return;
+    }
+    const { tenant: t, role: r, roles: rs, branchIds: bs, reason } = await fetchMyTenant();
     if (!alive.current) return;
     setTenant(t);
     setRole(r);
+    setRoles(rs || []);
+    setBranchIds(bs || []);
     if (t) setGate('ok');
     else if (reason === 'no-slug') setGate('no-tenant');
     else setGate('denied');
@@ -76,10 +85,18 @@ export default function usePlatformTenant() {
     setSession(null);
     setTenant(null);
     setRole(null);
+    setRoles([]);
+    setBranchIds([]);
     setGate('checking');
   }, []);
 
   const status = checkingSession ? 'checking' : (!session ? 'anon' : gate);
 
-  return { session, tenant, role, status, isOwner: role === 'owner', doLogin, doLogout, reloadTenant: loadTenant };
+  return {
+    session, tenant, role, roles, branchIds, status,
+    isOwner: roles.includes('owner') || role === 'owner',
+    // Lista vacia = sin limite de sucursal (el caso del duenio).
+    todasLasSucursales: branchIds.length === 0,
+    doLogin, doLogout, reloadTenant: loadTenant,
+  };
 }

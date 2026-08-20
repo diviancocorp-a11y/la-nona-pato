@@ -92,18 +92,38 @@ export async function fetchMyTenant() {
 
   const { data, error } = await supabase
     .from('tenants')
-    .select('id, slug, name, vertical, status, settings, tenant_members(role)')
+    .select('id, slug, name, vertical, status, settings, tenant_members(role, roles, branch_id)')
     .eq('slug', slug)
     .maybeSingle();
 
   if (error) {
     console.error('fetchMyTenant:', error.message);
-    return { tenant: null, role: null, reason: 'error' };
+    return { tenant: null, role: null, roles: [], branchIds: [], reason: 'error' };
   }
-  if (!data) return { tenant: null, role: null, reason: 'not-member' };
+  if (!data) return { tenant: null, role: null, roles: [], branchIds: [], reason: 'not-member' };
 
   const { tenant_members: members, ...tenant } = data;
-  return { tenant, role: members?.[0]?.role || null, reason: null };
+  const filas = members || [];
+
+  // Una persona puede tener varias filas: una por sucursal. Los roles se unen
+  // —quien es cajero en una sucursal ve la caja— y el recorte fino por
+  // sucursal lo hace RLS, no esta pantalla.
+  const roles = [...new Set(filas.flatMap(m => m.roles || (m.role ? [m.role] : [])))];
+
+  // Una fila con branch_id null vale por todas las sucursales: lista vacia
+  // significa "sin limite", no "ninguna".
+  const branchIds = filas.some(m => !m.branch_id)
+    ? []
+    : [...new Set(filas.map(m => m.branch_id))];
+
+  return {
+    tenant,
+    // `role` sigue saliendo para el codigo que todavia no migro a roles[].
+    role: filas[0]?.role || null,
+    roles,
+    branchIds,
+    reason: null,
+  };
 }
 
 /* ─────────────────────────── Productos ─────────────────────────── */
