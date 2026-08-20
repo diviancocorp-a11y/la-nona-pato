@@ -43,6 +43,11 @@ export function agregarClientes(pedidos) {
         orders: 0,
         total: 0,
         last_order: '',
+        // La PRIMERA compra, para poder calcular cada cuanto vuelve cada uno.
+        // Sin esto solo se puede decir "hace mucho que no viene", que no
+        // distingue al que compra cada semana del que compra cada trimestre
+        // (Dico, oportunidad `fuera-de-frecuencia`).
+        first_order: '',
         address: '',
         birth_date: null,
       };
@@ -57,6 +62,7 @@ export function agregarClientes(pedidos) {
       c.address = o.delivery_address;
     }
     if (o.created_at > c.last_order) c.last_order = o.created_at;
+    if (!c.first_order || o.created_at < c.first_order) c.first_order = o.created_at;
   }
 
   const ahora = new Date();

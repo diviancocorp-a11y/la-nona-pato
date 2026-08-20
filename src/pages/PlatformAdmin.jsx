@@ -22,6 +22,7 @@ import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
+import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
@@ -34,7 +35,7 @@ import { fetchWaste, registerWaste } from '../services/platformWaste';
 import { uploadTenantImage } from '../services/platformStorage';
 import {
   fetchResources, moveResource, saveResource, archiveResource, siguienteNombre,
-  fetchAppointments, fetchUtilization,
+  fetchAppointments, fetchUtilization, fetchWaitlist,
 } from '../services/platformScheduling';
 import { fetchDefaultBranch } from '../services/platformInventoryLedger';
 import {
@@ -156,6 +157,10 @@ export default function PlatformAdmin() {
   const [utilizacion, setUtilizacion] = useState(null);
   // La mesa que se esta creando o editando. Null = el editor esta cerrado.
   const [mesaEnEdicion, setMesaEnEdicion] = useState(null);
+  // Lo que Dico necesita para las oportunidades (6g) y no usa ninguna otra
+  // pantalla del panel.
+  const [clientes, setClientes] = useState([]);
+  const [esperaPerdida, setEsperaPerdida] = useState([]);
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -294,6 +299,21 @@ export default function PlatformAdmin() {
     setEsperado(abierto ? await esperadoEnCaja(abierto.id) : 0);
   }, [tenantId]);
 
+  /* ── Lo que mira Dico para las oportunidades (6g) ──
+     Va aparte y despues del resto: son datos que NINGUNA pantalla necesita
+     para operar, asi que no pueden demorar la carga del panel. Si fallan, el
+     negocio sigue funcionando sin un par de avisos. */
+  const loadOportunidades = useCallback(async () => {
+    if (!tenantId) return;
+    const b = await fetchDefaultBranch(tenantId);
+    const [cs, ws] = await Promise.all([
+      fetchCustomerStats(tenantId),
+      b ? fetchWaitlist(tenantId, b.id, { estados: ['left'] }) : Promise.resolve([]),
+    ]);
+    setClientes(cs || []);
+    setEsperaPerdida(ws || []);
+  }, [tenantId]);
+
   /* ── Equipo (6e) ── */
   const loadEquipo = useCallback(async () => {
     if (!tenantId) return;
@@ -392,7 +412,8 @@ export default function PlatformAdmin() {
     loadSalon();
     loadCaja();
     loadEquipo();
-  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon, loadCaja, loadEquipo]);
+    loadOportunidades();
+  }, [ready, tenantId, loadProducts, loadOrders, loadSettings, loadIngs, loadRecetas, loadGastos, loadVentas, loadItemsPedidos, loadMerma, loadSalon, loadCaja, loadEquipo, loadOportunidades]);
 
   // Contrato que espera Stock.jsx: recibe el insumo entero, devuelve el
   // guardado o un {__error}.
@@ -637,6 +658,22 @@ export default function PlatformAdmin() {
               recetas={recetas}
               gastos={gastos}
               settings={sett}
+              onIr={setTab}
+            />
+          )}
+          {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
+              puede mejorar. Y solo para quien puede mirar los numeros del
+              negocio — a un mozo no le sirve saber que hay stock parado. */}
+          {tab === 'products' && puedeVer(roles, 'ventas') && (
+            <DicoOportunidades
+              listo={!loadingProducts && recetas !== null}
+              vertical={tenant?.vertical}
+              productos={products}
+              insumos={ings}
+              ventas={ventas}
+              clientes={clientes}
+              utilizacion={utilizacion}
+              esperaPerdida={esperaPerdida}
               onIr={setTab}
             />
           )}

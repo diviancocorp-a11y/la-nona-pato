@@ -453,8 +453,10 @@ bloquea (ledger, scope, canales).
 
 ## 8. Etapas
 
-> **Estado al 19/ago/2026:** Etapa 0, 6a y 6b **hechas y aplicadas**
-> (migraciones 0039-0043). Sigue 6c.
+> **Estado al 19/ago/2026 (noche): TODAS LAS ETAPAS DEL PLAN ESTAN HECHAS.**
+> 0, 6a-6f con migraciones 0039-0050; 6g sin migracion (funciones puras).
+> Lo que sigue no es de este plan: MercadoPago multi-tenant, el recorte
+> `propio` que quedo a medias en 6f, y las pantallas de contador y marketing.
 >
 > Lo que quedo pendiente a proposito: `ingredients.stock` se mantiene y se
 > escribe igual que antes — el libro corre en paralelo hasta que se compare
@@ -486,10 +488,24 @@ laboral. El forecast de staffing queda modelado, no construido.
 
 **6f — Experiencias por rol.** Seccion 4.
 
-**6g — Opportunity engine.** Las reglas de Dico hoy son 9 y **todas son de
-higiene** ("te falta el precio"). Esta es la segunda familia: stock muerto,
-capital inmovilizado, demanda perdida, clientes fuera de frecuencia, ocupacion
-baja, sucursales desbalanceadas, margen anomalo.
+**6g — Opportunity engine. HECHA (19/ago, sin migracion).**
+`src/modules/dico/oportunidades.js`, misma familia de funciones puras que la
+capa 2. Seis reglas: lo que no rota, capital inmovilizado, clientes fuera de
+frecuencia, ocupacion baja, demanda perdida y margen flaco.
+
+**"Sucursales desbalanceadas" NO se construyo**: hoy cada negocio tiene un solo
+local, asi que seria una regla incapaz de dispararse. Entra con el segundo.
+
+Dos decisiones que se tomaron al construirla:
+- **Cada regla exige `porque` y `hacer`**; `crear()` devuelve null sin ellos.
+  Una oportunidad sin la cuenta que la produjo es una corazonada con cara de
+  dato.
+- **Nada se afirma sin muestra**: menos de 8 ventas, menos de 21 dias de
+  historia o menos de 4 clientes recurrentes y la regla se calla. Un aviso
+  equivocado sobre la plata se paga con que no se mire ninguno mas.
+
+Y "cliente perdido" mira la frecuencia PROPIA de cada uno: el que compra cada
+tres meses no esta perdido al mes y medio.
 
     detecta -> explica -> recomienda -> puede ejecutar
 

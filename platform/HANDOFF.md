@@ -109,12 +109,56 @@ solo importe.
   subio a 15s.
 - **Un `insert ... returning` necesita permiso de SELECT**, no solo de INSERT.
 
+### Regla nueva: tocar RLS empieza y termina listando policies
+
+Dos de los cuatro bugs de arriba fueron la misma clase de error —asumir en vez
+de mirar— y los dos eran gratis de evitar:
+
+```sql
+select policyname, cmd, permissive, qual, with_check
+  from pg_policies where schemaname='public' and tablename='<tabla>';
+```
+
+Antes, porque **reemplazar por nombre no alcanza**: las permisivas se combinan
+con OR y basta que sobreviva una vieja para que la restriccion nueva sea
+decorativa. Despues, porque es la unica forma de ver que quedo de verdad.
+
+Y probar con el rol que va a sufrir la restriccion, no solo con el duenio:
+`set local role authenticated` + `set_config('request.jwt.claims', ...)`.
+Verificar que el permitido pueda es tan importante como que el prohibido no:
+el bug de `complete_order` era del lado del permitido.
+
+### 6g — opportunity engine (cerrada el mismo dia, sin migracion)
+
+`src/modules/dico/oportunidades.js`. Seis reglas de la segunda familia: lo que
+no rota, capital inmovilizado, clientes fuera de frecuencia, ocupacion baja,
+demanda perdida y margen flaco. Misma arquitectura que la capa 2 —funciones
+puras sobre lo que el panel ya tiene—, asi que no alucina, no puede filtrar
+entre negocios y no cuesta por uso.
+
+Dos reglas que se impusieron a si mismas:
+- **`crear()` exige `porque` y `hacer`**, o devuelve null. El titulo solo es
+  una afirmacion que hay que creer; con la cuenta al lado es verificable.
+- **Nada se afirma sin muestra**: <8 ventas, <21 dias de historia o <4 clientes
+  recurrentes y la regla se calla.
+
+"Sucursales desbalanceadas" figura en el plan y **no se construyo**: con un
+solo local por negocio seria una regla que no puede dispararse.
+
+`agregarClientes` gano `first_order` — sin el, "cliente perdido" solo podia
+decir "hace mucho que no viene", que no distingue al que compra cada semana del
+que compra cada trimestre.
+
+**Con esto el PLAN-LOCAL-Y-ROLES queda cerrado entero.**
+
 ### Pendiente inmediato
 
-1. **Deployar** (12 commits). Lo corre Ricky.
+1. ~~Deployar~~ **HECHO** (19/ago, 12 commits). **6g y este bloque quedaron
+   despues: hay que volver a deployar.**
 2. Cerrar el recorte `propio` que quedo a medias.
-3. 6g — opportunity engine, desbloqueado por los datos de 6b-6e.
-4. MercadoPago multi-tenant: sigue siendo lo mas grande y lo que mas plata mueve.
+3. ~~6g~~ **HECHA**.
+4. **MercadoPago multi-tenant: es lo mas grande que queda y lo que mas plata
+   mueve.** Ya no compite con ninguna etapa del plan.
 
 ---
 
