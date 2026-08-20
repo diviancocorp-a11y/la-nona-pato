@@ -639,6 +639,10 @@
       "user_id",
       "email",
       "created_at"
+    ],
+    "staff_dominios": [
+      "dominio",
+      "creado_at"
     ]
   }
 }

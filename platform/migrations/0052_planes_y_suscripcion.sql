@@ -308,3 +308,69 @@ revoke all on function public.sumar_staff(text) from public, anon;
 revoke all on function public.quitar_staff(uuid) from public, anon;
 grant execute on function public.sumar_staff(text) to authenticated;
 grant execute on function public.quitar_staff(uuid) to authenticated;
+
+/* ────── 7. A la consola solo entra el correo de la empresa ────── */
+
+-- POR QUE UNA TABLA Y NO UNA CONSTANTE: el dia que Divianco sume un dominio (o
+-- cambie de proveedor de correo) no puede depender de un deploy, y menos si lo
+-- que esta en juego es que alguien no pueda entrar a cobrar.
+--
+-- POR QUE NO SE VALIDA EN EL LOGIN: las cuentas fundadoras son anteriores al
+-- dominio de la empresa. Validar al entrar dejaria afuera al duenio, que es
+-- justamente quien tendria que arreglarlo. La regla gobierna QUIEN PUEDE SER
+-- SUMADO desde la consola; quien ya figura en `platform_admins` entra.
+create table if not exists public.staff_dominios (
+  dominio text primary key,
+  creado_at timestamptz not null default now()
+);
+
+alter table public.staff_dominios enable row level security;
+
+drop policy if exists staff_dominios_select on public.staff_dominios;
+create policy staff_dominios_select on public.staff_dominios
+  for select to authenticated using (private.es_staff_divianco());
+
+insert into public.staff_dominios (dominio) values ('grupodivianco.com')
+on conflict (dominio) do nothing;
+
+comment on table public.staff_dominios is
+  'Dominios de correo habilitados para sumar staff desde la consola. No se '
+  'valida en el login: las cuentas fundadoras son anteriores al dominio.';
+
+create or replace function public.sumar_staff(p_email text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  v_uid uuid;
+  v_email text := lower(trim(p_email));
+  v_dominio text;
+begin
+  if not private.es_staff_divianco() then
+    raise exception 'no_sos_staff';
+  end if;
+
+  -- El dominio se saca de lo que hay DESPUES de la ULTIMA arroba: partir por
+  -- la primera dejaria pasar 'grupodivianco.com@gmail.com', que es un correo
+  -- de gmail disfrazado de corporativo.
+  v_dominio := lower(split_part(v_email, '@', array_length(string_to_array(v_email, '@'), 1)));
+  if v_dominio = '' or v_dominio not in (select dominio from public.staff_dominios) then
+    return jsonb_build_object('ok', false, 'error', 'dominio_no_permitido');
+  end if;
+
+  select public.find_user_id_by_email(v_email) into v_uid;
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'sin_cuenta');
+  end if;
+
+  insert into public.platform_admins (user_id, email)
+  values (v_uid, v_email)
+  on conflict (user_id) do update set email = excluded.email;
+
+  return jsonb_build_object('ok', true, 'user_id', v_uid, 'email', v_email);
+end $$;
+
+revoke all on function public.sumar_staff(text) from public, anon;
+grant execute on function public.sumar_staff(text) to authenticated;

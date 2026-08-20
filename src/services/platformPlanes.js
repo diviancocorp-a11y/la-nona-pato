@@ -180,8 +180,12 @@ export async function fetchStaff() {
 }
 
 /**
- * Suma a alguien al equipo. Tiene que tener cuenta: la funcion NO crea
- * usuarios, porque poder fabricar cuentas es poder fabricarse accesos.
+ * Suma a alguien al equipo.
+ *
+ * Dos condiciones, las dos del lado del servidor: el correo tiene que ser de
+ * un dominio de la empresa (`staff_dominios`) y la cuenta tiene que EXISTIR.
+ * La funcion no crea usuarios: poder fabricar cuentas desde la consola es
+ * poder fabricarse accesos.
  */
 export async function sumarStaff(email) {
   const { data, error } = await supabase.rpc('sumar_staff', { p_email: email });
@@ -193,6 +197,9 @@ export async function sumarStaff(email) {
     const razones = {
       sin_cuenta: 'Esa persona todavía no tiene cuenta. Que se registre en '
         + 'divianco.app y después la sumás.',
+      dominio_no_permitido: 'A la consola sólo entran los correos de la empresa '
+        + '(@grupodivianco.com). Un correo personal no puede tener acceso a los '
+        + 'precios ni a las suscripciones.',
     };
     return { __error: 'fn', message: razones[data?.error] || 'No se pudo sumar.' };
   }
