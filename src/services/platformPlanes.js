@@ -133,3 +133,84 @@ export async function actualizarSuscripcion(tenantId, cambios) {
   }
   return { ok: true, negocio: data[0] };
 }
+
+/* ─────────────────── El equipo de Divianco ─────────────────── */
+
+/**
+ * Entrar a la consola.
+ *
+ * Es un login PROPIO y no el de `/entrar` a proposito: aquel, al terminar,
+ * manda al negocio de la persona (`destinoTrasLogin`). Para quien viene a
+ * administrar la plataforma eso es salir de donde queria entrar. Ademas la
+ * sesion de Supabase se guarda POR ORIGEN: la que se abre en el subdominio de
+ * un negocio no existe en `divianco.app`, asi que la consola necesita la suya.
+ */
+export async function entrarAConsola(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: String(email || '').trim().toLowerCase(),
+    password,
+  });
+  if (error) {
+    // Un mensaje unico para credenciales malas: distinguir "no existe" de
+    // "clave incorrecta" le dice a cualquiera que direcciones tienen cuenta.
+    return { __error: 'auth', message: 'Email o contraseña incorrectos.' };
+  }
+  if (!(await soyStaffDivianco())) {
+    // Entro bien pero no es del equipo: se cierra la sesion para no dejarlo
+    // con una sesion abierta en un origen donde no tiene nada que hacer.
+    await supabase.auth.signOut();
+    return { __error: 'permiso', message: 'Esa cuenta no tiene acceso a la consola.' };
+  }
+  return { ok: true };
+}
+
+export async function salirDeConsola() {
+  await supabase.auth.signOut();
+}
+
+/** Quien del equipo de Divianco tiene acceso. */
+export async function fetchStaff() {
+  const { data, error } = await supabase
+    .from('platform_admins').select('user_id, email, created_at').order('created_at');
+  if (error) {
+    console.error('fetchStaff:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Suma a alguien al equipo. Tiene que tener cuenta: la funcion NO crea
+ * usuarios, porque poder fabricar cuentas es poder fabricarse accesos.
+ */
+export async function sumarStaff(email) {
+  const { data, error } = await supabase.rpc('sumar_staff', { p_email: email });
+  if (error) {
+    console.error('sumarStaff:', error.message);
+    return { __error: 'db', message: 'No se pudo sumar a esa persona.' };
+  }
+  if (!data?.ok) {
+    const razones = {
+      sin_cuenta: 'Esa persona todavía no tiene cuenta. Que se registre en '
+        + 'divianco.app y después la sumás.',
+    };
+    return { __error: 'fn', message: razones[data?.error] || 'No se pudo sumar.' };
+  }
+  return { ok: true };
+}
+
+export async function quitarStaff(userId) {
+  const { data, error } = await supabase.rpc('quitar_staff', { p_user_id: userId });
+  if (error) {
+    console.error('quitarStaff:', error.message);
+    return { __error: 'db', message: 'No se pudo quitar el acceso.' };
+  }
+  if (!data?.ok) {
+    const razones = {
+      no_te_saques_a_vos: 'No podés sacarte el acceso a vos mismo.',
+      ultimo_staff: 'Es la última persona con acceso: no se puede quitar.',
+    };
+    return { __error: 'fn', message: razones[data?.error] || 'No se pudo quitar.' };
+  }
+  return { ok: true };
+}

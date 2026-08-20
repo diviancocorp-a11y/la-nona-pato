@@ -1,7 +1,10 @@
-// La consola de Divianco: planes, precios y la lista de clientes.
+// La consola de Divianco: planes, precios, clientes y equipo.
 //
 // Los datos son los que quedaron en la tabla `plans` tras la migracion 0052.
+// Poner SESION en null muestra el LOGIN, que es la otra mitad de la pantalla.
 import Consola from 'app/pages/Consola.jsx';
+
+const SESION = { user: { id: 'u-staff', email: 'vos@divianco.com' } };
 
 const PLANES = [
   {
@@ -60,12 +63,29 @@ const NEGOCIOS = [
   },
 ];
 
+const STAFF = [
+  { user_id: 'u-staff', email: 'vos@divianco.com', created_at: '2026-01-01' },
+  { user_id: 'u2', email: 'sofia@divianco.com', created_at: '2026-04-10' },
+];
+
 export default {
   titulo: 'Consola de Divianco',
   componente: Consola,
   props: {},
   datos: {
-    tablas: { plans: PLANES, tenants: NEGOCIOS, platform_admins: [{ user_id: 'u-staff' }] },
-    sesion: { user: { id: 'u-staff', email: 'vos@divianco.com' } },
+    tablas: { plans: PLANES, tenants: NEGOCIOS, platform_admins: STAFF },
+    sesion: SESION,
+    rpc: {
+      sumar_staff: ({ p_email }) => {
+        STAFF.push({ user_id: `u${STAFF.length + 1}`, email: p_email, created_at: 'hoy' });
+        return { ok: true };
+      },
+      quitar_staff: ({ p_user_id }) => {
+        if (p_user_id === 'u-staff') return { ok: false, error: 'no_te_saques_a_vos' };
+        const i = STAFF.findIndex(x => x.user_id === p_user_id);
+        if (i >= 0) STAFF.splice(i, 1);
+        return { ok: true };
+      },
+    },
   },
 };

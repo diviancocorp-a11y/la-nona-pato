@@ -132,6 +132,13 @@ export const supabase = {
   auth: {
     getSession: async () => ({ data: { session: SESION }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+    // Sin estos dos, una pantalla con login se queda a mitad de camino y
+    // parece un bug del componente. Paso con el boton Salir de la consola.
+    signOut: async () => { SESION = null; return { error: null }; },
+    signInWithPassword: async ({ email }) => {
+      SESION = { user: { id: 'u-staff', email } };
+      return { data: { session: SESION }, error: null };
+    },
   },
 };
 

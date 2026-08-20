@@ -22,6 +22,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   fetchPlanes, guardarPlan, soyStaffDivianco, fetchNegocios, actualizarSuscripcion,
+  entrarAConsola, salirDeConsola, fetchStaff, sumarStaff, quitarStaff,
 } from '../services/platformPlanes';
 import { PLANES, cronogramaDeAlta, totalPrimerAnio } from '../modules/planes';
 
@@ -307,10 +308,164 @@ function FilaNegocio({ n, planes, onGuardar }) {
   );
 }
 
+/* ─────────────────────────── Entrar ─────────────────────────── */
+
+/**
+ * El login de la consola.
+ *
+ * Es propio y no reusa `/entrar` porque aquel, al terminar, manda al negocio de
+ * la persona: para quien viene a administrar la plataforma eso es salir de
+ * donde queria entrar. Y la sesion de Supabase se guarda POR ORIGEN, asi que la
+ * que se abre en el subdominio de un negocio no sirve acá.
+ */
+function Entrar({ onEntro }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const enviar = async (ev) => {
+    ev.preventDefault();
+    if (enviando) return;
+    setEnviando(true); setError(null);
+    const r = await entrarAConsola(email, password);
+    setEnviando(false);
+    if (r.__error) { setError(r.message); return; }
+    onEntro();
+  };
+
+  return (
+    <main style={{
+      minHeight: '100vh', background: C.bg, color: C.tx,
+      display: 'grid', placeItems: 'center', padding: 24,
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+    }}>
+      <form onSubmit={enviar} style={{ width: '100%', maxWidth: 340, display: 'grid', gap: 14 }}>
+        <div style={{ textAlign: 'center', marginBottom: 4 }}>
+          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em' }}>
+            Consola <span style={{ color: C.t3, fontWeight: 400 }}>· Divianco</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.t3, marginTop: 5 }}>
+            Para el equipo. Si tenés un negocio, entrá por tu panel.
+          </div>
+        </div>
+
+        <Campo etiqueta="Email">
+          <input
+            style={input} type="email" value={email} autoFocus autoComplete="username"
+            onChange={(e) => setEmail(e.target.value)} placeholder="vos@divianco.com"
+          />
+        </Campo>
+
+        <Campo etiqueta="Contraseña">
+          <input
+            style={input} type="password" value={password} autoComplete="current-password"
+            onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+          />
+        </Campo>
+
+        {error && (
+          <div style={{ fontSize: 13, color: C.bad }}>{error}</div>
+        )}
+
+        <button
+          type="submit" disabled={enviando || !email || !password}
+          style={{
+            padding: '11px', borderRadius: 9, border: 'none', font: 'inherit',
+            fontSize: 15, fontWeight: 700,
+            cursor: enviando ? 'wait' : 'pointer',
+            opacity: (!email || !password) ? 0.5 : 1,
+            background: C.ac, color: '#111',
+          }}
+        >
+          {enviando ? 'Entrando…' : 'Entrar'}
+        </button>
+
+        <a href="/entrar" style={{ color: C.t3, fontSize: 12.5, textAlign: 'center' }}>
+          ¿Olvidaste tu contraseña?
+        </a>
+      </form>
+    </main>
+  );
+}
+
+/* ──────────────────────── El equipo ──────────────────────── */
+
+function Equipo({ staff, onSumar, onQuitar }) {
+  const [email, setEmail] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  return (
+    <div style={{ display: 'grid', gap: 12, maxWidth: 520 }}>
+      <p style={{ fontSize: 13, color: C.t3, margin: 0 }}>
+        Quién puede entrar a la consola y tocar precios y suscripciones. No es
+        lo mismo que ser dueño de un negocio.
+      </p>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        {staff.map(s => (
+          <div key={s.user_id} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: C.card, border: `1px solid ${C.line}`,
+            borderRadius: 10, padding: '11px 13px',
+          }}>
+            <span style={{ flex: 1, fontSize: 13.5 }}>{s.email || s.user_id}</span>
+            <button
+              type="button" onClick={() => onQuitar(s)}
+              style={{
+                border: `1px solid ${C.line}`, background: 'transparent',
+                color: C.t2, borderRadius: 7, padding: '4px 10px',
+                font: 'inherit', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Quitar
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        background: C.card, border: `1px solid ${C.line}`,
+        borderRadius: 10, padding: 13, display: 'grid', gap: 10,
+      }}>
+        <Campo
+          etiqueta="Sumar a alguien del equipo"
+          ayuda="Tiene que tener cuenta en divianco.app. Si no la tiene, que se registre primero."
+        >
+          <input
+            style={input} type="email" value={email}
+            onChange={(e) => setEmail(e.target.value)} placeholder="empleado@divianco.com"
+          />
+        </Campo>
+        <button
+          type="button"
+          disabled={!email.trim() || enviando}
+          onClick={async () => {
+            setEnviando(true);
+            await onSumar(email.trim());
+            setEnviando(false);
+            setEmail('');
+          }}
+          style={{
+            padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
+            fontSize: 13.5, fontWeight: 700,
+            cursor: email.trim() ? 'pointer' : 'not-allowed',
+            opacity: email.trim() ? 1 : 0.45,
+            background: C.ac, color: '#111',
+          }}
+        >
+          {enviando ? 'Sumando…' : 'Dar acceso'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ────────────────────────── La consola ────────────────────────── */
 
 export default function Consola() {
   const [staff, setStaff] = useState(null);
+  const [equipo, setEquipo] = useState([]);
   const [planes, setPlanes] = useState([]);
   const [negocios, setNegocios] = useState([]);
   const [guardando, setGuardando] = useState(false);
@@ -323,9 +478,10 @@ export default function Consola() {
     const esStaff = await soyStaffDivianco();
     setStaff(esStaff);
     if (!esStaff) return;
-    const [ps, ns] = await Promise.all([fetchPlanes(), fetchNegocios()]);
+    const [ps, ns, eq] = await Promise.all([fetchPlanes(), fetchNegocios(), fetchStaff()]);
     setPlanes(ps);
     setNegocios(ns);
+    setEquipo(eq);
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -354,22 +510,12 @@ export default function Consola() {
     );
   }
 
-  if (!staff) {
-    // Sin detalles: a quien no es staff no se le cuenta que existe esta pantalla
-    // ni por que no entra.
-    return (
-      <main style={{
-        minHeight: '100vh', background: C.bg, color: C.t2,
-        display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center',
-      }}>
-        <div>
-          <div style={{ fontSize: 34 }}>🔒</div>
-          <p style={{ marginTop: 12 }}>No tenés acceso a esta página.</p>
-          <a href="/" style={{ color: C.ac, fontSize: 14 }}>Volver</a>
-        </div>
-      </main>
-    );
-  }
+  // Sin sesion de staff se muestra el login y no un cartel de "no tenés
+  // acceso": la sesion de Supabase es POR ORIGEN, asi que quien ya entro en el
+  // subdominio de su negocio llega acá como anonimo. Decirle que no tiene
+  // permiso cuando lo que le falta es entrar es mandarlo a buscar un problema
+  // que no existe.
+  if (!staff) return <Entrar onEntro={cargar} />;
 
   const suspendidos = negocios.filter(n => n.status === 'suspendido').length;
   const porVencer = negocios.filter(n => {
@@ -394,7 +540,7 @@ export default function Consola() {
         </header>
 
         <nav style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {[['planes', 'Planes y precios'], ['negocios', 'Negocios']].map(([id, txt]) => (
+          {[['planes', 'Planes y precios'], ['negocios', 'Negocios'], ['equipo', 'Equipo']].map(([id, txt]) => (
             <button
               key={id} type="button" onClick={() => setTab(id)}
               style={{
@@ -409,6 +555,23 @@ export default function Consola() {
               {txt}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={async () => {
+              // El estado se baja SIEMPRE, falle o no el signOut: si dependiera
+              // de que la llamada salga bien, un error de red te deja sin poder
+              // salir de la consola.
+              try { await salirDeConsola(); } catch { /* empty */ }
+              setStaff(false);
+            }}
+            style={{
+              marginLeft: 'auto', padding: '7px 12px', borderRadius: 999,
+              border: `1px solid ${C.line}`, background: 'transparent',
+              color: C.t3, font: 'inherit', fontSize: 12.5, cursor: 'pointer',
+            }}
+          >
+            Salir
+          </button>
         </nav>
 
         {aviso && (
@@ -437,6 +600,22 @@ export default function Consola() {
               <FilaNegocio key={n.id} n={n} planes={planes} onGuardar={onGuardarNegocio} />
             ))}
           </div>
+        )}
+
+        {tab === 'equipo' && (
+          <Equipo
+            staff={equipo}
+            onSumar={async (email) => {
+              const r = await sumarStaff(email);
+              setAviso(r.__error ? r.message : `${email} ya puede entrar`);
+              if (!r.__error) setEquipo(await fetchStaff());
+            }}
+            onQuitar={async (s2) => {
+              const r = await quitarStaff(s2.user_id);
+              setAviso(r.__error ? r.message : `${s2.email}: acceso quitado`);
+              if (!r.__error) setEquipo(await fetchStaff());
+            }}
+          />
         )}
       </div>
     </main>

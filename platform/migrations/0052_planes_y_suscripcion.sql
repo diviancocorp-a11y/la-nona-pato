@@ -237,3 +237,74 @@ create policy tenants_update_staff on public.tenants
   for update to authenticated
   using (private.es_staff_divianco())
   with check (private.es_staff_divianco());
+
+/* ─────────── 6. El equipo de Divianco se gestiona desde la consola ─────────── */
+
+-- El staff se ve entre si: la consola muestra quien tiene acceso.
+drop policy if exists platform_admins_select on public.platform_admins;
+create policy platform_admins_select on public.platform_admins
+  for select to authenticated using (private.es_staff_divianco());
+
+-- La ESCRITURA no va por policy sino por estas dos funciones: hace falta
+-- resolver el email contra auth.users (que el cliente no ve) y sobre todo
+-- impedir que la plataforma se quede sin nadie que pueda administrarla.
+
+create or replace function public.sumar_staff(p_email text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare
+  v_uid uuid;
+  v_email text := lower(trim(p_email));
+begin
+  if not private.es_staff_divianco() then
+    raise exception 'no_sos_staff';
+  end if;
+
+  select public.find_user_id_by_email(v_email) into v_uid;
+  if v_uid is null then
+    -- No se crea la cuenta: que se registre en divianco.app y despues se lo
+    -- suma. Crear cuentas desde aca seria poder fabricar accesos a la consola.
+    return jsonb_build_object('ok', false, 'error', 'sin_cuenta');
+  end if;
+
+  insert into public.platform_admins (user_id, email)
+  values (v_uid, v_email)
+  on conflict (user_id) do update set email = excluded.email;
+
+  return jsonb_build_object('ok', true, 'user_id', v_uid, 'email', v_email);
+end $$;
+
+create or replace function public.quitar_staff(p_user_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, private, pg_temp
+as $$
+declare v_quedan int;
+begin
+  if not private.es_staff_divianco() then
+    raise exception 'no_sos_staff';
+  end if;
+
+  -- Nadie se saca a si mismo: es la forma mas facil de quedarse afuera de la
+  -- consola sin nadie que te vuelva a dar acceso.
+  if p_user_id = auth.uid() then
+    return jsonb_build_object('ok', false, 'error', 'no_te_saques_a_vos');
+  end if;
+
+  select count(*) into v_quedan from public.platform_admins where user_id <> p_user_id;
+  if v_quedan = 0 then
+    return jsonb_build_object('ok', false, 'error', 'ultimo_staff');
+  end if;
+
+  delete from public.platform_admins where user_id = p_user_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.sumar_staff(text) from public, anon;
+revoke all on function public.quitar_staff(uuid) from public, anon;
+grant execute on function public.sumar_staff(text) to authenticated;
+grant execute on function public.quitar_staff(uuid) to authenticated;
