@@ -20,13 +20,18 @@
 let TABLAS = {};
 let RPCS = {};
 let FUNCIONES = {};
+let SESION = null;
 
-export function cargarEscena({ tablas = {}, rpc = {}, functions = {} } = {}) {
+export function cargarEscena({ tablas = {}, rpc = {}, functions = {}, sesion = null } = {}) {
   // Copia profunda barata: las escenas mutan sus filas (cobrar agrega un pago)
   // y al cambiar de escena hay que volver al estado inicial.
   TABLAS = JSON.parse(JSON.stringify(tablas));
   RPCS = rpc;
   FUNCIONES = functions;
+  // Pantallas como la consola preguntan "quien soy" antes de dibujar. Sin
+  // sesion se comportan como si no tuvieras permiso, y eso parece un bug del
+  // componente cuando es de la vitrina.
+  SESION = sesion;
 }
 
 export function filasDe(tabla) {
@@ -125,7 +130,7 @@ export const supabase = {
   },
 
   auth: {
-    getSession: async () => ({ data: { session: null }, error: null }),
+    getSession: async () => ({ data: { session: SESION }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
 };

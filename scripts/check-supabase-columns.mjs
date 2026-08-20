@@ -32,6 +32,8 @@ const PLATFORM_PATHS = [
   'src/lib/activeTenant.js',
   'src/services/platformAdmin.js',
   'src/services/platformPagos.js',
+  'src/services/platformPlanes.js',
+  'src/pages/Consola.jsx',
   'src/services/platformSettings.js',
   'src/services/platformInventory.js',
   'src/services/platformRecipes.js',

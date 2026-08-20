@@ -12,6 +12,7 @@ import UpdateBanner from './components/ui/UpdateBanner'
 import useTheme from './hooks/useTheme'
 import Catalog from './pages/Catalog'
 import PlatformLanding from './pages/PlatformLanding'
+import Consola from './pages/Consola'
 import Signup from './pages/Signup'
 import Bienvenido from './pages/Bienvenido'
 import Login from './pages/Login'
@@ -143,6 +144,11 @@ export default function App() {
               {/* Alta self-service: solo tiene sentido en la raiz. En el
                   subdominio de un tenant el local ya es de alguien. */}
               <Route path="/registro" element={<Signup />} />
+              {/* La consola de Divianco: la lista de clientes y los precios.
+                  No es el panel de un negocio — ese es /admin. El guard de
+                  staff esta adentro, y lo que de verdad protege son las
+                  policies de `plans` y `tenants` (migracion 0052). */}
+              <Route path="/consola" element={<Consola />} />
               <Route path="/bienvenido" element={<Bienvenido />} />
               <Route path="/entrar" element={<Login />} />
               <Route path="/q/:slug" element={<QrRedirect />} />
