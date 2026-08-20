@@ -430,7 +430,8 @@ function Equipo({ staff, onSumar, onQuitar }) {
       }}>
         <Campo
           etiqueta="Sumar a alguien del equipo"
-          ayuda="Tiene que tener cuenta en divianco.app. Si no la tiene, que se registre primero."
+          ayuda="Le llega un mail para que elija su contraseña. No se registra en
+                 divianco.app: eso le crearía un negocio que no necesita."
         >
           <input
             style={input} type="email" value={email}
@@ -607,7 +608,7 @@ export default function Consola() {
             staff={equipo}
             onSumar={async (email) => {
               const r = await sumarStaff(email);
-              setAviso(r.__error ? r.message : `${email} ya puede entrar`);
+              setAviso(r.__error ? r.message : `${email}: ${r.message}`);
               if (!r.__error) setEquipo(await fetchStaff());
             }}
             onQuitar={async (s2) => {

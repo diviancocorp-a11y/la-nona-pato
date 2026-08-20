@@ -188,22 +188,26 @@ export async function fetchStaff() {
  * poder fabricarse accesos.
  */
 export async function sumarStaff(email) {
-  const { data, error } = await supabase.rpc('sumar_staff', { p_email: email });
+  // Va por edge function y no por la RPC porque hace falta CREAR la cuenta con
+  // la API de admin. Si el empleado se registrara por `divianco.app/registro`,
+  // el alta le crearia un NEGOCIO —`signup_tenant`— y terminaria con un tenant
+  // fantasma a su nombre. Nunca tiene que pasar por ese camino.
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { email, origin: window.location.origin },
+  });
+
   if (error) {
-    console.error('sumarStaff:', error.message);
-    return { __error: 'db', message: 'No se pudo sumar a esa persona.' };
+    let message = 'No se pudo dar de alta.';
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) message = body.error;
+      }
+    } catch { /* empty */ }
+    return { __error: 'fn', message };
   }
-  if (!data?.ok) {
-    const razones = {
-      sin_cuenta: 'Esa persona todavía no tiene cuenta. Que se registre en '
-        + 'divianco.app y después la sumás.',
-      dominio_no_permitido: 'A la consola sólo entran los correos de la empresa '
-        + '(@grupodivianco.com). Un correo personal no puede tener acceso a los '
-        + 'precios ni a las suscripciones.',
-    };
-    return { __error: 'fn', message: razones[data?.error] || 'No se pudo sumar.' };
-  }
-  return { ok: true };
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return { ok: true, message: data?.message, invitado: data?.invitado };
 }
 
 export async function quitarStaff(userId) {
