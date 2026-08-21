@@ -8,6 +8,146 @@
 
 ---
 
+## 20/ago/2026 — DICO PASA A SER UN NEGOCIO: planes, precios y consola
+
+La sesion mas larga hasta ahora: 16 commits, 5 migraciones del edificio
+(0049-0053) y una del legacy. El edificio dejo de ser "software que anda" para
+tener **con que cobrar**.
+
+### Estado
+
+| | Donde esta |
+|---|---|
+| Base (`wwwzdgprsooyjgkuyoav`) | migracion **0053**, todo aplicado |
+| Rama `platform/runtime-tenant` | **e32cce7** |
+| Produccion | **atrasada**: los ultimos 3 commits (consola, duenio unico, fix de `undefined`) no estan |
+
+**Hay que deployar.** `npm run deploy`.
+
+### Hecho
+
+**Pantalla de cobro (0049).** Cierra 6d. El seed de medios de pago quedo
+comentado en 0004 y se corrio una sola vez: los dos negocios nacidos del alta
+self-service tenian CERO medios y no podian cobrar nada. Va como trigger sobre
+`tenants`, mismo criterio que 0044.
+
+**Alta de mesas y zonas.** Cierra 6c, sin migracion. **Las zonas son un plano
+POR zona con pestanias**, y las coordenadas pasaron a ser relativas a la zona —
+decidido antes de que nadie dibujara en serio, porque cambiarlo despues obliga
+a redibujar a mano.
+
+**ETAPA 6f — roles con alcance (0050).** `tenant_members` es
+`(tenant_id, user_id, branch_id, roles[])`. Permisos declarados en
+`src/modules/roles.js`. RLS real sobre expenses, suppliers, sales, settings,
+staff, audit_log y cash_sessions.
+
+**ETAPA 6g — oportunidades**, sin migracion. Seis reglas puras en
+`src/modules/dico/oportunidades.js`. **Con esto el PLAN-LOCAL-Y-ROLES quedo
+cerrado entero.**
+
+**MercadoPago por tenant (0051).** Cada negocio cobra en SU cuenta.
+`payment_integrations` con RLS habilitada y **cero policies a proposito**: el
+token no sale de las edge functions.
+
+**Planes y consola (0052, 0053).** `tenants.plan` existia y no hacia nada.
+Ahora hay 4 planes con precios editables desde `divianco.app/consola`, y
+`platform_admins` con rol owner/staff.
+
+  Digital $29.000 · Local $59.000 · Cadena $99.000 · Total (fuera de venta)
+
+**Los precios van a la base y QUE INCLUYE cada plan al codigo**
+(`src/modules/planes.js`), misma division que 6f hizo con los roles: un UPDATE
+mal hecho no puede abrir el ERP entero al plan mas barato.
+
+**Vitrina (`npm run vitrina`).** Sirve UNA pantalla sin base ni sesion.
+Ocho escenas. Cierra la deuda de "ninguna pantalla se vio en un navegador".
+
+### Verificado
+
+**En produccion, con curl:** las `og:` por tenant (UA de WhatsApp da "Cochi" y
+"La Nona Pato"), la landing y el catalogo de un tenant.
+
+**Contra la base, con roles simulados:** un mozo no lee expenses/sales/settings
+/audit_log/nomina, cierra un pedido y la venta se asienta, y sigue sin ver el
+facturado. Un duenio de negocio ve los precios pero no los edita y no puede
+darse plan Cadena gratis. Un staff entra a la consola pero no reparte accesos.
+El token de MP es inalcanzable desde el cliente (ni el duenio lo lee).
+
+**En la vitrina:** cobro con cuenta dividida, alta de mesa, equipo con roles
+traducidos, pedidos vistos por la cocina sin un solo importe, y la consola con
+el cronograma de promo recalculando en vivo.
+
+### Bugs que aparecieron ejecutando (ninguno leyendo)
+
+1. **`audit_log` tenia DOS policies select** — la nueva y `audit_select`, con el
+   nombre viejo. Las permisivas se combinan con **OR**: la vieja anulaba la
+   restriccion. Ahora se barren todas antes de crear las nuevas.
+2. **Un mozo no podia cerrar un pedido**: `complete_order` termina en
+   `insert ... returning *` y el RETURNING exige poder LEER la fila. Se
+   resolvio haciendola definer, no aflojando la lectura de `sales`.
+3. **`undefined.divianco.app`** (bug propio): el guard evitaba crear el tenant
+   pero `destinoTrasLogin()` seguia armando la URL con el slug que ya no venia.
+   No se creo ningun tenant; la persona terminaba en un dominio inexistente.
+4. Con una sola zona, el boton + mandaba `zone: null` y creaba una pestania
+   "Sin zona" espuria.
+
+### DOS "pendientes" que ya estaban hechos
+
+El HANDOFF los arrastraba y casi cuestan otra sesion: **el formulario de
+contraseña nueva existe** en `Login.jsx`, y **las `og:` tags estan resueltas**
+por `middleware.js` + `api/og.js`. La leccion es de proceso: los pendientes
+verificables se comprueban ANTES de listarlos, no se copian de aca.
+
+### Pendiente inmediato
+
+1. **Deployar** (3 commits, incluye el fix de `undefined`).
+2. **Alta de empleados con la API de Cloudflare Email Routing.** Hoy hay que
+   crear el reenvio a mano por cada uno. La idea: se escribe el correo personal
+   + el alias y el sistema crea destino, regla e invitacion. **Cloudflare exige
+   que el duenio del correo personal confirme el destino con un clic**: eso no
+   lo puede hacer la API, asi que el empleado va a recibir dos mails.
+   Necesita un API token de Cloudflare con permiso de Email Routing.
+3. **Registro de cobros en la consola.** Hoy guarda "pago hasta tal fecha", que
+   dice el estado pero no la historia. Con cinco clientes alcanza; con treinta
+   no. Falta cada pago con fecha, importe, medio y si se facturo, mas el MRR.
+4. **Cobro automatico por MercadoPago Suscripciones**: que mueva `paga_hasta`
+   solo. Hoy se registra a mano desde la consola.
+5. El recorte `propio` de 6f, que quedo a medias (solo se hizo el de la cocina).
+
+### Bloqueado por Ricky
+
+- **Agregar `https://divianco.app/consola` a Redirect URLs** en Supabase Auth.
+  Sin eso el link de invitacion se rechaza ANTES de llegar a la app: es el
+  "acceso denegado" que aparecio al aceptar la invitacion.
+- **Deployar** (el clasificador bloquea el comando de Vercel).
+- **El primer cobro real de MercadoPago.** Nada de MP se probo contra una
+  cuenta de verdad: 0 integraciones conectadas.
+- **Leaked password protection** sigue desactivada en el edificio (un clic).
+- **Decidir si Cadena lleva los 3 meses al 50%.** Hoy solo Local, siguiendo la
+  instruccion literal. Se cambia desde la consola sin tocar codigo.
+
+### Trampas nuevas
+
+- **Reemplazar una policy por nombre no alcanza**: si la vieja se llamaba
+  distinto, sobrevive y la anula. Barrer y recrear. Y al tocar RLS, listar
+  `pg_policies` antes y despues, y probar con el rol que va a sufrir la
+  restriccion — el bug de `complete_order` era del lado del PERMITIDO.
+- **Un `insert ... returning` necesita permiso de SELECT**, no solo de INSERT.
+  PostgREST agrega RETURNING por defecto.
+- **`check-supabase-columns.mjs` NO valida los selects embebidos** de PostgREST
+  (`tenant_members(role, roles, branch_id)`): paso en verde con el snapshot
+  desactualizado.
+- **Las escenas de la vitrina se pisaban entre si**: el glob las evalua todas,
+  asi que una que le asignara `supabase.functions` al fake se lo robaba a las
+  demas. Ahora todo va por `datos`.
+- **La sesion de Supabase es POR ORIGEN**: la del subdominio de un negocio no
+  existe en `divianco.app`. Por eso la consola tiene su propio login.
+- **La consola NO tiene "olvide mi contraseña"** a proposito: ese link llevaba
+  a `/entrar`, que resuelve a que negocio mandarte, y un empleado no tiene
+  negocio. El duenio le manda el link desde Equipo.
+
+---
+
 ## 20/ago/2026 — AUDITORIA DE ESTADO: dos "pendientes" ya estaban hechos
 
 Se reviso que falta para vender y aparecio que **el HANDOFF arrastraba como
