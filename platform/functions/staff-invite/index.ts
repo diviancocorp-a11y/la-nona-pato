@@ -52,17 +52,20 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    /* ── 1. Quien llama tiene que ser staff ── */
+    /* ── 1. Quien llama tiene que ser el DUENIO ── */
     const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
     if (!token) return json({ error: "No autorizado" }, 401);
     const { data: userData } = await supabase.auth.getUser(token);
     const callerId = userData?.user?.id;
     if (!callerId) return json({ error: "No autorizado" }, 401);
 
+    // Duenio, no staff: entrar a la consola y repartir el acceso son dos
+    // permisos distintos. Si cualquier staff pudiera invitar, el acceso seria
+    // transitivo y bastaria una cuenta comprometida para abrir la puerta.
     const { data: caller } = await supabase.from("platform_admins")
-      .select("user_id").eq("user_id", callerId).maybeSingle();
-    if (!caller) {
-      return json({ error: "Sólo el equipo de Divianco puede dar de alta" }, 403);
+      .select("rol").eq("user_id", callerId).maybeSingle();
+    if (caller?.rol !== "owner") {
+      return json({ error: "Sólo el dueño de la plataforma puede dar de alta" }, 403);
     }
 
     const body = await req.json();
@@ -103,8 +106,12 @@ Deno.serve(async (req) => {
     }
 
     /* ── 4. Al equipo ── */
+    // `rol: 'staff'` explicito, y solo al crear: un upsert que pisara el rol
+    // convertiria al duenio en staff si alguien lo reinvitara por error, y la
+    // plataforma quedaria sin nadie que pueda repartir accesos.
     const { error: upErr } = await supabase.from("platform_admins")
-      .upsert({ user_id: userId, email }, { onConflict: "user_id" });
+      .upsert({ user_id: userId, email, rol: "staff" },
+        { onConflict: "user_id", ignoreDuplicates: true });
     if (upErr) throw upErr;
 
     return json({

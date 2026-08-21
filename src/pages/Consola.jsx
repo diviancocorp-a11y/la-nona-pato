@@ -23,7 +23,9 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchPlanes, guardarPlan, soyStaffDivianco, fetchNegocios, actualizarSuscripcion,
   entrarAConsola, salirDeConsola, fetchStaff, sumarStaff, quitarStaff,
+  soyDuenioDivianco, fijarPasswordConsola,
 } from '../services/platformPlanes';
+import { supabase } from '../lib/supabase';
 import { PLANES, cronogramaDeAlta, totalPrimerAnio } from '../modules/planes';
 
 const C = {
@@ -308,6 +310,69 @@ function FilaNegocio({ n, planes, onGuardar }) {
   );
 }
 
+/* ──────────────────── Elegir la contraseña ──────────────────── */
+
+/**
+ * Quien llega por el link de invitacion ya tiene sesion abierta: lo que le
+ * falta es la clave. Sin esta pantalla el link dejaba a la persona adentro sin
+ * forma de volver a entrar despues, que es como se ve un "acceso denegado" al
+ * segundo intento.
+ */
+function ElegirClave({ onListo }) {
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const guardar = async (ev) => {
+    ev.preventDefault();
+    if (enviando) return;
+    if (p1.length < 8) { setError('La contraseña necesita al menos 8 caracteres.'); return; }
+    if (p1 !== p2) { setError('Las contraseñas no coinciden.'); return; }
+    setEnviando(true); setError(null);
+    const r = await fijarPasswordConsola(p1);
+    setEnviando(false);
+    if (r.__error) { setError(r.message); return; }
+    // El hash del link no sirve mas: se limpia para que un F5 no reabra esto.
+    window.history.replaceState(null, '', '/consola');
+    onListo();
+  };
+
+  return (
+    <main style={{
+      minHeight: '100vh', background: C.bg, color: C.tx,
+      display: 'grid', placeItems: 'center', padding: 24,
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+    }}>
+      <form onSubmit={guardar} style={{ width: '100%', maxWidth: 340, display: 'grid', gap: 14 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 19, fontWeight: 800 }}>Elegí tu contraseña</div>
+          <div style={{ fontSize: 13, color: C.t3, marginTop: 5 }}>
+            Es la que vas a usar para entrar a la consola.
+          </div>
+        </div>
+        <Campo etiqueta="Contraseña">
+          <input style={input} type="password" value={p1} autoFocus autoComplete="new-password"
+            onChange={(e) => setP1(e.target.value)} placeholder="Mínimo 8 caracteres" />
+        </Campo>
+        <Campo etiqueta="Repetila">
+          <input style={input} type="password" value={p2} autoComplete="new-password"
+            onChange={(e) => setP2(e.target.value)} placeholder="••••••••" />
+        </Campo>
+        {error && <div style={{ fontSize: 13, color: C.bad }}>{error}</div>}
+        <button type="submit" disabled={enviando}
+          style={{
+            padding: '11px', borderRadius: 9, border: 'none', font: 'inherit',
+            fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            background: C.ac, color: '#111',
+          }}>
+          {enviando ? 'Guardando…' : 'Guardar y entrar'}
+        </button>
+      </form>
+    </main>
+  );
+}
+
 /* ─────────────────────────── Entrar ─────────────────────────── */
 
 /**
@@ -391,7 +456,7 @@ function Entrar({ onEntro }) {
 
 /* ──────────────────────── El equipo ──────────────────────── */
 
-function Equipo({ staff, onSumar, onQuitar }) {
+function Equipo({ staff, onSumar, onQuitar, esDuenio }) {
   const [email, setEmail] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -402,6 +467,15 @@ function Equipo({ staff, onSumar, onQuitar }) {
         lo mismo que ser dueño de un negocio.
       </p>
 
+      {!esDuenio && (
+        <div style={{
+          fontSize: 12.5, padding: '9px 11px', borderRadius: 8,
+          background: 'rgba(251,191,36,0.10)', color: C.warn,
+        }}>
+          Sólo el dueño de la plataforma puede dar o quitar accesos.
+        </div>
+      )}
+
       <div style={{ display: 'grid', gap: 8 }}>
         {staff.map(s => (
           <div key={s.user_id} style={{
@@ -409,7 +483,13 @@ function Equipo({ staff, onSumar, onQuitar }) {
             background: C.card, border: `1px solid ${C.line}`,
             borderRadius: 10, padding: '11px 13px',
           }}>
-            <span style={{ flex: 1, fontSize: 13.5 }}>{s.email || s.user_id}</span>
+            <span style={{ flex: 1, fontSize: 13.5 }}>
+              {s.email || s.user_id}
+              {s.rol === 'owner' && (
+                <span style={{ color: C.ac, fontSize: 11.5 }}> · dueño</span>
+              )}
+            </span>
+            {esDuenio && s.rol !== 'owner' && (
             <button
               type="button" onClick={() => onQuitar(s)}
               style={{
@@ -420,10 +500,12 @@ function Equipo({ staff, onSumar, onQuitar }) {
             >
               Quitar
             </button>
+            )}
           </div>
         ))}
       </div>
 
+      {esDuenio && (
       <div style={{
         background: C.card, border: `1px solid ${C.line}`,
         borderRadius: 10, padding: 13, display: 'grid', gap: 10,
@@ -458,6 +540,7 @@ function Equipo({ staff, onSumar, onQuitar }) {
           {enviando ? 'Sumando…' : 'Dar acceso'}
         </button>
       </div>
+      )}
     </div>
   );
 }
@@ -466,7 +549,17 @@ function Equipo({ staff, onSumar, onQuitar }) {
 
 export default function Consola() {
   const [staff, setStaff] = useState(null);
+  const [duenio, setDuenio] = useState(false);
   const [equipo, setEquipo] = useState([]);
+  // Quien llega por el link de invitacion o de recuperacion ya tiene sesion;
+  // lo que le falta es la clave. Se lee el hash en el primer render porque
+  // Supabase lo procesa y lo limpia apenas puede.
+  const [eligiendoClave, setEligiendoClave] = useState(() => {
+    try {
+      const h = window.location.hash || '';
+      return h.includes('type=invite') || h.includes('type=recovery');
+    } catch { return false; }
+  });
   const [planes, setPlanes] = useState([]);
   const [negocios, setNegocios] = useState([]);
   const [guardando, setGuardando] = useState(false);
@@ -479,6 +572,7 @@ export default function Consola() {
     const esStaff = await soyStaffDivianco();
     setStaff(esStaff);
     if (!esStaff) return;
+    setDuenio(await soyDuenioDivianco());
     const [ps, ns, eq] = await Promise.all([fetchPlanes(), fetchNegocios(), fetchStaff()]);
     setPlanes(ps);
     setNegocios(ns);
@@ -486,6 +580,19 @@ export default function Consola() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Leer el hash es ganarle una carrera al cliente de Supabase, que lo limpia
+  // apenas puede. Estos eventos son los que emite para cada caso y no dependen
+  // de que el hash siga ahi. Es el mismo arreglo que se hizo en `/entrar`.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY' || evento === 'USER_UPDATED') return;
+      if (evento === 'SIGNED_IN' && (window.location.hash || '').includes('type=invite')) {
+        setEligiendoClave(true);
+      }
+    });
+    return () => sub?.subscription?.unsubscribe();
+  }, []);
 
   const onGuardarPlan = useCallback(async (borrador) => {
     setGuardando(true);
@@ -516,6 +623,13 @@ export default function Consola() {
   // subdominio de su negocio llega acá como anonimo. Decirle que no tiene
   // permiso cuando lo que le falta es entrar es mandarlo a buscar un problema
   // que no existe.
+  // El orden importa: primero la clave, despues el permiso. Quien viene del
+  // link YA es staff (lo sumo el duenio antes de invitarlo); pedirle que
+  // "entre" antes de tener contraseña es pedirle algo que no puede hacer.
+  if (eligiendoClave) {
+    return <ElegirClave onListo={() => { setEligiendoClave(false); cargar(); }} />;
+  }
+
   if (!staff) return <Entrar onEntro={cargar} />;
 
   const suspendidos = negocios.filter(n => n.status === 'suspendido').length;
@@ -606,6 +720,7 @@ export default function Consola() {
         {tab === 'equipo' && (
           <Equipo
             staff={equipo}
+            esDuenio={duenio}
             onSumar={async (email) => {
               const r = await sumarStaff(email);
               setAviso(r.__error ? r.message : `${email}: ${r.message}`);

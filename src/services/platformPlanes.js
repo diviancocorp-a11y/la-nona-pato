@@ -171,7 +171,7 @@ export async function salirDeConsola() {
 /** Quien del equipo de Divianco tiene acceso. */
 export async function fetchStaff() {
   const { data, error } = await supabase
-    .from('platform_admins').select('user_id, email, created_at').order('created_at');
+    .from('platform_admins').select('user_id, email, rol, created_at').order('created_at');
   if (error) {
     console.error('fetchStaff:', error.message);
     return [];
@@ -218,10 +218,38 @@ export async function quitarStaff(userId) {
   }
   if (!data?.ok) {
     const razones = {
-      no_te_saques_a_vos: 'No podés sacarte el acceso a vos mismo.',
-      ultimo_staff: 'Es la última persona con acceso: no se puede quitar.',
+      es_el_duenio: 'Al dueño de la plataforma no se lo puede quitar.',
+      no_esta: 'Esa persona ya no está en el equipo.',
     };
     return { __error: 'fn', message: razones[data?.error] || 'No se pudo quitar.' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Si esta persona es el DUEÑO de la plataforma.
+ *
+ * Distinto de ser staff: el staff entra a la consola, el dueño ademas reparte
+ * el acceso. Sin esta division, alguien a quien le diste acceso para mirar
+ * cobros podia darle acceso a un tercero, o sacarte a vos.
+ */
+export async function soyDuenioDivianco() {
+  const { data: sesion } = await supabase.auth.getSession();
+  const uid = sesion?.session?.user?.id;
+  if (!uid) return false;
+  const { data } = await supabase
+    .from('platform_admins').select('rol').eq('user_id', uid).maybeSingle();
+  return data?.rol === 'owner';
+}
+
+/**
+ * Fija la contraseña de quien llega por un link de invitacion o de
+ * recuperacion. El link ya abrio sesion; lo que falta es la clave.
+ */
+export async function fijarPasswordConsola(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { __error: 'auth', message: 'No se pudo guardar la contraseña. Pedí el link de nuevo.' };
   }
   return { ok: true };
 }
