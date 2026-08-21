@@ -84,7 +84,23 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    /* ── 3. La cuenta ── */
+    /* ── 3. Resetear la clave de alguien que ya esta ── */
+    // El duenio manda el link; la contraseña la elige la persona. Nadie mas la
+    // ve, ni siquiera quien la pidio.
+    if (body.resetear === true) {
+      const { error: recErr } = await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo: `${body.origin || "https://divianco.app"}/consola` },
+      });
+      if (recErr) {
+        console.error("staff-invite: no se pudo generar el link", recErr);
+        return json({ error: "No se pudo mandar el link" }, 502);
+      }
+      return json({ ok: true, email, message: "Link enviado." });
+    }
+
+    /* ── 4. La cuenta ── */
     // Si ya existe no se la toca: se la suma al equipo y entra con la
     // contraseña que ya usaba. Reinvitar le pisaria la sesion a alguien que
     // estaba trabajando.

@@ -70,7 +70,14 @@ export async function registrarNegocio({
 export async function crearTenantPendiente() {
   const { data, error } = await supabase.rpc('signup_tenant');
   if (error) return { ok: false, error: traducirError(error.message) };
-  return { ok: true, slug: data?.slug, vertical: data?.vertical, tenantId: data?.tenant_id };
+  return {
+    ok: true,
+    // El staff de la plataforma no tiene negocio: la RPC lo dice asi.
+    esStaff: data?.es_staff === true,
+    slug: data?.slug,
+    vertical: data?.vertical,
+    tenantId: data?.tenant_id,
+  };
 }
 
 /**
@@ -95,6 +102,20 @@ export async function iniciarSesion({ email, password }) {
  */
 export async function destinoTrasLogin() {
   const r = await crearTenantPendiente();
+
+  // El staff de Divianco NO tiene negocio: `signup_tenant` no le crea ninguno
+  // y por eso vuelve sin slug. Sin este corte se armaba
+  // `https://undefined.divianco.app` — no se creaba nada en la base, pero la
+  // persona terminaba en un dominio que no existe.
+  if (r.ok && r.esStaff) {
+    return { ok: true, url: `${window.location.origin}/consola`, slug: null };
+  }
+
+  // Cinturon: si por lo que sea no vino slug, no se arma una URL con `undefined`.
+  if (r.ok && !r.slug) {
+    return { ok: false, error: 'No pudimos identificar tu negocio. Volvé a entrar.' };
+  }
+
   if (r.ok) return { ok: true, url: urlDelNegocio(r.slug), slug: r.slug };
   return { ok: false, error: r.error };
 }

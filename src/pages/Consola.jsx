@@ -23,7 +23,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchPlanes, guardarPlan, soyStaffDivianco, fetchNegocios, actualizarSuscripcion,
   entrarAConsola, salirDeConsola, fetchStaff, sumarStaff, quitarStaff,
-  soyDuenioDivianco, fijarPasswordConsola,
+  soyDuenioDivianco, fijarPasswordConsola, resetearClaveDeStaff,
 } from '../services/platformPlanes';
 import { supabase } from '../lib/supabase';
 import { PLANES, cronogramaDeAlta, totalPrimerAnio } from '../modules/planes';
@@ -446,9 +446,14 @@ function Entrar({ onEntro }) {
           {enviando ? 'Entrando…' : 'Entrar'}
         </button>
 
-        <a href="/entrar" style={{ color: C.t3, fontSize: 12.5, textAlign: 'center' }}>
-          ¿Olvidaste tu contraseña?
-        </a>
+        {/* NO hay "olvidé mi contraseña" acá, y es a proposito: ese link
+            llevaba a `/entrar`, que es el login de los CLIENTES y termina
+            resolviendo a que negocio mandarte. Un empleado no tiene negocio.
+            Si se olvida la clave, se la pide al dueño, que se la resetea
+            desde Equipo. */}
+        <p style={{ color: C.t3, fontSize: 12, textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+          ¿Olvidaste la contraseña? Pedile al dueño que te mande un link nuevo.
+        </p>
       </form>
     </main>
   );
@@ -456,7 +461,7 @@ function Entrar({ onEntro }) {
 
 /* ──────────────────────── El equipo ──────────────────────── */
 
-function Equipo({ staff, onSumar, onQuitar, esDuenio }) {
+function Equipo({ staff, onSumar, onQuitar, onResetear, esDuenio }) {
   const [email, setEmail] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -489,6 +494,19 @@ function Equipo({ staff, onSumar, onQuitar, esDuenio }) {
                 <span style={{ color: C.ac, fontSize: 11.5 }}> · dueño</span>
               )}
             </span>
+            {esDuenio && s.rol !== 'owner' && (
+            <button
+              type="button" onClick={() => onResetear(s)}
+              title="Le manda un mail para que elija una contraseña nueva"
+              style={{
+                border: `1px solid ${C.line}`, background: 'transparent',
+                color: C.t2, borderRadius: 7, padding: '4px 10px',
+                font: 'inherit', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Nueva clave
+            </button>
+            )}
             {esDuenio && s.rol !== 'owner' && (
             <button
               type="button" onClick={() => onQuitar(s)}
@@ -725,6 +743,10 @@ export default function Consola() {
               const r = await sumarStaff(email);
               setAviso(r.__error ? r.message : `${email}: ${r.message}`);
               if (!r.__error) setEquipo(await fetchStaff());
+            }}
+            onResetear={async (s2) => {
+              const r = await resetearClaveDeStaff(s2.email);
+              setAviso(r.__error ? r.message : `${s2.email}: ${r.message}`);
             }}
             onQuitar={async (s2) => {
               const r = await quitarStaff(s2.user_id);

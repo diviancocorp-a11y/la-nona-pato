@@ -253,3 +253,31 @@ export async function fijarPasswordConsola(password) {
   }
   return { ok: true };
 }
+
+/**
+ * Le manda a un empleado un link para que elija una contraseña nueva.
+ *
+ * La consola no tiene "olvidé mi contraseña" a proposito: ese link llevaba a
+ * `/entrar`, que es el login de los CLIENTES y termina resolviendo a que
+ * negocio mandarte — y un empleado no tiene negocio. Ademas asi el duenio sabe
+ * quien pidio un reseteo y cuando.
+ *
+ * NO devuelve ninguna contraseña: la elige la persona en su mail.
+ */
+export async function resetearClaveDeStaff(email) {
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { email, origin: window.location.origin, resetear: true },
+  });
+  if (error) {
+    let message = 'No se pudo mandar el link.';
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) message = body.error;
+      }
+    } catch { /* empty */ }
+    return { __error: 'fn', message };
+  }
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return { ok: true, message: 'Le mandamos un link para elegir contraseña nueva.' };
+}
