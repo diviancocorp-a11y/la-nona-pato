@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-19",
-  "_migrations_through": "0054",
+  "_migrations_through": "0055",
   "tables": {
     "addresses": [
       "id",
@@ -281,7 +281,8 @@
       "email",
       "created_at",
       "rol",
-      "puesto"
+      "puesto",
+      "modalidad"
     ],
     "product_ingredients": [
       "tenant_id",
@@ -505,11 +506,9 @@
     ],
     "staff_legajo": [
       "user_id",
-      "nombre_completo",
       "fecha_nacimiento",
       "tipo_documento",
       "numero_documento",
-      "cuil",
       "doc_frente_path",
       "doc_dorso_path",
       "calle",
@@ -521,14 +520,21 @@
       "telefono",
       "emergencia_nombre",
       "emergencia_telefono",
-      "banco",
-      "cbu",
-      "alias_bancario",
       "titular_cuenta",
       "fecha_ingreso",
       "completado_at",
       "creado_at",
-      "actualizado_at"
+      "actualizado_at",
+      "nombre",
+      "apellido",
+      "pais",
+      "identificacion_fiscal",
+      "cuenta_numero",
+      "cuenta_alias",
+      "cuenta_banco",
+      "cuenta_swift",
+      "titular_es_empresa",
+      "razon_social"
     ],
     "staff_shifts": [
       "id",

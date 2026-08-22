@@ -8,6 +8,105 @@
 
 ---
 
+## 21/ago/2026 (noche) — EL LEGAJO, CORREGIDO: pais, documento y modalidad
+
+Migración **0055**, aplicada. Ricky revisó la pantalla del legajo y la
+devolución cambió tres supuestos que la 0054 daba por ciertos.
+
+### Los tres supuestos que se rompieron
+
+| Lo que asumía la 0054 | Por qué está mal |
+|---|---|
+| El documento tiene dorso | Un **pasaporte no**. Exigirlo dejaba a la persona trabada sin manera de destrabarse: no hay foto que sacar |
+| La identificación fiscal se llama CUIL | En Chile y Uruguay es RUT, en México RFC. Pedir CUIL a alguien de Colombia es pedirle un dato que no existe |
+| Hace falta domicilio y teléfono | De quien **factura** su servicio, no. De esa persona hace falta con qué facturarle y a dónde pagarle |
+
+### Empleado y contratista
+
+Es la respuesta a "si tengo gente de Fiverr, ellos me facturan". Se agregó
+`platform_admins.modalidad`:
+
+- **En relación de dependencia**: legajo completo, con domicilio.
+- **Factura sus servicios**: identidad, identificación fiscal y datos de cobro.
+  Nada de domicilio ni teléfono — son datos personales que la empresa no
+  necesita y frenan un alta que debería tomar dos minutos.
+
+**La fija el dueño al dar el acceso, no la persona.** En qué relación está
+alguien con la empresa es una decisión de la empresa, no una autodeclaración; y
+por eso vive en `platform_admins` —que sólo escribe el dueño— y no en el
+legajo, que lo edita la persona.
+
+### El país
+
+Se reusó la lista de `src/modules/paises.js` (los 9 países que ya declaraba el
+alta de tenants) en vez de armar otra. Lo nuevo va en
+`src/modules/documentacionPorPais.js`, que es **otra pregunta sobre el mismo
+país**: aquel describe dónde opera un NEGOCIO (moneda, huso, adaptador fiscal),
+éste qué papeles presenta una PERSONA.
+
+Ojo con un detalle que se pasa fácil: en Argentina el identificador de una
+empresa es CUIT y el de una persona es **CUIL**. `paises.js` declara el
+primero; el legajo necesita el segundo.
+
+Los países sin regla propia caen en una genérica —pasaporte o documento
+nacional, IBAN y SWIFT— y usan el identificador que ya declaraba `paises.js`.
+Adivinar mal la regla de un país es peor que preguntar genérico: un largo
+equivocado rechaza datos correctos y la persona no tiene cómo saber por qué.
+
+### El resto de la devolución
+
+- Nombre y apellido en dos casillas.
+- **La cámara se abre directo** (`capture="environment"`). En una computadora
+  el navegador lo ignora y cae en el selector de archivos, que ahí corresponde.
+- Contactos de emergencia **opcionales**, sin la aclaración de más y con las
+  etiquetas completas. Son datos de un TERCERO que no dio su consentimiento.
+- Los campos de una fila quedan **a la misma altura**: la ayuda ocupa lugar
+  aunque esté vacía, así una etiqueta de dos renglones no escalona la grilla.
+- **El CBU no anuncia "22 dígitos" pero los valida.** Se cuentan sólo los
+  dígitos: la gente lo pega con espacios y guiones, y rechazarlo por eso es
+  rechazar un dato correcto mal tipeado.
+- **El titular de la cuenta se autocompleta con el nombre y no se edita**, salvo
+  que se tilde "la cuenta es de una empresa". Depositar el sueldo de alguien en
+  la cuenta de un tercero es la forma más silenciosa de que ese sueldo no
+  llegue.
+- Se sacó "podés guardar incompleto": el botón dice **Finalizar incorporación**
+  y está apagado hasta que esté todo.
+- Textos reescritos en registro formal.
+
+### Al dueño no se le exige
+
+Preguntó si él también tiene que cargarlo. **No, y no por comodidad**: si el
+legajo lo bloqueara y algo fallara subiendo el documento, el único que puede
+administrar accesos quedaría afuera y no habría quien lo destrabe. Mismo
+criterio que 0053 con "al dueño no se lo puede quitar". Lo puede cargar cuando
+quiera desde **Mis datos**, en la barra de la consola.
+
+### Un error propio, y lo que enseña
+
+**Pisé `src/modules/paises.js` entero con Write.** Ya existía, lo usa
+`Signup.jsx`, y el build lo agarró con `MISSING_EXPORT`. Se recuperó con
+`git checkout` y lo nuevo quedó en un archivo aparte — que además es el diseño
+correcto, así que el error terminó mejorando la solución.
+
+**La señal estaba y no la leí**: la herramienta contestó *"has been updated"* y
+no *"created"*. Para la próxima: antes de escribir un módulo "nuevo", mirar si
+el archivo ya existe.
+
+### Verificado
+
+En la vitrina: los 9 países en el selector, DNI mostrando dorso y pasaporte
+haciéndolo desaparecer, México pidiendo RFC + IBAN + SWIFT en vez de CUIL +
+CBU, y la escena `legajo-contratista` sin sección de domicilio.
+
+25 tests del legajo, **844** en verde. Cuatro comparan el módulo contra la
+migración parseando el SQL: los documentos con dorso, los campos que se piden
+siempre, y que el domicilio sea exactamente lo que separa empleado de
+contratista en los dos lados.
+
+**Contra la base, nada todavía**: ninguna persona real completó un legajo.
+
+---
+
 ## 21/ago/2026 (tarde) — PUESTOS Y LEGAJO: el alta de staff, completa
 
 Migración **0054**, aplicada. El alta de un empleado de Dico pasó de "correo +

@@ -1,25 +1,22 @@
-// El legajo del empleado de Dico, lo primero que ve cuando entra.
+// Los datos de incorporacion, lo primero que ve alguien que entra al equipo.
 //
-// Empieza vacio a proposito: la pantalla interesante es la que le pide los
-// datos, no la que ya los tiene. Cambiar LEGAJO por uno completo muestra la
-// otra mitad.
+// Arranca vacio a proposito: la pantalla interesante es la que pide los datos.
+// Cambiar el pais en el desplegable muestra como se adapta —el documento, como
+// se llama la identificacion fiscal, que datos de cobro se piden— y elegir
+// pasaporte hace desaparecer el dorso.
 import LegajoDeStaff from 'app/components/admin/platform/LegajoDeStaff.jsx';
 
 const SESION = { user: { id: 'u-nuevo', email: 'camila.gonzalez@grupodivianco.com' } };
 
-const LEGAJO = [];
-
 export default {
-  titulo: 'Legajo del empleado',
+  titulo: 'Incorporacion — en relacion de dependencia',
   componente: LegajoDeStaff,
   props: {
     email: 'camila.gonzalez@grupodivianco.com',
     puesto: 'Soporte',
+    modalidad: 'empleado',
     onListo: () => {},
     onSalir: () => {},
   },
-  datos: {
-    tablas: { staff_legajo: LEGAJO },
-    sesion: SESION,
-  },
+  datos: { tablas: { staff_legajo: [] }, sesion: SESION },
 };

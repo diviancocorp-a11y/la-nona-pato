@@ -189,7 +189,7 @@ export async function salirDeConsola() {
 /** Quien del equipo de Divianco tiene acceso. */
 export async function fetchStaff() {
   const { data, error } = await supabase
-    .from('platform_admins').select('user_id, email, rol, puesto, created_at')
+    .from('platform_admins').select('user_id, email, rol, puesto, modalidad, created_at')
     .order('created_at');
   if (error) {
     console.error('fetchStaff:', error.message);

@@ -37,6 +37,7 @@ import {
   etiquetaDePuesto,
 } from '../modules/rolesDeConsola';
 import { fetchMiLegajo, cambiarPuesto } from '../services/platformStaff';
+import { MODALIDAD_POR_DEFECTO } from '../modules/legajo';
 import LegajoDeStaff from '../components/admin/platform/LegajoDeStaff';
 
 const C = {
@@ -888,6 +889,9 @@ export default function Consola() {
   // `false` se muestra el legajo, con `null` no se muestra nada todavía.
   const [legajoListo, setLegajoListo] = useState(null);
   const [miEmail, setMiEmail] = useState('');
+  const [modalidad, setModalidad] = useState(MODALIDAD_POR_DEFECTO);
+  // El duenio puede abrir su legajo a mano; no se lo pide la pantalla.
+  const [legajoAMano, setLegajoAMano] = useState(false);
 
   useEffect(() => { document.title = 'Consola — Divianco'; }, []);
 
@@ -911,9 +915,15 @@ export default function Consola() {
     const miPuesto = yo?.puesto || PUESTO_POR_DEFECTO;
     setPuesto(miPuesto);
     setMiEmail(yo?.email || sesion?.session?.user?.email || '');
+    setModalidad(yo?.modalidad || MODALIDAD_POR_DEFECTO);
     // Quien manda es `completado_at`, que lo sella el servidor. El navegador
     // no puede declararse completo.
-    setLegajoListo(!!legajo?.completado_at);
+    //
+    // Al DUENIO no se le exige: si el legajo lo bloqueara y algo fallara
+    // subiendo el documento, el unico que puede administrar accesos quedaria
+    // afuera y no habria quien lo destrabe. Mismo criterio que 0053 con "al
+    // duenio no se lo puede quitar". Lo carga cuando quiere, desde el link.
+    setLegajoListo(esDuenio || !!legajo?.completado_at);
     setTab((t) => t || pantallaInicial(miPuesto, { esDuenio }));
     // Sólo el dueño: la edge function le contesta 403 a un staff, y pedir algo
     // que sabés que va a fallar es ensuciar la consola del navegador.
@@ -977,17 +987,20 @@ export default function Consola() {
   // que pidio el flujo: primero se sabe que la persona entra, despues se le
   // piden los datos con los que se le paga. Se muestra mientras `legajoListo`
   // sea false; en `null` todavia no se sabe y no se muestra nada.
-  if (legajoListo === false) {
+  if (legajoListo === false || legajoAMano) {
     return (
       <LegajoDeStaff
         email={miEmail}
         puesto={etiquetaDePuesto(puesto)}
-        onListo={() => { setLegajoListo(true); cargar(); }}
-        onSalir={async () => {
-          try { await salirDeConsola(); } catch { /* empty */ }
-          setStaff(false);
-          setLegajoListo(null);
-        }}
+        modalidad={modalidad}
+        onListo={() => { setLegajoListo(true); setLegajoAMano(false); cargar(); }}
+        onSalir={legajoAMano
+          ? () => setLegajoAMano(false)
+          : async () => {
+            try { await salirDeConsola(); } catch { /* empty */ }
+            setStaff(false);
+            setLegajoListo(null);
+          }}
       />
     );
   }
@@ -1033,6 +1046,16 @@ export default function Consola() {
             </button>
           ))}
           <button
+            type="button" onClick={() => setLegajoAMano(true)}
+            style={{
+              marginLeft: 'auto', padding: '7px 12px', borderRadius: 999,
+              border: `1px solid ${C.line}`, background: 'transparent',
+              color: C.t3, font: 'inherit', fontSize: 12.5, cursor: 'pointer',
+            }}
+          >
+            Mis datos
+          </button>
+          <button
             type="button"
             onClick={async () => {
               // El estado se baja SIEMPRE, falle o no el signOut: si dependiera
@@ -1042,7 +1065,7 @@ export default function Consola() {
               setStaff(false);
             }}
             style={{
-              marginLeft: 'auto', padding: '7px 12px', borderRadius: 999,
+              padding: '7px 12px', borderRadius: 999,
               border: `1px solid ${C.line}`, background: 'transparent',
               color: C.t3, font: 'inherit', fontSize: 12.5, cursor: 'pointer',
             }}

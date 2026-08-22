@@ -25,11 +25,12 @@ import { supabase } from '../lib/supabase';
 
 const BUCKET = 'staff-legajo';
 
-const COLS = 'user_id, nombre_completo, fecha_nacimiento, tipo_documento, '
-  + 'numero_documento, cuil, doc_frente_path, doc_dorso_path, calle, altura, '
-  + 'piso_depto, localidad, provincia, codigo_postal, telefono, '
-  + 'emergencia_nombre, emergencia_telefono, banco, cbu, alias_bancario, '
-  + 'titular_cuenta, fecha_ingreso, completado_at, creado_at, actualizado_at';
+const COLS = 'user_id, nombre, apellido, pais, fecha_nacimiento, tipo_documento, '
+  + 'numero_documento, identificacion_fiscal, doc_frente_path, doc_dorso_path, '
+  + 'calle, altura, piso_depto, localidad, provincia, codigo_postal, telefono, '
+  + 'emergencia_nombre, emergencia_telefono, cuenta_numero, cuenta_alias, '
+  + 'cuenta_banco, cuenta_swift, titular_cuenta, titular_es_empresa, razon_social, '
+  + 'fecha_ingreso, completado_at, creado_at, actualizado_at';
 
 export const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 export const TAMANO_MAX = 5 * 1024 * 1024; // el mismo tope que el bucket
@@ -125,13 +126,18 @@ export async function guardarMiLegajo(borrador) {
   const uid = sesion?.session?.user?.id;
   if (!uid) return { __error: 'auth', message: 'Se cerró la sesión. Entrá de nuevo.' };
 
+  // Lista explicita y no un spread del borrador: la pantalla arrastra campos
+  // calculados (`titular` sugerido, errores de formato) que no son columnas, y
+  // un upsert con claves de mas falla entero.
   const limpio = {
     user_id: uid,
-    nombre_completo: texto(borrador.nombre_completo),
+    nombre: texto(borrador.nombre),
+    apellido: texto(borrador.apellido),
+    pais: texto(borrador.pais) || 'AR',
     fecha_nacimiento: borrador.fecha_nacimiento || null,
-    tipo_documento: borrador.tipo_documento || null,
+    tipo_documento: texto(borrador.tipo_documento),
     numero_documento: texto(borrador.numero_documento),
-    cuil: texto(borrador.cuil),
+    identificacion_fiscal: texto(borrador.identificacion_fiscal),
     doc_frente_path: borrador.doc_frente_path || null,
     doc_dorso_path: borrador.doc_dorso_path || null,
     calle: texto(borrador.calle),
@@ -143,10 +149,13 @@ export async function guardarMiLegajo(borrador) {
     telefono: texto(borrador.telefono),
     emergencia_nombre: texto(borrador.emergencia_nombre),
     emergencia_telefono: texto(borrador.emergencia_telefono),
-    banco: texto(borrador.banco),
-    cbu: texto(borrador.cbu),
-    alias_bancario: texto(borrador.alias_bancario),
+    cuenta_numero: texto(borrador.cuenta_numero),
+    cuenta_alias: texto(borrador.cuenta_alias),
+    cuenta_banco: texto(borrador.cuenta_banco),
+    cuenta_swift: texto(borrador.cuenta_swift),
     titular_cuenta: texto(borrador.titular_cuenta),
+    titular_es_empresa: !!borrador.titular_es_empresa,
+    razon_social: texto(borrador.razon_social),
     fecha_ingreso: borrador.fecha_ingreso || null,
   };
 
