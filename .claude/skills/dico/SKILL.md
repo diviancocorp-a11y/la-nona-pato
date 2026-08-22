@@ -17,6 +17,11 @@ Lo que sí es estable son las decisiones y el porqué, que están más abajo.
 2. `CLAUDE.md` — convenciones del repo y bugs recurrentes con sus workarounds.
 3. `git log --oneline -15` y `git status --short` — qué se hizo último y si
    quedó algo sin commitear.
+4. **Qué hay deployado**, con el MCP de Vercel (`list_deployments` sobre
+   `hermes-platform`): comparás el SHA del último deployment de producción
+   contra `HEAD`. **Nunca lo leas del HANDOFF**: esa fila se escribe antes de
+   deployar y nadie vuelve a corregirla, así que dice "atrasada" para siempre.
+   Ya hizo perder una sesión.
 
 Después, según lo que vayas a tocar:
 - Migraciones aplicadas: `ls platform/migrations/`
@@ -115,11 +120,16 @@ renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
   "Vegetariano" en el catálogo. `ProductEditor` ya ramifica por
   `tenant.vertical` (duración vs stock) y es el lugar del que sale ese
   registry cuando se haga.
-- **Las `og:` tags son las del build** para todos los tenants: compartir por
-  WhatsApp muestra la marca equivocada. Necesita render en el edge.
 - **`unit_cost` va en 0**: el edificio no tiene modelo de costos, así que el
   P&L no da.
-- Falta el formulario para fijar la contraseña nueva tras el reset.
+- **No hay con qué cobrarle al cliente todavía**: hay planes y precios, pero el
+  registro de cobros de la consola guarda `paga_hasta` y nada más — ni historia
+  de pagos ni MRR — y la suscripción de MercadoPago no está.
+
+Dos cosas que esta lista dio por rotas cuando ya estaban hechas —el formulario
+de contraseña nueva y las `og:` por tenant— y costaron una sesión de planificar
+al pedo. **Antes de reportar algo de acá como pendiente, comprobalo**: son
+todos verificables con un curl, un `ls` o una consulta.
 
 ## Cómo trabajar acá
 - Español argentino. Comentarios de código **sin tildes** (encoding).

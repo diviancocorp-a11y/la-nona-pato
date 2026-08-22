@@ -33,6 +33,7 @@ const PLATFORM_PATHS = [
   'src/services/platformAdmin.js',
   'src/services/platformPagos.js',
   'src/services/platformPlanes.js',
+  'src/services/platformStaff.js',
   'src/pages/Consola.jsx',
   'src/services/platformSettings.js',
   'src/services/platformInventory.js',

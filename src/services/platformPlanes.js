@@ -15,6 +15,24 @@ import { supabase } from '../lib/supabase';
 const COLS = 'id, nombre, descripcion, precio_mensual, precio_anual_por_mes, '
   + 'meses_gratis, meses_descuento, descuento_pct, disponible, orden, actualizado_at';
 
+/**
+ * El mensaje que la edge function puso en el body, no el "Edge Function
+ * returned a non-2xx status code" del cliente.
+ *
+ * Estas funciones contestan con el motivo exacto —"ese dominio no es de la
+ * empresa", "todavía no confirmó el reenvío"— y cada uno se arregla distinto.
+ * Perderlo y mostrar un error genérico es mandar a la persona a adivinar.
+ */
+async function mensajeDeError(error, fallback) {
+  try {
+    if (error?.context && typeof error.context.json === 'function') {
+      const body = await error.context.json();
+      if (body?.error) return body.error;
+    }
+  } catch { /* el body no era JSON: queda el fallback */ }
+  return fallback;
+}
+
 /** Todos los planes, en el orden en que se muestran. */
 export async function fetchPlanes({ soloDisponibles = false } = {}) {
   let q = supabase.from('plans').select(COLS).order('orden');
@@ -171,7 +189,8 @@ export async function salirDeConsola() {
 /** Quien del equipo de Divianco tiene acceso. */
 export async function fetchStaff() {
   const { data, error } = await supabase
-    .from('platform_admins').select('user_id, email, rol, created_at').order('created_at');
+    .from('platform_admins').select('user_id, email, rol, puesto, created_at')
+    .order('created_at');
   if (error) {
     console.error('fetchStaff:', error.message);
     return [];
@@ -187,27 +206,20 @@ export async function fetchStaff() {
  * La funcion no crea usuarios: poder fabricar cuentas desde la consola es
  * poder fabricarse accesos.
  */
-export async function sumarStaff(email) {
+export async function sumarStaff(email, puesto = 'soporte') {
   // Va por edge function y no por la RPC porque hace falta CREAR la cuenta con
   // la API de admin. Si el empleado se registrara por `divianco.app/registro`,
   // el alta le crearia un NEGOCIO —`signup_tenant`— y terminaria con un tenant
   // fantasma a su nombre. Nunca tiene que pasar por ese camino.
   const { data, error } = await supabase.functions.invoke('staff-invite', {
-    body: { email, origin: window.location.origin },
+    body: { email, puesto, origin: window.location.origin },
   });
 
   if (error) {
-    let message = 'No se pudo dar de alta.';
-    try {
-      if (error.context && typeof error.context.json === 'function') {
-        const body = await error.context.json();
-        if (body?.error) message = body.error;
-      }
-    } catch { /* empty */ }
-    return { __error: 'fn', message };
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo dar de alta.') };
   }
   if (data?.error) return { __error: 'fn', message: data.error };
-  return { ok: true, message: data?.message, invitado: data?.invitado };
+  return { ok: true, message: data?.message, invitado: data?.invitado, aviso: data?.aviso };
 }
 
 export async function quitarStaff(userId) {
@@ -269,15 +281,86 @@ export async function resetearClaveDeStaff(email) {
     body: { email, origin: window.location.origin, resetear: true },
   });
   if (error) {
-    let message = 'No se pudo mandar el link.';
-    try {
-      if (error.context && typeof error.context.json === 'function') {
-        const body = await error.context.json();
-        if (body?.error) message = body.error;
-      }
-    } catch { /* empty */ }
-    return { __error: 'fn', message };
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo mandar el link.') };
   }
   if (data?.error) return { __error: 'fn', message: data.error };
   return { ok: true, message: 'Le mandamos un link para elegir contraseña nueva.' };
+}
+
+/* ─────────────────── El correo de trabajo del equipo ─────────────────── */
+
+/**
+ * Como esta el correo del dominio de la empresa.
+ *
+ * Sale de Cloudflare, no de nuestra base: quien decide a donde va el correo de
+ * alguien es el que lo reenvia. Guardarnos una copia seria tener dos verdades
+ * y creerle a la que no manda.
+ */
+export async function fetchCorreosDeEquipo() {
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { accion: 'correos' },
+  });
+  if (error) {
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo leer el correo del equipo.') };
+  }
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return {
+    ok: true,
+    dominio: data.dominio,
+    reglas: data.reglas || [],
+    destinos: data.destinos || [],
+    catchAll: data.catchAll || { activo: false, destinos: [] },
+  };
+}
+
+/**
+ * Le crea el correo de trabajo a alguien: alias@dominio -> su correo personal.
+ *
+ * Se puede llamar dos veces y hay que hacerlo. Cloudflare no deja apuntar un
+ * alias a un destino que su dueño todavía no confirmó — es la protección
+ * contra desviarle el correo a cualquiera —, así que la primera llamada crea
+ * el destino y dispara ese mail, y la segunda, después del clic, termina el
+ * alta. Repetirla nunca duplica nada.
+ *
+ * `paso` vuelve como 'esperando_confirmacion' o 'listo'.
+ */
+export async function crearCorreoDeEmpleado({ alias, personal }) {
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { accion: 'crear_correo', alias, personal },
+  });
+  if (error) {
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo crear el correo.') };
+  }
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return { ok: true, ...data };
+}
+
+/**
+ * Qué puede y qué no puede hacer el token de Cloudflare, medido.
+ *
+ * No infiere: corre las cinco llamadas que usa el alta y dice cuál falla. La
+ * sonda de escritura no crea nada — manda un POST inválido a propósito, porque
+ * Cloudflare rechaza por permiso ANTES de mirar el cuerpo.
+ */
+export async function diagnosticoDeCloudflare() {
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { accion: 'diagnostico' },
+  });
+  if (error) {
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo diagnosticar.') };
+  }
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return { ok: true, ...data };
+}
+
+/** Vuelve a mandar el mail de confirmación a un destino que sigue sin confirmar. */
+export async function reenviarConfirmacion(personal) {
+  const { data, error } = await supabase.functions.invoke('staff-invite', {
+    body: { accion: 'reenviar_confirmacion', personal },
+  });
+  if (error) {
+    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo reenviar.') };
+  }
+  if (data?.error) return { __error: 'fn', message: data.error };
+  return { ok: true, message: data.message };
 }

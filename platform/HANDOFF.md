@@ -8,6 +8,300 @@
 
 ---
 
+## 21/ago/2026 (tarde) — PUESTOS Y LEGAJO: el alta de staff, completa
+
+Migración **0054**, aplicada. El alta de un empleado de Dico pasó de "correo +
+invitación" a las cuatro etapas del flujo que pidió Ricky.
+
+### Las cuatro etapas
+
+1. **Puesto.** Al dar de alta se elige: administrador, ventas, soporte o
+   marketing. Decide qué ve la persona cuando entra.
+2. **Correo de trabajo.** Alias en `grupodivianco.com` que reenvía a su correo
+   personal, vía Cloudflare Email Routing. Sin cambios respecto de la mañana.
+3. **Invitación** a ese correo: crea la cuenta y le pide elegir su contraseña.
+4. **Legajo.** Apenas entra, la consola le pide sus datos y no la deja pasar
+   hasta completarlos.
+
+### Dos ejes que no son el mismo
+
+`rol` (owner | staff) ya existía y contesta **quién reparte el acceso**. Sigue
+habiendo un solo dueño (0053). `puesto` es lo nuevo y contesta **qué hace
+adentro**.
+
+Mezclarlos era tentador y caro: si el puesto decidiera también quién reparte
+accesos, cada administrador podría nombrar administradores y el acceso volvería
+a ser transitivo — justo lo que 0053 vino a cerrar. Por eso ningún puesto trae
+la pestaña Equipo; la trae el dueño, sea cual sea su puesto. Hay un test que lo
+fija para los cuatro.
+
+### Qué puede cada puesto
+
+| | Planes | Negocios | Equipo |
+|---|---|---|---|
+| Administrador | edita | edita | ve (si es dueño) |
+| Ventas | lee | edita | — |
+| Soporte | lee | **lee** | — |
+| Marketing | lee | **nada** | — |
+
+Soporte ve al cliente para poder atenderlo y no le mueve la suscripción: "me lo
+dejaste sin cobrar" no puede salir de una pantalla de ayuda. Marketing no ve la
+lista de negocios: quién es cliente y cuánto paga es el dato más delicado de la
+consola y no hace falta para comunicar precios.
+
+La matriz vive en `src/modules/rolesDeConsola.js` — misma división que 6f con
+los roles del negocio: el DATO a la base, la POLITICA al código. **Lo que mueve
+plata baja igual a RLS**: `plans` sólo lo escribe administrador, `tenants`
+administrador y ventas. Esconder una pestaña no protege una tabla.
+
+### El legajo
+
+Tabla `staff_legajo`: identidad, documento con foto (frente y dorso),
+domicilio, contacto de emergencia y CBU. 17 campos obligatorios.
+
+Es **lo más sensible que guarda el edificio**, y por eso no lo ve ni siquiera un
+administrador: sólo la persona y el dueño. Un administrador administra la
+plataforma, no el legajo de sus compañeros.
+
+- Las fotos van a un bucket **privado** (`staff-legajo`), al revés que
+  `tenant-images`, que es público porque lo mira un comprador sin sesión.
+- Se guardan **paths, no URLs**. Una URL firmada vence, y guardar una vencida es
+  guardar basura que parece un dato. Se pide una nueva al mostrar y dura 5 min.
+- **Quien decide si el legajo está completo es el servidor**, no el navegador:
+  lo sella un trigger en `completado_at`. Si lo decidiera el cliente, entrar
+  sería cuestión de mandar un request a mano.
+- Se puede guardar incompleto y volver — los datos del legajo no siempre están
+  todos a mano el mismo día. Lo que no se puede es ENTRAR incompleto.
+
+La regla de "qué es completo" está escrita dos veces a propósito (SQL y
+`src/modules/legajo.js`) porque hace dos trabajos distintos: la pantalla dice
+qué falta mientras se escribe, el servidor abre la puerta. **Hay un test que
+compara las dos parseando la migración**, igual que el de los slugs reservados;
+si se separan, alguien completa el formulario, ve todo en verde y no entra.
+
+### Verificado
+
+En la vitrina, con dos escenas para poder comparar: `consola` (dueño
+administrador) y `consola-soporte`, la misma pantalla con los mismos datos
+vista por soporte — sin pestaña Equipo, los cuatro planes diciendo "los precios
+los edita un administrador" y la suscripción sin botón de guardar. Más `legajo`,
+que arranca vacío y lista los 17 campos que faltan.
+
+19 tests nuevos. Suite completa: **826** en verde. Build limpio, `staff-invite`
+typechequea, los cuatro checks del pre-commit pasan.
+
+**Contra la base, nada todavía**: no se probó con una persona real entrando a
+completar su legajo. Es lo primero que hay que hacer después de deployar.
+
+### Lo que sigue bloqueado
+
+**El paso 2 depende del permiso de Cloudflare.** El bloque que Ricky mostró es
+el de *Account* (ahí están "Email Routing Addresses" y "Email Routing Account
+Rules"); `Email Routing Rules` es de **Zone** y está en otro bloque del editor
+de tokens. Por eso crear el destino anda y crear el alias no.
+
+Por decisión de Ricky, **el alta ya no se frena por eso**: si Cloudflare rechaza
+la escritura, sigue hasta la invitación y avisa en pantalla. Conviene tener
+claro qué compra y qué paga: compra no depender del token; paga que, sin la
+regla y con el catch-all apagado, esa dirección no entrega y la invitación se
+pierde. El aviso está para que, si no llega, la causa esté a la vista.
+
+---
+
+## 21/ago/2026 — EL ALTA DE UN EMPLEADO CREA EL CORREO SOLA
+
+Cierra el pendiente #2 del 20/ago. Antes, sumar a alguien al equipo eran dos
+trabajos en dos lugares: crear el reenvío a mano en el panel de Cloudflare, y
+después invitarlo desde la consola. Ahora es una pantalla.
+
+### Estado
+
+| | Dónde está |
+|---|---|
+| Base | migración **0053**, sin cambios (esto no toca la base) |
+| Rama `platform/runtime-tenant` | commit de esta sesión |
+| Producción | **falta deployar**: web y la edge function `staff-invite` |
+
+### Lo primero: el HANDOFF decía mal el estado
+
+El pendiente #1 —"deployar, producción atrasada"— **ya estaba hecho**. El
+último deploy de producción es `3e2b273`, el commit del propio HANDOFF, y las 8
+edge functions se actualizaron 50 segundos después. O sea que `npm run deploy`
+corrió al final de la sesión pasada, después de escribir el documento.
+
+Es estructural, no un descuido: la fila `Producción` de la tabla de estado se
+escribe ANTES de deployar y nunca se vuelve a tocar, porque el deploy es lo
+último que pasa. **Se saca de la plantilla**: es un dato que se consulta en dos
+segundos con el MCP de Vercel y que el documento no puede mantener al día.
+
+### Cómo funciona el alta ahora
+
+En Consola → Equipo, el dueño escribe nombre y correo personal. El alias se
+sugiere solo (`José Pérez` → `jose.perez`) y se puede pisar.
+
+**Son dos pasos y no puede ser uno.** Cloudflare exige que el dueño del correo
+personal confirme el destino con un clic, y no deja apuntar una regla a un
+destino sin confirmar. Eso no lo puede hacer ninguna API — es justamente la
+protección contra desviarle el correo a un tercero. Así que:
+
+1. **Crear el correo** → crea el destino en Cloudflare, que le manda el mail de
+   confirmación a la persona. La pantalla queda en "esperando".
+2. La persona hace el clic.
+3. **Ya confirmó, seguir** → ahora sí crea la regla `alias@dominio → personal`.
+4. **Dar acceso a la consola** → recién acá sale la invitación de Supabase.
+
+La llamada de crear es **idempotente**: apretar el botón dos veces no duplica
+nada, y es la forma prevista de retomar el alta después del clic.
+
+### La trampa que esto evita
+
+Si la invitación sale antes de la confirmación, **se pierde en silencio**: el
+alias existe, se ve en el panel de Cloudflare y no entrega nada. Y encima vence
+a las 24 horas, así que cuando la persona por fin confirma, el link que la
+esperaba ya caducó. El síntoma que llega después es "no me llegó nada", que no
+dice nada de esto.
+
+Por eso el guard está **en la edge function**, no sólo en la pantalla: antes de
+invitar comprueba contra Cloudflare que esa dirección reciba correo hoy, y si
+no, contesta 409 con el motivo. La pantalla se puede saltear; la function no.
+
+**El catch-all cuenta.** Las cuentas fundadoras son anteriores a que hubiera
+una regla por persona y andan por ahí. Si el guard mirara sólo las reglas, le
+diría al dueño de la plataforma que no tiene correo.
+
+### Dónde vive cada cosa
+
+- `src/modules/correoDeEquipo.js` — puro y testeado: qué alias sugerir y si a
+  una dirección le llega el correo. Misma división que 6f hizo con los roles.
+- `platform/functions/staff-invite/index.ts` — todo lo que le habla a
+  Cloudflare. El token no sale de acá.
+- La regla de "recibe correo" está escrita **dos veces a propósito**: en el
+  módulo decide qué botón mostrar, en la function decide si sale un mail.
+- **No se guarda nada en nuestra base.** A dónde va el correo de alguien lo
+  sabe Cloudflare; una copia nuestra sería una segunda verdad, y la que manda
+  no es la nuestra.
+
+### Verificado
+
+En la vitrina, el flujo entero: alias sugerido con tildes (`José Pérez` →
+`jose.perez`), el paso de "esperando confirmación", el segundo intento que
+cierra el alta, la invitación, y la persona apareciendo en la lista con su
+reenvío. Más los tres estados en la lista del equipo: recibe / esperando /
+sin correo.
+
+22 tests nuevos. Suite completa: 805 en verde. Build limpio.
+
+**Contra Cloudflare de verdad, sólo lo que probó Ricky** (ver abajo): el paso 1
+anduvo, el paso 2 no. Yo no toqué la cuenta.
+
+### La primera prueba real: funcionó a medias
+
+Ricky lo deployó y probó con una persona. **El paso 1 anduvo entero**: se creó
+el destino, le llegó el mail de Cloudflare y confirmó. **El paso 2 se cayó**
+con `Cloudflare: Authentication error` y ahí murió — sin regla y sin
+invitación.
+
+Y el mensaje no servía para nada. "Authentication error" es lo que contesta
+Cloudflare cuando a un token le falta un permiso, **sin decir cuál ni sobre qué
+recurso**, y el alta usa cuatro permisos distintos. Yo deduje "le falta Email
+Routing Rules: Edit" razonando desde qué llamadas habían andado; Ricky contestó
+que el token es de permiso total. O sea: estaba adivinando, y con eso no se
+arregla nada.
+
+**Dos cambios, y el segundo es el que importa:**
+
+1. Cada llamada a Cloudflare ahora dice **qué estaba haciendo**, con **qué
+   permiso** y con el **código** de Cloudflare (10000 = Authentication error).
+   El código vale más que el texto: es el único que significa "el token no
+   puede hacer esto"; validaciones y duplicados tienen código propio.
+2. Hay un **diagnóstico** en Equipo — "Probar el token de Cloudflare" — que
+   corre las cinco llamadas del alta y dice cuál falla, en vez de deducirlo.
+
+**La sonda de escritura no crea nada.** Manda un POST a propósito inválido
+(cuerpo vacío): si falta el permiso, Cloudflare contesta 10000 *antes* de mirar
+el cuerpo; si el permiso está, contesta un error de validación. Los dos se
+distinguen por el código y ninguno deja una regla dando vueltas.
+
+### El diagnóstico corrió, y contestó
+
+Sobre `grupodivianco.com`, con el token en producción:
+
+| Paso | |
+|---|---|
+| 1. encontrar la zona | ✓ |
+| 2. leer los destinos (cuenta) | ✓ 4 |
+| 3. leer los reenvíos (zona) | ✓ 1 |
+| 4. leer el catch-all (zona) | ✓ apagado |
+| 5. **escribir un reenvío** | ✗ **Authentication error [10000]** |
+
+**Lee reglas y no las puede escribir.** Eso es `Email Routing Rules` en Read y
+no en Edit sobre esa zona — en el editor de tokens de Cloudflare es UNA fila
+con un desplegable Read/Edit, así que un token que uno da por "total" puede
+tenerla en Read sin que se note.
+
+Se descartó la otra explicación que parecía razonable —que el segundo paso
+estuviera reintentando la verificación del destino— mirando el código: el POST
+al destino está detrás de `if (!e.destinos.some(...))` y en la segunda pasada no
+se ejecuta. La etiqueta del error lo confirma: dice "crear el reenvío", no
+"crear el destino". Y la invitación (Supabase/Resend) no entra: eso es el tercer
+botón.
+
+**El segundo botón dejó de ser un callejón sin salida.** Si Cloudflare rechaza
+la escritura, el error ahora ofrece la salida: crear la ruta a mano en el panel
+(medio minuto) y volver a apretar — la función detecta la regla existente y
+retoma en "listo". Verificado en la vitrina.
+
+### Pendiente inmediato
+
+1. **Poner `Email Routing Rules` en Edit** en el token, para la zona
+   `grupodivianco.com`. El diagnóstico vuelve a correr y tiene que dar todo ✓.
+2. **Retomar el alta de esa persona.** El destino ya está creado y confirmado:
+   apretando "Ya confirmó, seguir" se crea la regla y sigue. No hay que
+   empezar de nuevo ni pedirle que confirme otra vez.
+3. Si hace falta, el nombre del secreto: la function busca `CLOUDFLARE_API_TOKEN`
+   (canónico), `CF_API_TOKEN`, `CLOUDFLARE_TOKEN`. Y se puede saltear la
+   búsqueda de zona cargando `CLOUDFLARE_ZONE_ID` + `CLOUDFLARE_ACCOUNT_ID`.
+
+### Las edge functions no las typechequeaba nadie
+
+`npm run build` compila `src/`. Las functions son TypeScript que **nadie mira**:
+Supabase las deploya sin typecheckear, así que un error de tipos llega a
+producción como un 500 en la cara de alguien.
+
+Ahora hay `npm run check:functions` (Deno, por npx). En la primera corrida
+encontró dos cosas:
+
+- En `staff-invite`, un `filter(Boolean)` sobre `T | null` que dejaba el `null`
+  en el tipo, y el consumidor lo tapaba con un `!`. Arreglado con un predicado.
+- **En `submit-order`, uno preexistente**: el costo por producto se lee de una
+  relación embebida como si fuera objeto, cuando el tipo dice arreglo. Si en
+  runtime llega arreglo, `unit_cost` queda en 0 sin error — y está dentro de un
+  try/catch best-effort, así que tampoco se loguea. **Puede ser la causa del
+  pendiente "`unit_cost` va en 0"**. No se tocó: es otra tarea.
+
+Por eso `check:functions` NO está en el pre-commit todavía: lo estaría dejando
+en rojo por algo ajeno a esta sesión.
+
+### Sigue pendiente de antes
+
+- Registro de cobros en la consola (hoy sólo `paga_hasta`, sin historia ni MRR).
+- Cobro automático por MercadoPago Suscripciones.
+- El recorte `propio` de 6f, a medias (sólo cocina).
+- Agregar `https://divianco.app/consola` a Redirect URLs en Supabase Auth.
+- Leaked password protection en el edificio.
+- El primer cobro real de MercadoPago: 0 integraciones conectadas.
+- Decidir si Cadena lleva los 3 meses al 50%.
+
+### De paso
+
+La vitrina llamaba `createRoot` sobre el mismo nodo en cada HMR y llenaba la
+consola del navegador de errores de React — justo la consola que se mira para
+saber si la pantalla está rota. Y la escena de la consola mutaba su propio
+array de staff, que el fake copia al cargar: los cambios no se veían. Las dos
+arregladas.
+
+---
+
 ## 20/ago/2026 — DICO PASA A SER UN NEGOCIO: planes, precios y consola
 
 La sesion mas larga hasta ahora: 16 commits, 5 migraciones del edificio
@@ -20,9 +314,10 @@ tener **con que cobrar**.
 |---|---|
 | Base (`wwwzdgprsooyjgkuyoav`) | migracion **0053**, todo aplicado |
 | Rama `platform/runtime-tenant` | **e32cce7** |
-| Produccion | **atrasada**: los ultimos 3 commits (consola, duenio unico, fix de `undefined`) no estan |
+| ~~Produccion~~ | ~~atrasada: los ultimos 3 commits no estan~~ — **era falso**, ver 21/ago |
 
-**Hay que deployar.** `npm run deploy`.
+**Hay que deployar.** `npm run deploy` ← se corrió al terminar la sesión, después
+de escribir esto. Por eso la fila de arriba mintió durante un día entero.
 
 ### Hecho
 

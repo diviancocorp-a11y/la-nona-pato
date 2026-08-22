@@ -23,7 +23,8 @@
     "vitrina": "vite --config tools/vitrina/vite.config.mjs",
     "deploy": "npm run deploy:web && npm run deploy:functions",
     "deploy:web": "npx --yes vercel --prod --scope diviancocorp-a11ys-projects --yes",
-    "deploy:functions": "node platform/scripts/deploy-functions.mjs --all"
+    "deploy:functions": "node platform/scripts/deploy-functions.mjs --all",
+    "check:functions": "node platform/scripts/check-functions.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.57.0",

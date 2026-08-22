@@ -83,4 +83,10 @@ function Vitrina() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<Vitrina />);
+// El root se guarda en el nodo y no en una variable del modulo: con HMR este
+// archivo se vuelve a ejecutar, y un segundo createRoot sobre el mismo nodo
+// llena la consola de errores de React. Justo la consola que se mira para
+// saber si la pantalla esta rota.
+const nodo = document.getElementById('root');
+nodo.__root = nodo.__root || createRoot(nodo);
+nodo.__root.render(<Vitrina />);

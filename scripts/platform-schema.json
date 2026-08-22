@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot del schema del EDIFICIO (proyecto Supabase hermes-platform, wwwzdgprsooyjgkuyoav) para validar columnas en .select(). El otro snapshot, supabase-schema.json, describe el schema LEGACY de los 3 tenants gastro viejos: son bases distintas y varias tablas (orders, order_items, coupons, profiles) existen en las dos con columnas diferentes. Que archivo se valida contra cual lo decide PLATFORM_PATHS en check-supabase-columns.mjs. Regenerar con: npm run schema:sync",
   "_refreshed_at": "2026-08-19",
-  "_migrations_through": "0053",
+  "_migrations_through": "0054",
   "tables": {
     "addresses": [
       "id",
@@ -226,6 +226,22 @@
       "total",
       "user_id"
     ],
+    "payment_integrations": [
+      "id",
+      "tenant_id",
+      "provider",
+      "access_token",
+      "public_key",
+      "external_user_id",
+      "mp_nickname",
+      "mp_email",
+      "live_mode",
+      "webhook_secret",
+      "is_active",
+      "connected_at",
+      "updated_at",
+      "metadata"
+    ],
     "payment_methods": [
       "id",
       "tenant_id",
@@ -246,6 +262,26 @@
       "paid_at",
       "branch_id",
       "client_request_id"
+    ],
+    "plans": [
+      "id",
+      "nombre",
+      "descripcion",
+      "precio_mensual",
+      "precio_anual_por_mes",
+      "meses_gratis",
+      "meses_descuento",
+      "descuento_pct",
+      "disponible",
+      "orden",
+      "actualizado_at"
+    ],
+    "platform_admins": [
+      "user_id",
+      "email",
+      "created_at",
+      "rol",
+      "puesto"
     ],
     "product_ingredients": [
       "tenant_id",
@@ -463,6 +499,37 @@
       "created_at",
       "last_used_at"
     ],
+    "staff_dominios": [
+      "dominio",
+      "creado_at"
+    ],
+    "staff_legajo": [
+      "user_id",
+      "nombre_completo",
+      "fecha_nacimiento",
+      "tipo_documento",
+      "numero_documento",
+      "cuil",
+      "doc_frente_path",
+      "doc_dorso_path",
+      "calle",
+      "altura",
+      "piso_depto",
+      "localidad",
+      "provincia",
+      "codigo_postal",
+      "telefono",
+      "emergencia_nombre",
+      "emergencia_telefono",
+      "banco",
+      "cbu",
+      "alias_bancario",
+      "titular_cuenta",
+      "fecha_ingreso",
+      "completado_at",
+      "creado_at",
+      "actualizado_at"
+    ],
     "staff_shifts": [
       "id",
       "tenant_id",
@@ -605,45 +672,6 @@
       "date",
       "created_at",
       "client_request_id"
-    ],
-    "payment_integrations": [
-      "id",
-      "tenant_id",
-      "provider",
-      "access_token",
-      "public_key",
-      "external_user_id",
-      "mp_nickname",
-      "mp_email",
-      "live_mode",
-      "webhook_secret",
-      "is_active",
-      "connected_at",
-      "updated_at",
-      "metadata"
-    ],
-    "plans": [
-      "id",
-      "nombre",
-      "descripcion",
-      "precio_mensual",
-      "precio_anual_por_mes",
-      "meses_gratis",
-      "meses_descuento",
-      "descuento_pct",
-      "disponible",
-      "orden",
-      "actualizado_at"
-    ],
-    "platform_admins": [
-      "user_id",
-      "email",
-      "rol",
-      "created_at"
-    ],
-    "staff_dominios": [
-      "dominio",
-      "creado_at"
     ]
   }
 }
