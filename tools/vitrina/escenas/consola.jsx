@@ -67,18 +67,30 @@ const NEGOCIOS = [
 ];
 
 const STAFF = [
-  { user_id: 'u-staff', email: 'ricardo.r@grupodivianco.com', rol: 'owner', puesto: 'administrador', created_at: '2026-01-01' },
-  { user_id: 'u2', email: 'sofia@grupodivianco.com', rol: 'staff', puesto: 'ventas', created_at: '2026-04-10' },
+  { user_id: 'u-staff', email: 'ricardo.r@grupodivianco.com', rol: 'owner', puesto: 'administrador', modalidad: 'empleado', created_at: '2026-01-01' },
+  { user_id: 'u2', email: 'sofia@grupodivianco.com', rol: 'staff', puesto: 'ventas', modalidad: 'empleado', created_at: '2026-04-10' },
   // Sin confirmar: es el estado del que nadie se acuerda hasta que alguien
   // dice "no me llego el mail". Que se vea es medio arreglo.
-  { user_id: 'u3', email: 'martin@grupodivianco.com', rol: 'staff', puesto: 'soporte', created_at: '2026-08-19' },
+  { user_id: 'u3', email: 'martin@grupodivianco.com', rol: 'staff', puesto: 'soporte', modalidad: 'contratista', created_at: '2026-08-19' },
 ];
 
 // La consola pide el legajo antes de dejar entrar. Sin esta fila la escena
 // mostraria el legajo y no la consola — que es correcto, y para eso esta la
 // escena `legajo`.
 const LEGAJOS = [
-  { user_id: 'u-staff', nombre_completo: 'Ricardo R.', completado_at: '2026-01-02' },
+  { user_id: 'u-staff', nombre: 'Ricardo', apellido: 'Rodriguez', pais: 'AR',
+    completado_at: '2026-01-02' },
+  // Sofia con el legajo completo: es la ficha que se puede mirar entera.
+  { user_id: 'u2', nombre: 'Sofia', apellido: 'Gomez', pais: 'AR',
+    fecha_nacimiento: '1994-03-11', tipo_documento: 'dni', numero_documento: '37123456',
+    identificacion_fiscal: '27371234561', calle: 'Chazarreta', altura: '1435',
+    localidad: 'Cordoba', provincia: 'Cordoba', codigo_postal: '5000',
+    telefono: '3511234567', emergencia_nombre: 'Marta Gomez',
+    emergencia_telefono: '3517654321', cuenta_numero: '2850590940090418135201',
+    cuenta_alias: 'sofia.gomez.mp', titular_cuenta: 'Sofia Gomez',
+    titular_es_empresa: false, completado_at: '2026-04-12' },
+  // Martin sin completar: el otro estado que hay que poder ver.
+  { user_id: 'u3', nombre: 'Martin', apellido: 'K.', pais: 'AR', completado_at: null },
 ];
 
 /* El correo del equipo, como lo devuelve Cloudflare. Sofía confirmó el
@@ -109,6 +121,18 @@ export default {
     tablas: {
       plans: PLANES, tenants: NEGOCIOS, platform_admins: STAFF,
       staff_legajo: LEGAJOS,
+      // La vista del edificio (0056). El fake no hace joins, asi que la escena
+      // la arma: es lo mismo que devolveria `staff_fichas`.
+      staff_fichas: STAFF.map((a) => {
+        const l = LEGAJOS.find((x) => x.user_id === a.user_id) || {};
+        return {
+          user_id: a.user_id, email: a.email, rol: a.rol, puesto: a.puesto,
+          modalidad: a.modalidad || 'empleado', alta_at: a.created_at,
+          nombre: l.nombre || null, apellido: l.apellido || null,
+          pais: l.pais || null, completado_at: l.completado_at || null,
+          foto_perfil_path: null,
+        };
+      }),
     },
     sesion: SESION,
     // El alta de un empleado pasa entera por la edge function. Este fake

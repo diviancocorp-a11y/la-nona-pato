@@ -39,6 +39,7 @@ import {
 import { fetchMiLegajo, cambiarPuesto } from '../services/platformStaff';
 import { MODALIDAD_POR_DEFECTO } from '../modules/legajo';
 import LegajoDeStaff from '../components/admin/platform/LegajoDeStaff';
+import FichaDeStaff from '../components/admin/platform/FichaDeStaff';
 
 const C = {
   bg: '#0f0f10', card: '#1a1a1c', line: '#2a2a2e',
@@ -763,6 +764,10 @@ function Equipo({
   staff, correos, onSumar, onQuitar, onResetear, onCrearCorreo, onReenviar,
   onDiagnosticar, onCambiarPuesto, esDuenio,
 }) {
+  // Cual esta abierta. Una sola: dos fichas abiertas al mismo tiempo son dos
+  // pantallas de datos sensibles a la vista de quien pase por atras.
+  const [abierta, setAbierta] = useState(null);
+
   return (
     <div style={{ display: 'grid', gap: 12, maxWidth: 560 }}>
       <p style={{ fontSize: 13, color: C.t3, margin: 0 }}>
@@ -781,7 +786,8 @@ function Equipo({
 
       <div style={{ display: 'grid', gap: 8 }}>
         {staff.map(s => (
-          <div key={s.user_id} style={{
+          <div key={s.user_id} style={{ display: 'grid', gap: 8 }}>
+          <div style={{
             display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
             background: C.card, border: `1px solid ${C.line}`,
             borderRadius: 10, padding: '11px 13px',
@@ -814,6 +820,16 @@ function Equipo({
                 {etiquetaDePuesto(s.puesto)}
               </span>
             )}
+            {esDuenio && (
+            <button
+              type="button"
+              onClick={() => setAbierta(abierta === s.user_id ? null : s.user_id)}
+              title="Ver su legajo"
+              style={botonChico}
+            >
+              {abierta === s.user_id ? 'Ocultar' : 'Ver legajo'}
+            </button>
+            )}
             {esDuenio && s.rol !== 'owner' && (
             <button
               type="button" onClick={() => onResetear(s)}
@@ -828,6 +844,11 @@ function Equipo({
               Quitar
             </button>
             )}
+          </div>
+
+          {abierta === s.user_id && (
+            <FichaDeStaff ficha={s} onCerrar={() => setAbierta(null)} />
+          )}
           </div>
         ))}
       </div>

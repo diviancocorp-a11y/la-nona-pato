@@ -102,6 +102,74 @@ function Seccion({ titulo, descripcion, children }) {
 }
 
 /**
+ * La foto de perfil. Opcional.
+ *
+ * Es una cara, no un documento: sirve para que en una lista de ocho personas se
+ * sepa quien es quien de un vistazo. Nada depende de ella, y por eso no entra
+ * en "esta completo" — trabar una incorporacion por una foto de perfil seria
+ * trabarla por lo unico que no importa.
+ *
+ * Va igual al bucket privado que el documento. Podria ser publica, pero un
+ * segundo bucket con otras policies es una segunda superficie donde
+ * equivocarse.
+ */
+function Burbuja({ path, onSubir }) {
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState(null);
+  const [vista, setVista] = useState(null);
+
+  useEffect(() => {
+    let vivo = true;
+    if (!path) { setVista(null); return undefined; }
+    urlDeArchivo(path).then((u) => { if (vivo) setVista(u); });
+    return () => { vivo = false; };
+  }, [path]);
+
+  return (
+    <label style={{
+      display: 'grid', justifyItems: 'center', gap: 6,
+      cursor: subiendo ? 'wait' : 'pointer',
+    }}>
+      <span style={{
+        width: 76, height: 76, borderRadius: '50%', overflow: 'hidden',
+        border: `1px solid ${vista ? C.line : 'transparent'}`,
+        outline: vista ? 'none' : `1px dashed ${C.line}`,
+        background: '#111113', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        {vista
+          ? <img src={vista} alt="Foto de perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <span style={{ fontSize: 22, color: C.t3 }}>+</span>}
+      </span>
+      <span style={{ fontSize: 11.5, color: C.t3, textAlign: 'center' }}>
+        {subiendo ? 'Subiendo…' : vista ? 'Cambiar foto' : 'Foto (opcional)'}
+      </span>
+      {error && (
+        <span style={{ fontSize: 11, color: C.bad, maxWidth: 130, textAlign: 'center' }}>
+          {error}
+        </span>
+      )}
+      <input
+        type="file" accept="image/*" style={{ display: 'none' }} disabled={subiendo}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          const problema = validarArchivoDeLegajo(file);
+          if (problema) { setError(problema); return; }
+          setError(null);
+          setSubiendo(true);
+          const r = await subirArchivoDeLegajo(file, 'perfil');
+          setSubiendo(false);
+          if (r.__error) { setError(r.__error); return; }
+          onSubir(r.path);
+        }}
+      />
+    </label>
+  );
+}
+
+/**
  * La foto de una cara del documento.
  *
  * `capture="environment"` abre la cámara trasera directamente en el teléfono,
@@ -218,7 +286,12 @@ export default function LegajoDeStaff({
       fontFamily: "'DM Sans', system-ui, sans-serif", padding: '24px 16px 60px',
     }}>
       <div style={{ maxWidth: 820, margin: '0 auto', display: 'grid', gap: 14 }}>
-        <header>
+        <header style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <Burbuja
+            path={b.foto_perfil_path}
+            onSubir={(p) => setB((x) => ({ ...x, foto_perfil_path: p }))}
+          />
+          <div style={{ flex: 1, minWidth: 220 }}>
           <h1 style={{ fontSize: 21, margin: 0, letterSpacing: '-0.01em' }}>
             Datos de incorporación
           </h1>
@@ -232,6 +305,7 @@ export default function LegajoDeStaff({
                 + 'Son los datos requeridos para procesar tus facturas.'}
             {' '}El acceso a esta información está restringido a la dirección de la empresa.
           </p>
+          </div>
         </header>
 
         {!completo && (

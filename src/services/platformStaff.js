@@ -30,7 +30,7 @@ const COLS = 'user_id, nombre, apellido, pais, fecha_nacimiento, tipo_documento,
   + 'calle, altura, piso_depto, localidad, provincia, codigo_postal, telefono, '
   + 'emergencia_nombre, emergencia_telefono, cuenta_numero, cuenta_alias, '
   + 'cuenta_banco, cuenta_swift, titular_cuenta, titular_es_empresa, razon_social, '
-  + 'fecha_ingreso, completado_at, creado_at, actualizado_at';
+  + 'foto_perfil_path, fecha_ingreso, completado_at, creado_at, actualizado_at';
 
 export const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 export const TAMANO_MAX = 5 * 1024 * 1024; // el mismo tope que el bucket
@@ -155,6 +155,7 @@ export async function guardarMiLegajo(borrador) {
     cuenta_swift: texto(borrador.cuenta_swift),
     titular_cuenta: texto(borrador.titular_cuenta),
     titular_es_empresa: !!borrador.titular_es_empresa,
+    foto_perfil_path: borrador.foto_perfil_path || null,
     razon_social: texto(borrador.razon_social),
     fecha_ingreso: borrador.fecha_ingreso || null,
   };
@@ -173,6 +174,44 @@ export async function guardarMiLegajo(borrador) {
 function texto(v) {
   const s = String(v ?? '').trim();
   return s === '' ? null : s;
+}
+
+/**
+ * Las fichas del equipo: quién es cada uno y si su legajo está completo.
+ *
+ * Sale de la vista `staff_fichas` (0056), que junta `platform_admins` con
+ * `staff_legajo`. La vista es `security_invoker`, así que devuelve lo que las
+ * policies de QUIEN PREGUNTA permiten: la persona ve su fila con datos, y el
+ * resto del equipo sin legajo. El dueño las ve todas.
+ */
+export async function fetchFichas() {
+  const { data, error } = await supabase
+    .from('staff_fichas')
+    .select('user_id, email, rol, puesto, modalidad, alta_at, nombre, apellido, '
+      + 'pais, completado_at, foto_perfil_path')
+    .order('alta_at');
+  if (error) {
+    console.error('fetchFichas:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * El legajo COMPLETO de una persona. Sólo el dueño lo obtiene con datos.
+ *
+ * No hace falta chequear permisos acá: la policy `staff_legajo_duenio` (0054)
+ * decide, y a quien no corresponde le devuelve vacío. Filtrar en el cliente
+ * ADEMAS sería fingir una segunda cerradura que cualquiera saltea.
+ */
+export async function fetchLegajoDe(userId) {
+  const { data, error } = await supabase
+    .from('staff_legajo').select(COLS).eq('user_id', userId).maybeSingle();
+  if (error) {
+    console.error('fetchLegajoDe:', error.message);
+    return null;
+  }
+  return data || null;
 }
 
 /** Le cambia el puesto a alguien del equipo. Sólo el dueño. */

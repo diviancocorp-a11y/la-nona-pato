@@ -8,6 +8,55 @@
 
 ---
 
+## 21/ago/2026 (cierre) — LA FICHA: el dueño puede VER lo que junta
+
+Migración **0056**, aplicada. Cierra un agujero que abrió la 0054 y que no se
+veía: el edificio pedía fotos de documentos y CBUs, y **no había pantalla para
+leerlos**. Peor que no juntarlos — el riesgo de guardarlos estaba y el beneficio
+no.
+
+### Lo que se agregó
+
+**Foto de perfil, opcional.** Una burbuja arriba del formulario. No entra en
+"está completo": trabar una incorporación por una foto de perfil sería trabarla
+por lo único que no importa. Va al mismo bucket privado que el documento —
+podría ser pública, una cara no es un DNI, pero un segundo bucket con otras
+policies es una segunda superficie donde equivocarse.
+
+**Ficha del empleado, en Equipo → "Ver legajo".** El dueño abre a cualquiera y
+ve identidad, documento (con las fotos), domicilio, contacto y cobro. Una sola
+abierta a la vez: dos pantallas de datos sensibles al mismo tiempo son dos
+pantallas a la vista de quien pase por atrás.
+
+**Es SOLO LECTURA, y es a propósito.** Un CBU que puede cambiar alguien que no
+es su titular es un sueldo que se puede desviar sin que la persona se entere; y
+un documento que otro puede reemplazar deja de servir como prueba de nada. Si
+hay un dato mal, lo corrige quien lo cargó.
+
+### La vista `staff_fichas`
+
+La ficha necesita el EMAIL de cada persona (`platform_admins`) junto al estado
+de su legajo (`staff_legajo`). Se resolvió con una vista y no con un join desde
+el cliente porque PostgREST exigiría una FK declarada entre las dos tablas — y
+esa FK no existe ni debería: `platform_admins` dice quién tiene acceso HOY, y
+un legajo sobrevive a que alguien deje de tenerlo.
+
+**`security_invoker = true` no es opcional.** Sin eso una vista corre con los
+permisos de quien la creó, y cualquier staff vería el legajo de todos con sólo
+consultarla. Con security_invoker cada uno ve lo que sus propias policies le
+dejan: la persona lo suyo, el dueño todo.
+
+### Verificado
+
+En la vitrina, los tres estados que importan: Sofía con el legajo completo (la
+ficha entera), Martín contratista e incompleto —con el cartel de que no puede
+entrar y **sin sección de domicilio**, porque a quien factura no se le pide— y
+la burbuja de foto diciendo "opcional" y sin aparecer entre los pendientes.
+
+844 en verde, build limpio, los cuatro checks pasan.
+
+---
+
 ## 21/ago/2026 (noche) — EL LEGAJO, CORREGIDO: pais, documento y modalidad
 
 Migración **0055**, aplicada. Ricky revisó la pantalla del legajo y la
