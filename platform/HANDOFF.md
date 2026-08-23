@@ -8,6 +8,80 @@
 
 ---
 
+## 21/ago/2026 (cierre 2) — EL ALTA, SIN FRENOS
+
+Sin migración. Se sacó todo lo que frenaba el alta del correo, porque frenaba
+mal.
+
+### El dato que cambió el diagnóstico
+
+Ricky contó que ANTES de estos cambios el ciclo funcionaba: cargaba el correo
+personal y el alias, le llegaba la verificación, la aceptaba, y **el alias
+quedaba andando** — probó mandándole un mail y llegó.
+
+Eso no encaja con "el token no puede escribir reglas"… salvo por una cosa: **el
+catch-all**. Una regla que se lleva todo lo que no matchea ninguna otra hace que
+CUALQUIER alias del dominio entregue, sin regla propia.
+
+Y ahí estaba mi error: `catchAllDe()` se tragaba cualquier excepción y devolvía
+`{activo: false}`. Si al token le falta permiso para leerlo —que es plausible,
+es el mismo permiso de zona que falla al escribir— el diagnóstico decía
+**"catch-all: apagado"** con total seguridad, y mandó a buscar el problema donde
+no estaba.
+
+Ahora devuelve `ilegible: true` con el motivo. **"No hay catch-all" y "no lo
+puedo leer" son dos cosas distintas**, y tragarse un error para devolver un
+valor cómodo es fabricar una mentira que después alguien usa para decidir.
+
+### Lo que hace ahora, y nada más
+
+1. Si el destino no existe, lo crea. **Eso es lo único que dispara el mail.**
+2. Intenta la regla y, si no puede, **sigue igual**.
+3. Devuelve el estado real.
+
+El segundo botón dejó de ser un chequeo y pasó a ser **"Ya lo verifiqué,
+seguir"**: una confirmación del dueño, que mira Cloudflare y decide. Es el único
+que puede — la API no confirma un destino por su dueño, y el catch-all no
+siempre se puede leer. Al lado, **"Reenviar el mail"**.
+
+**El guard de la invitación se sacó entero.** Consultaba Cloudflare y frenaba si
+la dirección no figuraba recibiendo correo: con el catch-all ilegible veía "no
+recibe" donde sí recibía, y bloqueaba altas sanas. Si el mail no llega, el
+remedio está a mano (Reenviar); eso es más barato que un chequeo que se
+equivoca.
+
+### El bug que Ricky reportó
+
+"Ahora ni siquiera manda el correo." Era esto: `camilausa333@gmail.com` **ya
+estaba cargado como destino** de la prueba anterior, así que Cloudflare no
+mandaba nada —correcto— y la pantalla **no lo decía**. Parecía un botón muerto.
+
+Ahora los tres casos hablan:
+
+| Estado del destino | Qué dice la pantalla |
+|---|---|
+| No existe | "Le mandamos un mail a X para que confirme el reenvío." |
+| Existe, sin confirmar | "Ya estaba cargado y sin confirmar. No se manda otro mail automáticamente: usá Reenviar si no le llegó." |
+| Existe y confirmado | "X ya está confirmado en Cloudflare." → va directo a dar el acceso |
+
+También se sacó el cartel que afirmaba "ya reenvía a X": la regla es
+best-effort, así que prometerlo era prometer algo que no se puede comprobar.
+
+### Verificado
+
+Los tres casos en la vitrina, con el fake simulando que el token NO puede
+escribir la regla — que es el escenario real. 844 en verde, build limpio,
+`staff-invite` typechequea.
+
+### Si igual molesta
+
+Queda dicho para no volver a discutirlo: si el alias sigue dando problemas, la
+salida es **dar de alta con el correo personal**. `staff_dominios` es una tabla:
+alcanza con sumarle el dominio del correo, o con sacar la validación de dominio
+del alta. No es una reescritura, es un insert.
+
+---
+
 ## 21/ago/2026 (cierre) — LA FICHA: el dueño puede VER lo que junta
 
 Migración **0056**, aplicada. Cierra un agujero que abrió la 0054 y que no se

@@ -513,7 +513,7 @@ const botonChico = {
  * El botón de crear se puede apretar dos veces y hay que hacerlo. La llamada
  * es idempotente: la primera crea el destino, la segunda cierra el alta.
  */
-function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar }) {
+function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar, onReenviarConfirmacion }) {
   const [nombre, setNombre] = useState('');
   const [aliasEditado, setAliasEditado] = useState(null);
   const [personal, setPersonal] = useState('');
@@ -543,7 +543,10 @@ function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar }) {
     setOcupado(false);
     if (r.__error) return;
     setCorreo(r.email);
-    setAvisoLocal(r.aviso || null);
+    // El mensaje de la function dice el estado REAL: si mandó mail, si el
+    // destino ya estaba, si ya está confirmado. Antes la pantalla decía
+    // siempre "le mandamos un mail" aunque no se hubiera mandado ninguno.
+    setAvisoLocal(r.message || null);
     setPaso(r.paso === 'listo' ? 'listo' : 'esperando');
   };
 
@@ -616,33 +619,27 @@ function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar }) {
           fontSize: 12.5, padding: '9px 11px', borderRadius: 8, lineHeight: 1.5,
           background: 'rgba(251,191,36,0.10)', color: C.warn,
         }}>
-          Le mandamos un mail a <strong>{personal}</strong> para que confirme el
-          reenvío. Cuando lo haga, seguí desde acá — todavía no le mandes la
-          invitación: hasta ese clic, {correo} no recibe nada.
+          {aviso || `Le mandamos un mail a ${personal} para que confirme el reenvío.`}
+          {' '}Cuando veas el alias andando en Cloudflare, seguí desde acá.
         </div>
       )}
 
-      {paso === 'listo' && !aviso && (
+      {paso === 'listo' && (
         <div style={{
           fontSize: 12.5, padding: '9px 11px', borderRadius: 8, lineHeight: 1.5,
           background: 'rgba(74,222,128,0.10)', color: C.ok,
         }}>
-          <strong>{correo}</strong> ya reenvía a {personal}. Falta el acceso a la
-          consola.
+          {/* El mensaje sale de la function y dice lo que de verdad pasó.
+              Afirmar "ya reenvía a X" era prometer algo que no se puede
+              comprobar: la regla es best-effort y el catch-all no siempre se
+              puede leer. */}
+          {aviso || `${correo} quedó listo.`} Falta el acceso a la consola.
         </div>
       )}
 
-      {paso === 'listo' && aviso && (
-        <div style={{
-          fontSize: 12.5, padding: '9px 11px', borderRadius: 8, lineHeight: 1.5,
-          background: 'rgba(248,113,113,0.10)', color: C.bad,
-        }}>
-          {aviso}
-        </div>
-      )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        {paso !== 'listo' && (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {paso === null && (
           <button
             type="button" disabled={!puedeCrear || ocupado}
             onClick={crear}
@@ -654,10 +651,39 @@ function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar }) {
               background: C.ac, color: '#111',
             }}
           >
-            {ocupado ? 'Creando…'
-              : paso === 'esperando' ? 'Ya confirmó, seguir'
-                : 'Crear el correo'}
+            {ocupado ? 'Creando…' : 'Crear el correo'}
           </button>
+        )}
+
+        {/* El segundo paso es una confirmación TUYA, no un chequeo: vos mirás
+            Cloudflare y decidís. La función no puede saberlo mejor — el correo
+            puede estar llegando por catch-all, que este token no siempre puede
+            leer. */}
+        {paso === 'esperando' && (
+          <>
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => { setAvisoLocal(null); setPaso('listo'); }}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
+                fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                background: C.ac, color: '#111',
+              }}
+            >
+              Ya lo verifiqué, seguir
+            </button>
+            <button
+              type="button" disabled={ocupado}
+              onClick={async () => {
+                setOcupado(true);
+                await onReenviarConfirmacion(personal.trim());
+                setOcupado(false);
+              }}
+              style={botonChico}
+            >
+              {ocupado ? 'Enviando…' : 'Reenviar el mail'}
+            </button>
+          </>
         )}
 
         {paso === 'listo' && (
@@ -858,6 +884,7 @@ function Equipo({
           dominio={correos?.dominio}
           onCrearCorreo={onCrearCorreo}
           onSumar={onSumar}
+          onReenviarConfirmacion={onReenviar}
         />
       )}
 

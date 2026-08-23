@@ -171,33 +171,37 @@ export default {
         }
         if (body.accion === 'crear_correo') {
           const email = `${body.alias}@${dominio}`;
-          // Si la regla YA existe —la creó alguien a mano en Cloudflare porque
-          // al token le faltaba el permiso de escritura— el alta la detecta y
-          // retoma. Es la salida que ofrece el mensaje de error.
-          const yaHay = REGLAS.find(r => r.alias === email);
-          if (yaHay) {
-            return {
-              ok: true, email, personal: yaHay.destinos[0], paso: 'listo',
-              confirmado: true, regla: true,
-              message: `${email} ya estaba andando.`,
-            };
-          }
           const destino = DESTINOS.find(d => d.email === body.personal);
+
+          // 1. Destino nuevo: se crea y ESO manda el mail.
           if (!destino) {
             DESTINOS.push({ email: body.personal, confirmado: false });
             return {
-              ok: true, email, personal: body.personal, paso: 'esperando_confirmacion',
-              confirmado: false, regla: false,
+              ok: true, email, personal: body.personal, yaEstaba: false,
+              confirmado: false, regla: false, paso: 'esperando_confirmacion',
               message: `Le mandamos un mail a ${body.personal} para que confirme el reenvío.`,
             };
           }
-          // Segunda pasada: se hace de cuenta que ya confirmó.
-          destino.confirmado = true;
-          REGLAS.push({ alias: email, destinos: [body.personal], activa: true });
+
+          // 2. Ya estaba y SIN confirmar: no se manda nada, y hay que decirlo.
+          //    Es el caso que parecia "el boton no hace nada".
+          if (!destino.confirmado) {
+            return {
+              ok: true, email, personal: body.personal, yaEstaba: true,
+              confirmado: false, regla: false, paso: 'esperando_confirmacion',
+              message: `${body.personal} ya estaba cargado y sin confirmar. No se `
+                + 'manda otro mail automáticamente: usá Reenviar si no le llegó.',
+            };
+          }
+
+          // 3. Ya confirmado: la regla es best-effort. Acá se simula que el
+          //    token NO puede escribirla — y el alta sigue igual.
           return {
-            ok: true, email, personal: body.personal, paso: 'listo',
-            confirmado: true, regla: true,
-            message: `${email} ya reenvía a ${body.personal}.`,
+            ok: true, email, personal: body.personal, yaEstaba: true,
+            confirmado: true, regla: false,
+            reglaFallo: 'no pudo crear el reenvío (Authentication error [10000]).',
+            paso: 'listo',
+            message: `${body.personal} ya está confirmado en Cloudflare.`,
           };
         }
         // Dar el acceso.

@@ -253,6 +253,18 @@ async function reglasDe(token: string, zoneId: string) {
   return crudas.map(normalizarRegla).filter((r): r is Regla => r !== null);
 }
 
+/**
+ * El catch-all: la regla que se lleva todo lo que no matchea ninguna otra.
+ *
+ * DEVUELVE `ilegible` Y NO MIENTE. La version anterior se tragaba cualquier
+ * error y contestaba "apagado", asi que un token sin permiso para leerlo
+ * producia un diagnostico que decia "catch-all: apagado" con total seguridad
+ * — y con el catch-all encendido el correo llega igual sin ninguna regla. Eso
+ * mando a buscar el problema donde no estaba.
+ *
+ * "No hay catch-all" y "no lo puedo leer" son dos cosas distintas y ahora se
+ * distinguen.
+ */
 async function catchAllDe(token: string, zoneId: string) {
   try {
     const r = await cf(token, `/zones/${zoneId}/email/routing/rules/catch_all`);
@@ -260,11 +272,16 @@ async function catchAllDe(token: string, zoneId: string) {
       (a: Record<string, unknown>) => a?.type === "forward");
     return {
       activo: r?.enabled === true && !!accion,
+      ilegible: false,
       destinos: (accion?.value || []).map((v: unknown) => String(v).toLowerCase()),
     };
-  } catch {
-    // Que no haya catch-all no es un error: es el caso normal.
-    return { activo: false, destinos: [] as string[] };
+  } catch (err) {
+    return {
+      activo: false,
+      ilegible: true,
+      motivo: String((err as ErrorDeCloudflare)?.message || err),
+      destinos: [] as string[],
+    };
   }
 }
 
@@ -469,18 +486,29 @@ Deno.serve(async (req) => {
 
       /* Crear (o retomar) el correo de trabajo.
        *
-       * Es IDEMPOTENTE y RETOMABLE porque tiene que serlo: Cloudflare no deja
-       * apuntar una regla a un destino sin confirmar, y esa confirmacion la
-       * hace una persona cuando se le da la gana. La primera corrida crea el
-       * destino; la segunda, despues del clic, crea la regla. Volver a
-       * apretar el boton nunca duplica nada. */
+       * ── SIMPLE Y SIN FRENOS (21/ago, decision de Ricky) ──
+       * Antes frenaba de dos formas y las dos molestaban mas de lo que
+       * protegian: si Cloudflare no dejaba crear la REGLA cortaba el alta, y si
+       * el destino ya estaba cargado no mandaba nada y tampoco decia por que —
+       * parecia que el boton no hacia nada.
+       *
+       * Ahora hace lo minimo y lo CUENTA:
+       *   1. si el destino no existe, lo crea. Eso es lo unico que dispara el
+       *      mail de confirmacion;
+       *   2. intenta la regla y, si no puede, sigue igual;
+       *   3. devuelve el estado real, para que la pantalla diga que paso.
+       *
+       * Quien decide si se avanza es el duenio mirando Cloudflare, y es el
+       * unico que puede: la API no puede confirmar un destino por su duenio, y
+       * el catch-all —que hace llegar el correo sin ninguna regla— no siempre
+       * se puede leer con este token. */
       const alias = String(body.alias || "").trim().toLowerCase();
       const personal = String(body.personal || "").trim().toLowerCase();
 
       if (!/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/.test(alias) || alias.length > 64) {
         return json({ error: "Ese alias no sirve como dirección de correo." }, 400);
       }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(personal)) {
+      if (!/^[^@s]+@[^@s]+.[^@s]+$/.test(personal)) {
         return json({ error: "Ese correo personal no parece válido" }, 400);
       }
       if (permitidos.includes(dominioDe(personal))) {
@@ -503,34 +531,23 @@ Deno.serve(async (req) => {
         }, 409);
       }
 
-      // El destino. Crearlo es lo que dispara el mail de confirmacion.
-      let creoDestino = false;
-      if (!e.destinos.some((d) => d.email === personal)) {
+      /* 1. El destino. Crearlo es lo UNICO que dispara el mail de confirmacion. */
+      const yaEstaba = e.destinos.some((d) => d.email === personal);
+      if (!yaEstaba) {
         await cf(cfToken, `/accounts/${e.accountId}/email/routing/addresses`,
           { method: "POST", body: JSON.stringify({ email: personal }) },
           PERMISOS.crearDestino);
-        creoDestino = true;
         e = await estadoDelDominio(cfToken, dominio);
       }
 
       const confirmado = e.destinos.some((d) => d.email === personal && d.confirmado);
 
-      // La regla. Se intenta siempre: si el destino ya estaba confirmado de
-      // antes, el alta termina en una sola pasada.
-      let creoRegla = false;
-      let avisoDeRegla: string | null = null;
-      if (!reglaExistente) {
-        if (!confirmado) {
-          return json({
-            ok: true, email, personal, confirmado: false, regla: false,
-            paso: "esperando_confirmacion",
-            message: creoDestino
-              ? `Le mandamos un mail a ${personal} para que confirme el reenvío. `
-                + "Cuando lo confirme, volvé a apretar el botón y termino el alta."
-              : `${personal} todavía no confirmó el reenvío. `
-                + "Cuando lo haga, volvé a apretar el botón.",
-          });
-        }
+      /* 2. La regla, BEST EFFORT. Si el token no la puede escribir no se frena
+       *    nada: el correo puede estar llegando igual por catch-all, y quien
+       *    mira Cloudflare sabe mejor que esta funcion si el alias anda. */
+      let reglaCreada = false;
+      let reglaFallo: string | null = null;
+      if (!reglaExistente && confirmado) {
         try {
           await cf(cfToken, `/zones/${e.zoneId}/email/routing/rules`, {
             method: "POST",
@@ -541,44 +558,28 @@ Deno.serve(async (req) => {
               actions: [{ type: "forward", value: [personal] }],
             }),
           }, PERMISOS.crearRegla);
+          reglaCreada = true;
         } catch (err) {
-          const e2 = err as ErrorDeCloudflare;
-          // Si Cloudflare rechaza la escritura por permiso, el alta NO se
-          // detiene: sigue hasta la invitacion y avisa. Es una decision
-          // explicita de Ricky (21/ago) y conviene entender que compra y que
-          // paga.
-          //
-          // Lo que compra: no quedarse esperando a que alguien toque el token.
-          // Lo que paga: el destino confirmado NO es el alias. Confirmar un
-          // destino solo autoriza a esa casilla personal como blanco de
-          // reenvio; el alias lo crea la REGLA, que es esto que fallo. Sin
-          // ella, y con el catch-all apagado, la direccion no entrega.
-          //
-          // Por eso el aviso viaja hasta la pantalla en vez de morir en un
-          // console.error: si la invitacion no llega, la causa tiene que estar
-          // a la vista y no en los logs de una edge function.
-          if (!pareceFaltaDePermiso(e2.status, e2.message)) throw err;
-          avisoDeRegla = `Ojo: no se pudo crear el alias en Cloudflare. `
-            + `${e2.message} Confirmar el destino autoriza a ${personal} como `
-            + `casilla de reenvío, pero NO crea ${email}: eso es la regla. Si la `
-            + `invitación no llega, es por esto — se arregla creando la ruta a `
-            + `mano en Cloudflare → Email Routing → Rutas personalizadas `
-            + `(${email} → ${personal}) y apretando el botón otra vez.`;
+          reglaFallo = String((err as ErrorDeCloudflare)?.message || err);
+          console.warn("staff-invite: la regla no se pudo crear:", reglaFallo);
         }
-        creoRegla = !avisoDeRegla;
       }
+
+      /* 3. El estado real, sin inventar. */
+      const message = !yaEstaba
+        ? `Le mandamos un mail a ${personal} para que confirme el reenvío.`
+        : confirmado
+          ? `${personal} ya está confirmado en Cloudflare.`
+          : `${personal} ya estaba cargado y sin confirmar. No se manda otro mail `
+            + "automáticamente: usá Reenviar si no le llegó.";
 
       return json({
         ok: true, email, personal,
-        confirmado: true,
-        regla: !avisoDeRegla,
-        paso: "listo",
-        aviso: avisoDeRegla,
-        message: avisoDeRegla
-          ? `Seguimos igual: ya podés darle acceso a la consola.`
-          : creoRegla
-            ? `${email} ya reenvía a ${personal}. Ahora podés darle acceso a la consola.`
-            : `${email} ya estaba andando.`,
+        yaEstaba, confirmado,
+        regla: !!reglaExistente || reglaCreada,
+        reglaFallo,
+        paso: confirmado ? "listo" : "esperando_confirmacion",
+        message,
       });
     }
 
@@ -613,38 +614,16 @@ Deno.serve(async (req) => {
       return json({ ok: true, email, message: "Link enviado." });
     }
 
-    /* ── 5. Que la direccion RECIBA correo antes de mandarle nada ── */
-    // Sin esto la invitacion sale hacia un alias que no entrega, se pierde en
-    // silencio y vence en 24 horas. El sintoma que llega despues es "no me
-    // llego nada", que no dice nada de esto.
-    const cfToken = tokenDeCloudflare();
-    let avisoDeCorreo: string | null = null;
-    if (cfToken) {
-      try {
-        const e = await estadoDelDominio(cfToken, dominioDe(email));
-        if (!recibeMail(email, e)) {
-          // AVISA Y MANDA. Antes frenaba acá, y frenar es lo defendible: una
-          // invitación a una dirección que no entrega se pierde en silencio y
-          // vence a las 24 h. Se cambió por decisión de Ricky (21/ago), para
-          // no depender de un permiso de Cloudflare que todavía no está.
-          //
-          // El chequeo se hace igual y el aviso llega a la pantalla: si el mail
-          // no aparece, la causa está a la vista y no hay que deducirla.
-          avisoDeCorreo = `Ojo: ${email} no figura recibiendo correo (no tiene `
-            + "regla de reenvío y el catch-all está apagado). La invitación salió "
-            + "igual, pero si no le llega, es por esto.";
-        }
-      } catch (err) {
-        // Cloudflare caido o token sin permiso no puede bloquear un alta: se
-        // avisa y se sigue, que es como funcionaba antes de que existiera esta
-        // verificacion.
-        console.error("staff-invite: no se pudo verificar el reenvío", err);
-        avisoDeCorreo = "No pude verificar el reenvío en Cloudflare; "
-          + "si no le llega el mail, revisá el alias.";
-      }
-    } else {
-      avisoDeCorreo = "No pude verificar el reenvío: falta el token de Cloudflare.";
-    }
+    /* ── 5. La invitacion sale SIN chequear el reenvio ──
+     * Habia un guard que consultaba Cloudflare y frenaba si la direccion no
+     * figuraba recibiendo correo. Se saco: se equivocaba en el caso normal.
+     * El correo puede estar llegando por CATCH-ALL —una regla que se lleva
+     * todo lo que no matchea ninguna otra— y este token no siempre puede leer
+     * el catch-all, asi que el guard veia "no recibe" donde si recibia y
+     * bloqueaba un alta perfectamente sana.
+     *
+     * Si el mail no llega, el remedio esta a mano: el boton Reenviar de la
+     * pantalla de Equipo. Eso es mas barato que un chequeo que se equivoca. */
 
     /* ── 6. La cuenta ── */
     // Si ya existe no se la toca: se la suma al equipo y entra con la
@@ -690,7 +669,6 @@ Deno.serve(async (req) => {
       ok: true,
       email,
       invitado,
-      aviso: avisoDeCorreo,
       message: invitado
         ? "Le mandamos un mail para que elija su contraseña."
         : "Ya tenía cuenta: entra con la contraseña que ya usaba.",
