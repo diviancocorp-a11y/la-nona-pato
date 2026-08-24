@@ -222,3 +222,37 @@ export function TagChip({ children, tone = "neutral" }) {
     }}>{children}</span>
   );
 }
+
+/**
+ * Props para que un `div` que abre algo se comporte como un boton de verdad.
+ *
+ * POR QUE EXISTE
+ * Las tarjetas de la carta eran `<div onClick>`: con el mouse abren el detalle
+ * del producto, con el teclado no existen. Un `div` sin `role` ni `tabIndex` no
+ * lo alcanza el Tab y un lector de pantalla no lo anuncia, asi que quien navega
+ * con teclado podia AGREGAR al carrito —ese si es un `<button>`— pero no abrir
+ * el producto para leer la descripcion ni las aclaraciones.
+ *
+ * Space se previene ademas de manejarse: en un `div` focusable, la barra
+ * espaciadora scrollea la pagina, y sin el `preventDefault` la carta se va
+ * saltando mientras se intenta abrir un producto.
+ *
+ * Se usa en las cuatro tarjetas del catalogo (HomeScreen y CategoryScreen) en
+ * vez de repetir cuatro veces lo mismo: cuatro copias son cuatro formas de que
+ * una quede distinta.
+ */
+export function abrible(onOpen, etiqueta) {
+  if (!onOpen) return {};
+  return {
+    role: "button",
+    tabIndex: 0,
+    "aria-label": etiqueta,
+    onClick: onOpen,
+    onKeyDown: (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onOpen();
+      }
+    },
+  };
+}

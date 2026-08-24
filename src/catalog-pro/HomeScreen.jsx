@@ -20,6 +20,7 @@ import CatalogMusicToggle from "./CatalogMusicToggle";
 import { fmtAR } from "./format";
 import {
   ProductPhoto, PriceTag, Rating, StickyCart, SectionHeader, AddRound, SoldOutBadge,
+  abrible,
 } from "./atoms";
 import { mapProduct, buildStories, buildRecos } from "./homeHelpers";
 import HermesMark from "../components/HermesMark";
@@ -282,7 +283,10 @@ export default function HomeScreen({
         <div style={{ paddingTop: 20 }}>
           <div className="cp-no-scrollbar" style={{ display: "flex", gap: 10, padding: "0 22px", overflowX: "auto" }}>
             {stories.map((s, i) => (
-              <div key={s.id} onClick={() => onSelectProduct?.(s._raw)} style={{
+              <div
+                key={s.id}
+                {...abrible(() => onSelectProduct?.(s._raw), `Ver ${s.name}`)}
+                style={{
                 flex: "0 0 100px", height: 140, borderRadius: 16,
                 position: "relative", overflow: "hidden", cursor: "pointer",
                 border: i === storyIdx ? "2px solid var(--ac)" : "1px solid var(--line)",
@@ -357,9 +361,13 @@ export default function HomeScreen({
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 14 }}>
             {gridProducts.slice(0, 12).map(p => (
-              <div key={p.id} onClick={() => onSelectProduct?.(p._raw)} style={{
+              <div
+                key={p.id}
+                {...abrible(() => onSelectProduct?.(p._raw), `Ver ${p.name}`)}
+                style={{
                 cursor: "pointer", animation: "cp-pcg-rise 300ms ease both",
-              }}>
+              }}
+              >
                 <div style={{ position: "relative" }}>
                   <ProductPhoto src={p.img} height={120} radius={12} tone={p.tone} dim={p.soldOut} />
                   {p.soldOut && <div style={{ position: "absolute", top: 8, left: 8 }}><SoldOutBadge /></div>}

@@ -8,7 +8,7 @@
 import { useState, useMemo } from "react";
 import BadgeTag from "../components/BadgeTag";
 import Icon from "./Icon";
-import { ProductPhoto, Rating, AddRound, PriceTag, SoldOutBadge } from "./atoms";
+import { ProductPhoto, Rating, AddRound, PriceTag, SoldOutBadge, abrible } from "./atoms";
 import { mapProduct } from "./homeHelpers";
 
 const SORT_LABELS = {
@@ -109,7 +109,10 @@ export default function CategoryScreen({
       {view === "list" ? (
         <div style={{ display: "flex", flexDirection: "column" }}>
           {sorted.map(p => (
-            <div key={p.id} onClick={() => onSelectProduct?.(p._raw)} style={{
+            <div
+              key={p.id}
+              {...abrible(() => onSelectProduct?.(p._raw), `Ver ${p.name}`)}
+              style={{
               display: "grid", gridTemplateColumns: "100px 1fr auto", gap: 14, alignItems: "center",
               padding: "12px 22px", borderBottom: "1px solid var(--line)", cursor: "pointer",
             }}>
@@ -136,7 +139,11 @@ export default function CategoryScreen({
       ) : (
         <div style={{ padding: "0 22px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 14 }}>
           {sorted.map(p => (
-            <div key={p.id} onClick={() => onSelectProduct?.(p._raw)} style={{ position: "relative", cursor: "pointer" }}>
+            <div
+              key={p.id}
+              {...abrible(() => onSelectProduct?.(p._raw), `Ver ${p.name}`)}
+              style={{ position: "relative", cursor: "pointer" }}
+            >
               <div style={{ position: "relative" }}>
                 <ProductPhoto src={p.img} height={140} radius={12} tone={p.tone} dim={p.soldOut} />
                 {p.soldOut && (
