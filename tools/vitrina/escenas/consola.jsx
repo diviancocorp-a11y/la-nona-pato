@@ -42,27 +42,36 @@ const PLANES = [
 
 const hace = (d) => new Date(Date.now() + d * 86400000).toISOString();
 
+const dias = (d) => new Date(Date.now() - d * 86400000).toISOString();
+
+// Los siete negocios REALES del edificio con su estado del 24/ago: ninguno
+// llego al primer valor. Es la foto que reordeno el plan y conviene poder
+// mirarla en la pantalla que la muestra.
 const NEGOCIOS = [
   {
     id: 't1', slug: 'cochi', name: 'Cochi', vertical: 'gastro',
     operation_mode: 'fisico', status: 'active', plan_id: 'local',
     ciclo: 'mensual', paga_hasta: hace(4), medio_de_cobro: 'mercadopago',
+    activated_at: dias(46), last_activity_at: dias(4), first_value_at: null,
   },
   {
     id: 't2', slug: 'la-nona-pato', name: 'La Nona Pato', vertical: 'gastro',
     operation_mode: 'virtual', status: 'active', plan_id: 'digital',
     ciclo: 'anual', paga_hasta: hace(210), medio_de_cobro: 'transferencia',
+    activated_at: dias(46), last_activity_at: dias(6), first_value_at: dias(30),
   },
   {
     id: 't3', slug: 'mala-miga', name: 'Mala Miga', vertical: 'gastro',
     operation_mode: 'virtual', status: 'suspendido', plan_id: 'digital',
     ciclo: 'mensual', paga_hasta: hace(-22), suspendido_at: hace(-7),
     medio_de_cobro: 'efectivo',
+    activated_at: dias(46), last_activity_at: dias(40), first_value_at: dias(38),
   },
   {
-    id: 't4', slug: 'barberia-demo', name: 'Barbería Demo', vertical: 'barberia',
+    id: 't4', slug: 'barberia-demo', name: 'Barbería Demo', vertical: 'barber',
     operation_mode: 'fisico', status: 'trial', plan_id: 'local',
     ciclo: 'mensual', paga_hasta: null, medio_de_cobro: null,
+    activated_at: dias(9), last_activity_at: dias(5), first_value_at: null,
   },
 ];
 
@@ -93,26 +102,6 @@ const LEGAJOS = [
   { user_id: 'u3', nombre: 'Martin', apellido: 'K.', pais: 'AR', completado_at: null },
 ];
 
-/* El correo del equipo, como lo devuelve Cloudflare. Sofía confirmó el
-   reenvío; Martín todavía no, y por eso su alias no entrega nada. */
-const DESTINOS = [
-  // El destino del catch-all también es un destino: en Cloudflare no se puede
-  // reenviar a una dirección que no esté en esta lista y confirmada.
-  { email: 'ricardo.r@gmail.com', confirmado: true },
-  { email: 'sofia.g@gmail.com', confirmado: true },
-  { email: 'martin.k@gmail.com', confirmado: false },
-];
-
-const REGLAS = [
-  { alias: 'sofia@grupodivianco.com', destinos: ['sofia.g@gmail.com'], activa: true },
-  { alias: 'martin@grupodivianco.com', destinos: ['martin.k@gmail.com'], activa: true },
-];
-
-// El dueño anda por catch-all: su cuenta es anterior a que hubiera una regla
-// por persona. Si el catch-all no contara, la consola le diría al dueño que no
-// tiene correo.
-const CATCH_ALL = { activo: true, destinos: ['ricardo.r@gmail.com'] };
-
 export default {
   titulo: 'Consola de Divianco',
   componente: Consola,
@@ -139,79 +128,23 @@ export default {
     // imita lo unico que importa de Cloudflare: la primera vez el destino
     // queda SIN confirmar y no se puede crear la regla; recien la segunda
     // llamada —despues del clic de la persona— cierra el alta.
+    // El alta pasa por la edge function. Desde 0057 hace una sola cosa:
+    // invitar al correo personal.
     functions: {
       'staff-invite': async (body) => {
-        const dominio = 'grupodivianco.com';
-        if (body.accion === 'correos') {
-          return { ok: true, dominio, reglas: REGLAS, destinos: DESTINOS, catchAll: CATCH_ALL };
+        if (body.resetear) {
+          return { ok: true, email: body.email, message: 'Link enviado.' };
         }
-        if (body.accion === 'reenviar_confirmacion') {
-          return { ok: true, message: `Le mandamos otro mail a ${body.personal}.` };
-        }
-        if (body.accion === 'diagnostico') {
-          // El caso que motivó el diagnóstico: lee todo bien y no puede
-          // escribir la regla. Es el que hay que poder mirar.
-          return {
-            ok: true, dominio,
-            resumen: 'Se cae en «5. sonda: ¿puede ESCRIBIR reenvíos? (no crea nada)». '
-              + 'no pudo crear el reenvío (Authentication error [10000]).',
-            pasos: [
-              { paso: '1. encontrar la zona', ok: true,
-                detalle: { zoneId: 'z-fake', accountId: 'a-fake', origen: 'búsqueda por nombre' } },
-              { paso: '2. leer los destinos (cuenta)', ok: true, detalle: { cantidad: 3 } },
-              { paso: '3. leer los reenvíos (zona)', ok: true, detalle: { cantidad: 2 } },
-              { paso: '4. leer el catch-all (zona)', ok: true, detalle: CATCH_ALL },
-              { paso: '5. sonda: ¿puede ESCRIBIR reenvíos? (no crea nada)', ok: false,
-                codigos: [10000],
-                error: 'no pudo crear el reenvío (Authentication error [10000]). '
-                  + 'Al token le falta el permiso «Zone → Email Routing Rules: Edit», '
-                  + 'o ese permiso no alcanza a este dominio.' },
-            ],
-          };
-        }
-        if (body.accion === 'crear_correo') {
-          const email = `${body.alias}@${dominio}`;
-          const destino = DESTINOS.find(d => d.email === body.personal);
-
-          // 1. Destino nuevo: se crea y ESO manda el mail.
-          if (!destino) {
-            DESTINOS.push({ email: body.personal, confirmado: false });
-            return {
-              ok: true, email, personal: body.personal, yaEstaba: false,
-              confirmado: false, regla: false, paso: 'esperando_confirmacion',
-              message: `Le mandamos un mail a ${body.personal} para que confirme el reenvío.`,
-            };
-          }
-
-          // 2. Ya estaba y SIN confirmar: no se manda nada, y hay que decirlo.
-          //    Es el caso que parecia "el boton no hace nada".
-          if (!destino.confirmado) {
-            return {
-              ok: true, email, personal: body.personal, yaEstaba: true,
-              confirmado: false, regla: false, paso: 'esperando_confirmacion',
-              message: `${body.personal} ya estaba cargado y sin confirmar. No se `
-                + 'manda otro mail automáticamente: usá Reenviar si no le llegó.',
-            };
-          }
-
-          // 3. Ya confirmado: la regla es best-effort. Acá se simula que el
-          //    token NO puede escribirla — y el alta sigue igual.
-          return {
-            ok: true, email, personal: body.personal, yaEstaba: true,
-            confirmado: true, regla: false,
-            reglaFallo: 'no pudo crear el reenvío (Authentication error [10000]).',
-            paso: 'listo',
-            message: `${body.personal} ya está confirmado en Cloudflare.`,
-          };
-        }
-        // Dar el acceso.
         const filas = filasDe('platform_admins');
         filas.push({
           user_id: `u${filas.length + 1}`, email: body.email,
-          rol: 'staff', created_at: 'hoy',
+          rol: 'staff', puesto: body.puesto || 'soporte',
+          modalidad: 'empleado', created_at: 'hoy',
         });
-        return { ok: true, email: body.email, invitado: true,
-          message: 'Le mandamos un mail para que elija su contraseña.' };
+        return {
+          ok: true, email: body.email, invitado: true,
+          message: 'Le mandamos un mail para que elija su contraseña.',
+        };
       },
     },
     rpc: {

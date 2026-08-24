@@ -116,10 +116,9 @@ renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
   `node platform/scripts/attach-owner.mjs --email x@y.com --slug cochi`,
   necesita la service role exportada— pero mientras no se corra, esos tenants
   siguen sin panel.
-- **No hay module registry por rubro**: una barbería ve "Recetas" y el filtro
-  "Vegetariano" en el catálogo. `ProductEditor` ya ramifica por
-  `tenant.vertical` (duración vs stock) y es el lugar del que sale ese
-  registry cuando se haga.
+- **Nadie llegó nunca al primer valor.** `tenants.first_value_at` (0058) está
+  en null para los 7: ningún negocio del edificio cobró una operación. El
+  camino alta → catálogo → pedido → cobro **nunca se recorrió entero**.
 - **`unit_cost` va en 0**: el edificio no tiene modelo de costos, así que el
   P&L no da.
 - **No hay con qué cobrarle al cliente todavía**: hay planes y precios, pero el

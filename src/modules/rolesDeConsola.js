@@ -40,13 +40,13 @@ export const PUESTOS = {
     id: 'administrador',
     label: 'Administrador',
     descripcion: 'Precios, planes y suscripciones. Todo el negocio de Dico.',
-    abreEn: 'planes',
+    abreEn: 'hoy',
   },
   ventas: {
     id: 'ventas',
     label: 'Ventas',
     descripcion: 'Da de alta clientes y mueve sus suscripciones. Los precios los lee.',
-    abreEn: 'negocios',
+    abreEn: 'hoy',
   },
   soporte: {
     id: 'soporte',
@@ -73,18 +73,22 @@ export const PUESTO_POR_DEFECTO = 'soporte';
  */
 const MATRIZ = {
   administrador: {
+    hoy: COMPLETO,
     planes: COMPLETO,
     negocios: COMPLETO,
     equipo: LECTURA,   // repartir accesos es del dueño, no del puesto
     legajo: COMPLETO,  // el suyo, siempre
   },
   ventas: {
+    // Ve el panel: es quien tiene que llamar al que no arrancó.
+    hoy: COMPLETO,
     // Lee los precios porque los tiene que decir; no los cambia.
     planes: LECTURA,
     negocios: COMPLETO,
     legajo: COMPLETO,
   },
   soporte: {
+    hoy: LECTURA,
     planes: LECTURA,
     // Ve al cliente para poder atenderlo y no le mueve la suscripción:
     // "me lo dejaste sin cobrar" no puede salir de una pantalla de ayuda.
@@ -122,6 +126,7 @@ export function puedeEditar(puesto, seccion) {
  */
 export function seccionesDe(puesto, { esDuenio = false } = {}) {
   const todas = [
+    { id: 'hoy', label: 'Hoy' },
     { id: 'planes', label: 'Planes y precios' },
     { id: 'negocios', label: 'Negocios' },
     { id: 'equipo', label: 'Equipo' },

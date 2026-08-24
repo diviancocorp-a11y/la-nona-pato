@@ -24,14 +24,9 @@ import {
   fetchPlanes, guardarPlan, soyStaffDivianco, fetchNegocios, actualizarSuscripcion,
   entrarAConsola, salirDeConsola, fetchStaff, sumarStaff, quitarStaff,
   soyDuenioDivianco, fijarPasswordConsola, resetearClaveDeStaff,
-  fetchCorreosDeEquipo, crearCorreoDeEmpleado, reenviarConfirmacion,
-  diagnosticoDeCloudflare,
 } from '../services/platformPlanes';
 import { supabase } from '../lib/supabase';
 import { PLANES, cronogramaDeAlta, totalPrimerAnio } from '../modules/planes';
-import {
-  aliasDesde, aliasValido, estadoDelCorreo, TEXTO_DE_ESTADO,
-} from '../modules/correoDeEquipo';
 import {
   PUESTOS, PUESTO_POR_DEFECTO, seccionesDe, pantallaInicial, puedeEditar,
   etiquetaDePuesto,
@@ -40,6 +35,7 @@ import { fetchMiLegajo, cambiarPuesto } from '../services/platformStaff';
 import { MODALIDAD_POR_DEFECTO } from '../modules/legajo';
 import LegajoDeStaff from '../components/admin/platform/LegajoDeStaff';
 import FichaDeStaff from '../components/admin/platform/FichaDeStaff';
+import PanelDeHoy from '../components/admin/platform/PanelDeHoy';
 
 const C = {
   bg: '#0f0f10', card: '#1a1a1c', line: '#2a2a2e',
@@ -497,80 +493,47 @@ const botonChico = {
 };
 
 /**
- * Alta de alguien del equipo: primero el correo, después el acceso.
+ * Dar de alta a alguien del equipo de Dico.
  *
- * SON DOS PASOS PORQUE CLOUDFLARE LO IMPONE
- * El correo de trabajo es un alias que reenvía al correo personal, y
- * Cloudflare no deja apuntar un alias a un correo que su dueño no confirmó con
- * un clic. Eso no lo puede hacer ninguna API — es justamente la protección
- * contra desviarle el correo a un tercero.
+ * SE INVITA AL CORREO PERSONAL, Y ESO ES TODO (0057)
+ * Hubo una version que primero creaba un alias en el dominio de la empresa via
+ * Cloudflare. Se descarto: el alias necesita una routing rule para entregar y
+ * ese permiso no esta en el token, asi que la invitacion salia hacia una
+ * direccion que no recibe nada y se perdia en silencio. Cuatro intentos y
+ * ninguno cerro el ciclo.
  *
- * De ahí que la persona reciba DOS mails, y en este orden: el de Cloudflare
- * para confirmar, y recién después la invitación a la consola. Al revés no
- * funciona: la invitación llegaría a un alias que todavía no entrega nada, se
- * perdería en silencio y encima vence a las 24 horas.
- *
- * El botón de crear se puede apretar dos veces y hay que hacerlo. La llamada
- * es idempotente: la primera crea el destino, la segunda cierra el alta.
+ * El correo de trabajo sigue siendo una buena idea. Lo que se descarto es que
+ * sea REQUISITO para dar de alta: la cuenta de la consola y el correo de la
+ * empresa son dos cosas distintas y no tienen por que estorbarse.
  */
-function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar, onReenviarConfirmacion }) {
-  const [nombre, setNombre] = useState('');
-  const [aliasEditado, setAliasEditado] = useState(null);
-  const [personal, setPersonal] = useState('');
-  const [paso, setPaso] = useState(null); // null | 'esperando' | 'listo'
-  const [correo, setCorreo] = useState(null);
-  const [ocupado, setOcupado] = useState(false);
-  // Cuando el alias no se pudo crear pero el alta sigue igual. Va pegado al
-  // paso y no en el aviso de arriba, que se pisa con el mensaje siguiente:
-  // esto tiene que seguir a la vista cuando se apriete "Dar acceso".
-  const [aviso, setAvisoLocal] = useState(null);
+function AltaDeEmpleado({ onSumar }) {
+  const [email, setEmail] = useState('');
   const [puestoElegido, setPuestoElegido] = useState(PUESTO_POR_DEFECTO);
+  const [enviando, setEnviando] = useState(false);
 
-  // El alias se sugiere desde el nombre, pero se puede pisar: hay apellidos
-  // que no entran en la convención y nadie quiere pelearse con un campo.
-  const alias = aliasEditado ?? aliasDesde(nombre);
-  const puedeCrear = aliasValido(alias) && /\S+@\S+\.\S+/.test(personal);
-
-  const limpiar = () => {
-    setNombre(''); setAliasEditado(null); setPersonal('');
-    setPaso(null); setCorreo(null); setAvisoLocal(null);
-    setPuestoElegido(PUESTO_POR_DEFECTO);
-  };
-
-  const crear = async () => {
-    setOcupado(true);
-    const r = await onCrearCorreo({ alias, personal: personal.trim() });
-    setOcupado(false);
-    if (r.__error) return;
-    setCorreo(r.email);
-    // El mensaje de la function dice el estado REAL: si mandó mail, si el
-    // destino ya estaba, si ya está confirmado. Antes la pantalla decía
-    // siempre "le mandamos un mail" aunque no se hubiera mandado ninguno.
-    setAvisoLocal(r.message || null);
-    setPaso(r.paso === 'listo' ? 'listo' : 'esperando');
-  };
+  const puede = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
 
   return (
     <div style={{
       background: C.card, border: `1px solid ${C.line}`,
       borderRadius: 10, padding: 13, display: 'grid', gap: 11,
     }}>
-      <strong style={{ fontSize: 13.5 }}>Dar de alta a alguien</strong>
+      <strong style={{ fontSize: 13.5 }}>Dar acceso a alguien</strong>
 
-      <Campo etiqueta="Nombre y apellido">
+      <Campo
+        etiqueta="Su correo"
+        ayuda="Ahí le llega la invitación para elegir su contraseña."
+      >
         <input
-          style={input} value={nombre} disabled={paso !== null}
-          onChange={(e) => setNombre(e.target.value)} placeholder="Juan Pérez"
+          style={input} type="email" value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="persona@gmail.com"
         />
       </Campo>
 
-      {/* El puesto se elige ACA y no después: es lo que decide qué ve la
-          persona cuando entra, y elegirlo al final invita a dejar el default
-          puesto sin mirar. */}
-      <Campo
-        etiqueta="Qué va a hacer"
-        ayuda={PUESTOS[puestoElegido]?.descripcion}
-      >
+      {/* El puesto se elige ACA y no despues: decide que ve la persona cuando
+          entra, y dejarlo para el final invita a no mirarlo. */}
+      <Campo etiqueta="Qué va a hacer" ayuda={PUESTOS[puestoElegido]?.descripcion}>
         <select
           style={input} value={puestoElegido}
           onChange={(e) => setPuestoElegido(e.target.value)}
@@ -581,224 +544,44 @@ function AltaDeEmpleado({ dominio, onCrearCorreo, onSumar, onReenviarConfirmacio
         </select>
       </Campo>
 
-      <Campo
-        etiqueta="Correo de trabajo"
-        ayuda="No es una casilla: es un alias que reenvía. Se puede editar."
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-          <input
-            style={{ ...input, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-            value={alias} disabled={paso !== null}
-            onChange={(e) => setAliasEditado(aliasDesde(e.target.value))}
-            placeholder="juan.perez"
-          />
-          <span style={{
-            padding: '9px 10px', fontSize: 13, color: C.t3, whiteSpace: 'nowrap',
-            border: `1px solid ${C.line}`, borderLeft: 'none',
-            borderTopRightRadius: 8, borderBottomRightRadius: 8,
-          }}>
-            @{dominio || '…'}
-          </span>
-        </div>
-      </Campo>
-
-      <Campo
-        etiqueta="Su correo personal"
-        ayuda="A dónde se le reenvía. Le va a llegar un mail de Cloudflare para
-               que lo confirme: hasta que no haga ese clic, el alias no recibe
-               nada."
-      >
-        <input
-          style={input} type="email" value={personal} disabled={paso !== null}
-          onChange={(e) => setPersonal(e.target.value)} placeholder="juan@gmail.com"
-        />
-      </Campo>
-
-      {paso === 'esperando' && (
-        <div style={{
-          fontSize: 12.5, padding: '9px 11px', borderRadius: 8, lineHeight: 1.5,
-          background: 'rgba(251,191,36,0.10)', color: C.warn,
-        }}>
-          {aviso || `Le mandamos un mail a ${personal} para que confirme el reenvío.`}
-          {' '}Cuando veas el alias andando en Cloudflare, seguí desde acá.
-        </div>
-      )}
-
-      {paso === 'listo' && (
-        <div style={{
-          fontSize: 12.5, padding: '9px 11px', borderRadius: 8, lineHeight: 1.5,
-          background: 'rgba(74,222,128,0.10)', color: C.ok,
-        }}>
-          {/* El mensaje sale de la function y dice lo que de verdad pasó.
-              Afirmar "ya reenvía a X" era prometer algo que no se puede
-              comprobar: la regla es best-effort y el catch-all no siempre se
-              puede leer. */}
-          {aviso || `${correo} quedó listo.`} Falta el acceso a la consola.
-        </div>
-      )}
-
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {paso === null && (
-          <button
-            type="button" disabled={!puedeCrear || ocupado}
-            onClick={crear}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
-              fontSize: 13.5, fontWeight: 700,
-              cursor: puedeCrear && !ocupado ? 'pointer' : 'not-allowed',
-              opacity: puedeCrear && !ocupado ? 1 : 0.45,
-              background: C.ac, color: '#111',
-            }}
-          >
-            {ocupado ? 'Creando…' : 'Crear el correo'}
-          </button>
-        )}
-
-        {/* El segundo paso es una confirmación TUYA, no un chequeo: vos mirás
-            Cloudflare y decidís. La función no puede saberlo mejor — el correo
-            puede estar llegando por catch-all, que este token no siempre puede
-            leer. */}
-        {paso === 'esperando' && (
-          <>
-            <button
-              type="button" disabled={ocupado}
-              onClick={() => { setAvisoLocal(null); setPaso('listo'); }}
-              style={{
-                flex: 1, padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
-                fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-                background: C.ac, color: '#111',
-              }}
-            >
-              Ya lo verifiqué, seguir
-            </button>
-            <button
-              type="button" disabled={ocupado}
-              onClick={async () => {
-                setOcupado(true);
-                await onReenviarConfirmacion(personal.trim());
-                setOcupado(false);
-              }}
-              style={botonChico}
-            >
-              {ocupado ? 'Enviando…' : 'Reenviar el mail'}
-            </button>
-          </>
-        )}
-
-        {paso === 'listo' && (
-          <button
-            type="button" disabled={ocupado}
-            onClick={async () => {
-              setOcupado(true);
-              const r = await onSumar(correo, puestoElegido);
-              setOcupado(false);
-              if (!r?.__error) limpiar();
-            }}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
-              fontSize: 13.5, fontWeight: 700, cursor: ocupado ? 'wait' : 'pointer',
-              background: C.ac, color: '#111',
-            }}
-          >
-            {ocupado ? 'Invitando…' : 'Dar acceso a la consola'}
-          </button>
-        )}
-
-        {paso !== null && (
-          <button type="button" onClick={limpiar} style={botonChico}>
-            Empezar de nuevo
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Una línea que dice si a esa persona le llega el correo, y por dónde. */
-function EstadoDeCorreo({ email, correos, onReenviar }) {
-  if (!correos) return null;
-  const { estado, personal } = estadoDelCorreo(email, correos);
-  const color = { listo: C.t3, sin_confirmar: C.warn, sin_correo: C.bad }[estado];
-
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-      <span style={{ fontSize: 11.5, color }}>
-        {estado === 'listo' && personal ? `→ ${personal}` : TEXTO_DE_ESTADO[estado]}
-      </span>
-      {estado === 'sin_confirmar' && personal && (
-        <button
-          type="button" onClick={() => onReenviar(personal)}
-          title="Le vuelve a mandar el mail de confirmación"
-          style={{ ...botonChico, padding: '2px 7px', fontSize: 11 }}
-        >
-          Reenviar
-        </button>
-      )}
-    </span>
-  );
-}
-
-/**
- * Qué puede hacer el token de Cloudflare, medido y en pantalla.
- *
- * Existe porque el alta se cayó una vez con "Authentication error" a secas, y
- * ni el mensaje ni el código decían en cuál de las cinco llamadas. Adivinar
- * costó una vuelta entera; esto lo contesta en un clic.
- */
-function Diagnostico({ onDiagnosticar }) {
-  const [r, setR] = useState(null);
-  const [corriendo, setCorriendo] = useState(false);
-
-  return (
-    <div style={{ display: 'grid', gap: 8 }}>
       <button
-        type="button" disabled={corriendo}
+        type="button"
+        disabled={!puede || enviando}
         onClick={async () => {
-          setCorriendo(true);
-          setR(await onDiagnosticar());
-          setCorriendo(false);
+          setEnviando(true);
+          const r = await onSumar(email.trim().toLowerCase(), puestoElegido);
+          setEnviando(false);
+          if (!r?.__error) {
+            setEmail('');
+            setPuestoElegido(PUESTO_POR_DEFECTO);
+          }
         }}
-        style={{ ...botonChico, justifySelf: 'start' }}
+        style={{
+          padding: '9px', borderRadius: 8, border: 'none', font: 'inherit',
+          fontSize: 13.5, fontWeight: 700,
+          cursor: puede && !enviando ? 'pointer' : 'not-allowed',
+          opacity: puede && !enviando ? 1 : 0.45,
+          background: C.ac, color: '#111',
+        }}
       >
-        {corriendo ? 'Probando…' : 'Probar el token de Cloudflare'}
+        {enviando ? 'Enviando…' : 'Enviar invitación'}
       </button>
-
-      {r && (
-        <div style={{
-          background: C.card, border: `1px solid ${C.line}`, borderRadius: 10,
-          padding: 12, display: 'grid', gap: 7, fontSize: 12.5, lineHeight: 1.5,
-        }}>
-          <strong style={{ color: r.__error ? C.bad : C.tx }}>
-            {r.__error ? r.message : r.resumen}
-          </strong>
-          {(r.pasos || []).map((p) => (
-            <div key={p.paso} style={{ color: p.ok ? C.t3 : C.bad }}>
-              {p.ok ? '✓' : '✗'} {p.paso}
-              {p.ok
-                ? <span style={{ color: C.t3 }}> · {JSON.stringify(p.detalle)}</span>
-                : <span> · {p.error}</span>}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
 function Equipo({
-  staff, correos, onSumar, onQuitar, onResetear, onCrearCorreo, onReenviar,
-  onDiagnosticar, onCambiarPuesto, esDuenio,
+  staff, onSumar, onQuitar, onResetear, onCambiarPuesto, esDuenio,
 }) {
-  // Cual esta abierta. Una sola: dos fichas abiertas al mismo tiempo son dos
-  // pantallas de datos sensibles a la vista de quien pase por atras.
+  // Cual ficha esta abierta. Una sola: dos pantallas de datos sensibles al
+  // mismo tiempo son dos a la vista de quien pase por atras.
   const [abierta, setAbierta] = useState(null);
 
   return (
-    <div style={{ display: 'grid', gap: 12, maxWidth: 560 }}>
+    <div style={{ display: 'grid', gap: 12, maxWidth: 620 }}>
       <p style={{ fontSize: 13, color: C.t3, margin: 0 }}>
-        Quién puede entrar a la consola y tocar precios y suscripciones. No es
-        lo mismo que ser dueño de un negocio.
+        Quién puede entrar a la consola. No es lo mismo que ser dueño de un
+        negocio cliente.
       </p>
 
       {!esDuenio && (
@@ -813,98 +596,79 @@ function Equipo({
       <div style={{ display: 'grid', gap: 8 }}>
         {staff.map(s => (
           <div key={s.user_id} style={{ display: 'grid', gap: 8 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-            background: C.card, border: `1px solid ${C.line}`,
-            borderRadius: 10, padding: '11px 13px',
-          }}>
-            <span style={{ flex: 1, fontSize: 13.5, minWidth: 180 }}>
-              {s.email || s.user_id}
-              {s.rol === 'owner' && (
-                <span style={{ color: C.ac, fontSize: 11.5 }}> · dueño</span>
-              )}
-              <br />
-              <EstadoDeCorreo email={s.email} correos={correos} onReenviar={onReenviar} />
-            </span>
-
-            {/* El puesto se cambia sin reinvitar: cambiar de área es normal y
-                no tiene por qué costarle a nadie una contraseña nueva. */}
-            {esDuenio && s.rol !== 'owner' ? (
-              <select
-                value={s.puesto || PUESTO_POR_DEFECTO}
-                onChange={(e) => onCambiarPuesto(s, e.target.value)}
-                style={{
-                  ...input, width: 'auto', fontSize: 12, padding: '5px 8px',
-                }}
-              >
-                {Object.values(PUESTOS).map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
-              </select>
-            ) : (
-              <span style={{ fontSize: 12, color: C.t3 }}>
-                {etiquetaDePuesto(s.puesto)}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              background: C.card, border: `1px solid ${C.line}`,
+              borderRadius: 10, padding: '11px 13px',
+            }}>
+              <span style={{ flex: 1, fontSize: 13.5, minWidth: 180 }}>
+                {s.email || s.user_id}
+                {s.rol === 'owner' && (
+                  <span style={{ color: C.ac, fontSize: 11.5 }}> · dueño</span>
+                )}
               </span>
-            )}
-            {esDuenio && (
-            <button
-              type="button"
-              onClick={() => setAbierta(abierta === s.user_id ? null : s.user_id)}
-              title="Ver su legajo"
-              style={botonChico}
-            >
-              {abierta === s.user_id ? 'Ocultar' : 'Ver legajo'}
-            </button>
-            )}
-            {esDuenio && s.rol !== 'owner' && (
-            <button
-              type="button" onClick={() => onResetear(s)}
-              title="Le manda un mail para que elija una contraseña nueva"
-              style={botonChico}
-            >
-              Nueva clave
-            </button>
-            )}
-            {esDuenio && s.rol !== 'owner' && (
-            <button type="button" onClick={() => onQuitar(s)} style={botonChico}>
-              Quitar
-            </button>
-            )}
-          </div>
 
-          {abierta === s.user_id && (
-            <FichaDeStaff ficha={s} onCerrar={() => setAbierta(null)} />
-          )}
+              {/* El puesto se cambia sin reinvitar: cambiar de area es normal y
+                  no tiene por que costarle a nadie una contraseña nueva. */}
+              {esDuenio && s.rol !== 'owner' ? (
+                <select
+                  value={s.puesto || PUESTO_POR_DEFECTO}
+                  onChange={(e) => onCambiarPuesto(s, e.target.value)}
+                  style={{ ...input, width: 'auto', fontSize: 12, padding: '5px 8px' }}
+                >
+                  {Object.values(PUESTOS).map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: 12, color: C.t3 }}>
+                  {etiquetaDePuesto(s.puesto)}
+                </span>
+              )}
+
+              {esDuenio && (
+                <button
+                  type="button"
+                  onClick={() => setAbierta(abierta === s.user_id ? null : s.user_id)}
+                  title="Ver su legajo"
+                  style={botonChico}
+                >
+                  {abierta === s.user_id ? 'Ocultar' : 'Ver legajo'}
+                </button>
+              )}
+
+              {/* Sirve para dos cosas y por eso vale para todos: alguien que se
+                  olvido la clave, y alguien a quien la invitacion no le llego. */}
+              {esDuenio && s.rol !== 'owner' && (
+                <button
+                  type="button" onClick={() => onResetear(s)}
+                  title="Le manda un mail para que elija una contraseña nueva"
+                  style={botonChico}
+                >
+                  Reenviar acceso
+                </button>
+              )}
+
+              {esDuenio && s.rol !== 'owner' && (
+                <button type="button" onClick={() => onQuitar(s)} style={botonChico}>
+                  Quitar
+                </button>
+              )}
+            </div>
+
+            {abierta === s.user_id && (
+              <FichaDeStaff ficha={s} onCerrar={() => setAbierta(null)} />
+            )}
           </div>
         ))}
       </div>
 
-      {esDuenio && (
-        <AltaDeEmpleado
-          dominio={correos?.dominio}
-          onCrearCorreo={onCrearCorreo}
-          onSumar={onSumar}
-          onReenviarConfirmacion={onReenviar}
-        />
-      )}
-
-      {esDuenio && <Diagnostico onDiagnosticar={onDiagnosticar} />}
+      {esDuenio && <AltaDeEmpleado onSumar={onSumar} />}
     </div>
   );
 }
 
 /* ────────────────────────── La consola ────────────────────────── */
-
-/**
- * El estado del correo del equipo, o null si no se pudo leer.
- *
- * Se traga el error a propósito: que Cloudflare no conteste no puede dejar sin
- * pantalla de equipo. El alta sí avisa, porque ahí el error es el resultado.
- */
-async function recargarCorreos() {
-  const r = await fetchCorreosDeEquipo();
-  return r.__error ? null : r;
-}
 
 export default function Consola() {
   const [staff, setStaff] = useState(null);
@@ -921,11 +685,6 @@ export default function Consola() {
   });
   const [planes, setPlanes] = useState([]);
   const [negocios, setNegocios] = useState([]);
-  // El correo del equipo sale de Cloudflare, no de nuestra base. Queda en null
-  // si no se pudo leer: la pantalla del equipo tiene que seguir andando aunque
-  // Cloudflare este caido o al token le falte un permiso — lo que se pierde es
-  // el cartelito de estado, no la posibilidad de sacarle el acceso a alguien.
-  const [correos, setCorreos] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState(null);
   // Arranca en null y lo decide el PUESTO: fijarlo en 'planes' mandaba a
@@ -973,9 +732,6 @@ export default function Consola() {
     // duenio no se lo puede quitar". Lo carga cuando quiere, desde el link.
     setLegajoListo(esDuenio || !!legajo?.completado_at);
     setTab((t) => t || pantallaInicial(miPuesto, { esDuenio }));
-    // Sólo el dueño: la edge function le contesta 403 a un staff, y pedir algo
-    // que sabés que va a fallar es ensuciar la consola del navegador.
-    if (esDuenio) setCorreos(await recargarCorreos());
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -1131,6 +887,16 @@ export default function Consola() {
           </div>
         )}
 
+        {tab === 'hoy' && (
+          <PanelDeHoy
+            negocios={negocios}
+            planes={planes}
+            // Llevar a la lista es lo único que se puede hacer hoy con un
+            // negocio del panel. Cuando exista la ficha (fase 3) apunta ahí.
+            onVerNegocio={() => setTab('negocios')}
+          />
+        )}
+
         {tab === 'planes' && (
           <div style={{
             display: 'grid', gap: 14,
@@ -1159,28 +925,13 @@ export default function Consola() {
         {tab === 'equipo' && (
           <Equipo
             staff={equipo}
-            correos={correos}
             esDuenio={duenio}
             onSumar={async (email, puestoNuevo) => {
               const r = await sumarStaff(email, puestoNuevo);
-              setAviso(r.__error ? r.message : [`${email}: ${r.message}`, r.aviso].filter(Boolean).join(' '));
+              setAviso(r.__error ? r.message : `${email}: ${r.message}`);
               if (!r.__error) setEquipo(await fetchStaff());
               return r;
             }}
-            onCrearCorreo={async (datos) => {
-              const r = await crearCorreoDeEmpleado(datos);
-              setAviso(r.__error ? r.message : [r.message, r.aviso].filter(Boolean).join(' '));
-              // Se relee siempre: si la llamada creó el destino, la lista de
-              // la izquierda ya tiene que reflejarlo.
-              setCorreos(await recargarCorreos());
-              return r;
-            }}
-            onReenviar={async (personal) => {
-              const r = await reenviarConfirmacion(personal);
-              setAviso(r.__error ? r.message : r.message);
-              setCorreos(await recargarCorreos());
-            }}
-            onDiagnosticar={diagnosticoDeCloudflare}
             onCambiarPuesto={async (s2, puestoNuevo) => {
               const r = await cambiarPuesto(s2.user_id, puestoNuevo);
               setAviso(r.__error ? r.message

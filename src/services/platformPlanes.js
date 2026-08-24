@@ -19,9 +19,9 @@ const COLS = 'id, nombre, descripcion, precio_mensual, precio_anual_por_mes, '
  * El mensaje que la edge function puso en el body, no el "Edge Function
  * returned a non-2xx status code" del cliente.
  *
- * Estas funciones contestan con el motivo exacto —"ese dominio no es de la
- * empresa", "todavía no confirmó el reenvío"— y cada uno se arregla distinto.
- * Perderlo y mostrar un error genérico es mandar a la persona a adivinar.
+ * La function contesta con el motivo exacto —"ese puesto no existe", "no se
+ * pudo enviar la invitación: …"— y cada uno se arregla distinto. Perderlo y
+ * mostrar un error genérico es mandar a la persona a adivinar.
  */
 async function mensajeDeError(error, fallback) {
   try {
@@ -107,7 +107,8 @@ export async function fetchNegocios() {
   const { data, error } = await supabase
     .from('tenants')
     .select('id, slug, name, vertical, operation_mode, status, plan_id, ciclo, '
-      + 'paga_hasta, suspendido_at, medio_de_cobro, created_at, first_order_at')
+      + 'paga_hasta, suspendido_at, medio_de_cobro, created_at, first_order_at, '
+      + 'first_value_at, activated_at, last_activity_at, organization_id')
     .order('created_at', { ascending: false });
   if (error) {
     console.error('fetchNegocios:', error.message);
@@ -201,10 +202,14 @@ export async function fetchStaff() {
 /**
  * Suma a alguien al equipo.
  *
- * Dos condiciones, las dos del lado del servidor: el correo tiene que ser de
- * un dominio de la empresa (`staff_dominios`) y la cuenta tiene que EXISTIR.
- * La funcion no crea usuarios: poder fabricar cuentas desde la consola es
- * poder fabricarse accesos.
+ * Se invita al correo PERSONAL de la persona (0057). Hubo una version que
+ * antes creaba un alias en el dominio de la empresa via Cloudflare; se
+ * descarto porque el alias necesita una routing rule para entregar y ese
+ * permiso no esta, asi que la invitacion se perdia en silencio.
+ *
+ * La proteccion del alta es una sola y es del lado del servidor: SOLO EL
+ * DUENIO puede. La lista de dominios permitidos filtraba la forma del correo,
+ * no quien lo daba de alta.
  */
 export async function sumarStaff(email, puesto = 'soporte') {
   // Va por edge function y no por la RPC porque hace falta CREAR la cuenta con
@@ -285,82 +290,4 @@ export async function resetearClaveDeStaff(email) {
   }
   if (data?.error) return { __error: 'fn', message: data.error };
   return { ok: true, message: 'Le mandamos un link para elegir contraseña nueva.' };
-}
-
-/* ─────────────────── El correo de trabajo del equipo ─────────────────── */
-
-/**
- * Como esta el correo del dominio de la empresa.
- *
- * Sale de Cloudflare, no de nuestra base: quien decide a donde va el correo de
- * alguien es el que lo reenvia. Guardarnos una copia seria tener dos verdades
- * y creerle a la que no manda.
- */
-export async function fetchCorreosDeEquipo() {
-  const { data, error } = await supabase.functions.invoke('staff-invite', {
-    body: { accion: 'correos' },
-  });
-  if (error) {
-    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo leer el correo del equipo.') };
-  }
-  if (data?.error) return { __error: 'fn', message: data.error };
-  return {
-    ok: true,
-    dominio: data.dominio,
-    reglas: data.reglas || [],
-    destinos: data.destinos || [],
-    catchAll: data.catchAll || { activo: false, destinos: [] },
-  };
-}
-
-/**
- * Le crea el correo de trabajo a alguien: alias@dominio -> su correo personal.
- *
- * Se puede llamar dos veces y hay que hacerlo. Cloudflare no deja apuntar un
- * alias a un destino que su dueño todavía no confirmó — es la protección
- * contra desviarle el correo a cualquiera —, así que la primera llamada crea
- * el destino y dispara ese mail, y la segunda, después del clic, termina el
- * alta. Repetirla nunca duplica nada.
- *
- * `paso` vuelve como 'esperando_confirmacion' o 'listo'.
- */
-export async function crearCorreoDeEmpleado({ alias, personal }) {
-  const { data, error } = await supabase.functions.invoke('staff-invite', {
-    body: { accion: 'crear_correo', alias, personal },
-  });
-  if (error) {
-    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo crear el correo.') };
-  }
-  if (data?.error) return { __error: 'fn', message: data.error };
-  return { ok: true, ...data };
-}
-
-/**
- * Qué puede y qué no puede hacer el token de Cloudflare, medido.
- *
- * No infiere: corre las cinco llamadas que usa el alta y dice cuál falla. La
- * sonda de escritura no crea nada — manda un POST inválido a propósito, porque
- * Cloudflare rechaza por permiso ANTES de mirar el cuerpo.
- */
-export async function diagnosticoDeCloudflare() {
-  const { data, error } = await supabase.functions.invoke('staff-invite', {
-    body: { accion: 'diagnostico' },
-  });
-  if (error) {
-    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo diagnosticar.') };
-  }
-  if (data?.error) return { __error: 'fn', message: data.error };
-  return { ok: true, ...data };
-}
-
-/** Vuelve a mandar el mail de confirmación a un destino que sigue sin confirmar. */
-export async function reenviarConfirmacion(personal) {
-  const { data, error } = await supabase.functions.invoke('staff-invite', {
-    body: { accion: 'reenviar_confirmacion', personal },
-  });
-  if (error) {
-    return { __error: 'fn', message: await mensajeDeError(error, 'No se pudo reenviar.') };
-  }
-  if (data?.error) return { __error: 'fn', message: data.error };
-  return { ok: true, message: data.message };
 }

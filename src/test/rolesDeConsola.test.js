@@ -78,10 +78,17 @@ describe('una sección que no se declaró queda oculta', () => {
 
 describe('dónde cae cada uno al entrar', () => {
   it('en su pantalla', () => {
-    expect(pantallaInicial('administrador')).toBe('planes');
-    expect(pantallaInicial('ventas')).toBe('negocios');
+    // Administrador y ventas abren en «Hoy»: son los dos que tienen que hacer
+    // algo con la lista de pendientes. Soporte abre en la lista de clientes,
+    // que es donde trabaja, y marketing en precios, que es lo único que ve.
+    expect(pantallaInicial('administrador')).toBe('hoy');
+    expect(pantallaInicial('ventas')).toBe('hoy');
     expect(pantallaInicial('soporte')).toBe('negocios');
     expect(pantallaInicial('marketing')).toBe('planes');
+  });
+
+  it('marketing no ve el panel: son datos de clientes', () => {
+    expect(puedeVer('marketing', 'hoy')).toBe(false);
   });
 
   it('nunca en una pantalla que no puede ver', () => {

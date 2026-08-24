@@ -8,6 +8,328 @@
 
 ---
 
+## 24/ago/2026 (cierre) — HAY PROSPECTO: se corta la consola y se mira el sistema
+
+Ricky consiguió el primer prospecto real, **de gastronomía**. Según el plan
+v1.1 eso dispara el PRODUCTO, no la consola: la Fase 2 (cobrar) espera una
+venta cerrada. Se paró el desarrollo de la consola y se recorrió el camino
+crítico de gastro antes de mostrárselo a nadie.
+
+### El bug grande: el trigger de la 0058 era casi código muerto
+
+`orders.paid_at` lo escribe **únicamente `mp-webhook`** — el camino de
+MercadoPago y nada más. Un bar que cobra en efectivo por mostrador no pasa por
+ahí: `complete_order` asienta la venta en `sales` y `paid_at` queda en null.
+
+O sea que para **el caso más común de gastronomía** el primer valor no se
+marcaba nunca. Y el síntoma era peor que un error: el panel decía «0 llegaron al
+primer valor» con total seguridad.
+
+**Migración 0059** — entra por los tres caminos:
+
+| Camino | Tabla |
+|---|---|
+| MercadoPago | `orders.paid_at` / `payment_status` |
+| Cobro en caja | `payments` |
+| `complete_order` y venta manual | `sales` ← **el que faltaba, y el más transitado** |
+
+**Corrección al dato de la sección anterior:** no era cero. Con el backfill
+correcto, **La Nona Pato llegó al primer valor el 18/ago**. Es 1 de 7. El número
+que reordenó el plan estaba mal por mi propio trigger incompleto.
+
+Dato nuevo que apareció: **Cochi creó un pedido el 20/ago y nunca lo completó.**
+
+### Lo que se verificó del camino crítico, y cómo
+
+| Qué | Cómo se verificó | Resultado |
+|---|---|---|
+| Alta de un negocio | Consulta sobre `tienda-nueva`, nacida del alta self-service | **Sana**: dueño, settings, 3 medios de pago y sucursal se crean solos |
+| `get_catalog` | RPC contra la base | 10 productos + settings |
+| Catálogo público | **Navegador contra `cochi.divianco.app`** | Anda: productos, precios, filtros, recomendaciones, pie legal |
+| Comprar con teclado | Auditoría de elementos focusables en producción | Los 10 «Agregar al carrito» son `<button>`: **se puede comprar** |
+| Abrir el detalle con teclado | Lo mismo | **No se podía** → arreglado |
+
+### El bug del catálogo
+
+Las tarjetas de la carta eran `<div onClick>` sin `role` ni `tabIndex`. Con
+mouse abren el detalle del producto; con teclado no existen. Se podía agregar al
+carrito —ese sí es un `<button>`— pero no abrir el producto para leer la
+descripción ni las aclaraciones.
+
+Helper `abrible()` en `src/catalog-pro/atoms.jsx`, aplicado en las **cuatro**
+tarjetas (HomeScreen ×2, CategoryScreen ×2) en vez de repetir el arreglo cuatro
+veces. Incluye `preventDefault` en Space: en un div focusable la barra
+espaciadora scrollea, y sin eso la carta se va saltando mientras se intenta
+abrir un producto. 6 tests.
+
+### También en esta sesión
+
+**El alias corporativo se dio de baja (0057).** Necesitaba una routing rule de
+Cloudflare y ese permiso no está en el token. El staff entra con su **correo
+personal**. `staff_dominios` se dropeó. −1050 líneas netas. La protección del
+alta sigue siendo la de siempre: sólo el dueño da de alta.
+
+**Fase 0 y 1 del plan v1.1 (0058).** Primer valor, `organizations` +
+`organization_id` (vacío a propósito), `consola_log` por trigger con retención
+como **parámetro** y no como constante del esquema, y la pestaña «Hoy».
+
+### Cuatro cosas que los papeles daban por rotas y estaban hechas
+
+Esta sesión encontró una más: **`src/modules/registry.js` existe** y
+`PlatformAdmin` ya ramifica por rubro (módulos, terminología, campos). La skill
+`/dico` decía que una barbería veía «Recetas» y el filtro «Vegetariano». Ya está
+corregida.
+
+Van cuatro en tres días (formulario de contraseña, `og:` tags, module registry,
+y el «cero primer valor» de hoy). **El patrón no es de documentación: es de
+afirmar inferencias como hechos.** Comprobar antes de reportar.
+
+### Verificado / no verificado
+
+**Verificado en producción:** el catálogo público de Cochi con el navegador.
+**Verificado contra la base:** el alta, `get_catalog`, los tres caminos del
+primer valor y el backfill.
+**Sólo compila:** el panel «Hoy» con datos reales — se vio en la vitrina, no en
+producción.
+**Nunca se probó:** MercadoPago contra una cuenta real. Cero integraciones
+conectadas. Es el hueco más grande del camino crítico.
+
+855 tests, build limpio, los cuatro checks del pre-commit pasan.
+
+### Pendiente inmediato
+
+1. **Deployar** (`npm run deploy`) — hay 3 migraciones aplicadas y código sin
+   subir.
+2. **Ricky recorre el camino con plata real**: alta → 3 productos → pedido desde
+   el catálogo → cobro con MercadoPago. Es lo único que no se puede verificar
+   sin una cuenta de verdad, y es justo lo que nunca se probó.
+3. Arreglar lo que aparezca de ahí, **antes** de mostrárselo al prospecto.
+4. Fase 2 del plan (cobros de suscripción) **sólo cuando la venta esté cerrada**.
+   Ojo: `payments` ya existe con otro significado —los pagos del comprador al
+   negocio— así que la tabla de cobros de Dico necesita otro nombre o rompe el
+   checkout.
+
+### Bloqueado por Ricky
+
+- **El deploy** (el clasificador bloquea el comando de Vercel).
+- **El recorrido con plata real.** Requiere una cuenta de MercadoPago conectada;
+  no la puedo cargar yo.
+- **`https://divianco.app/consola` en Redirect URLs** de Supabase Auth — sigue
+  pendiente de la sesión del 20/ago.
+- **Leaked password protection** en el edificio, un clic.
+
+---
+
+## 24/ago/2026 — FASE 0 Y 1 DEL PLAN v1.1 (migración 0058)
+
+Sale del debate sobre la ruta de la consola. El plan v1.1 está en el artifact
+«Ruta de la Consola»; esto es su primer tramo.
+
+### El número que reordenó todo
+
+Al aplicar la migración, la primera consulta contestó lo que el edificio nunca
+había podido contestar:
+
+**7 negocios · 3 crearon un pedido · CERO lo cobraron.**
+
+> **Corregido el mismo dia (0059): el numero estaba MAL.** El trigger de esta
+> migracion solo miraba `orders.paid_at`, que escribe unicamente mp-webhook.
+> Con el backfill por los tres caminos, La Nona Pato tenia primer valor desde
+> el 18/ago. Ver la seccion del 24/ago (cierre).
+
+Ni siquiera los tres emprendimientos propios. Y son propios: Cochi, La Nona Pato
+y Mala Miga **no son clientes** —son emprendimientos de Ricky— y además operan
+sobre el sistema VIEJO. El edificio tiene un pedido en toda su historia.
+
+O sea: el embudo no está flojo en la punta del pago. Está vacío de principio a
+fin. Por eso la Fase 1 dejó de ser «cobrar» y pasó a ser «activar».
+
+### Lo que se construyó
+
+**Primer valor** (`tenants.first_value_at`). `first_order_at` marcaba el primer
+pedido CREADO: alguien probó. Esto marca el primero COBRADO: alguien puso plata.
+Confundirlos hace que un negocio que probó una vez y se fue figure como
+arrancado.
+
+**El rubro no cambia cómo se detecta, sólo cómo se llama.** Un turno de barbería
+ya es un `order` con `resource_id` — la arquitectura unificó las operaciones, y
+esto se apoya en eso en vez de pelearlo. El nombre por rubro vive en
+`src/modules/panelDeHoy.js`.
+
+**La capa de arriba del negocio** (`organizations` + `tenants.organization_id`).
+Vacía a propósito. Lo caro es la forma: hoy son diez líneas, con clientes
+adentro es una migración.
+
+**El registro de la consola** (`consola_log`). No es `audit_log` (0043): aquel
+audita lo que pasa DENTRO de un negocio y lo mira el negocio; éste audita lo que
+Divianco le hace a un negocio y lo mira Divianco. Por trigger, no desde la
+pantalla — un log que escribe el cliente es un log que el auditado puede no
+escribir.
+
+**La retención va como parámetro, no en el esquema.** `purgar_consola_log(dias)`
+recibe el plazo. En la v1.0 del plan yo había escrito «24 y 36 meses» como
+práctica de la industria; salía de un solo artículo y no lo es. Un número
+copiado no puede convertirse en requisito de arquitectura.
+
+**Panel del fundador** (pestaña «Hoy»). Los seis números y la lista de qué
+resolver hoy. Cálculos en `src/modules/panelDeHoy.js`, puros y testeados.
+
+### La regla del panel
+
+**Ni una fila se carga a mano.** Nada de prospectos ni demos: esos datos no
+tienen sistema de registro y una pantalla para tipear lo que ya sabés es trabajo
+que no rinde. Con doce prospectos eso es una planilla.
+
+Queda escrito en el módulo para quien quiera agregarle algo: **si una fila pide
+que la cargues, el panel se rompió.**
+
+### Dos decisiones de diseño que valen
+
+**«Se apagó» y «nunca prendió» son cosas distintas.** La alerta de inactividad
+sólo aplica a quien ya había llegado al primer valor. Mezclarlos esconde a los
+dos: el que nunca arrancó necesita una llamada de arranque, no una de rescate.
+
+**La demora al primer valor va en MEDIANA.** Con pocos negocios, uno que tardó
+medio año corre el promedio y hace parecer que el producto no se entiende cuando
+el resto arrancó en dos días.
+
+### Lo que NO se hizo, y por qué
+
+**No hay tabla de cobros de suscripción.** Con cero clientes sería una tabla
+vacía por tiempo indefinido. Y hay una trampa que casi cuesta caro: **`payments`
+YA EXISTE** con otro significado —los pagos del COMPRADOR al negocio—, así que
+reusar ese nombre habría roto el checkout. Se hace cuando haya una venta
+concreta sobre la mesa; es cuestión de días.
+
+### Verificado
+
+En la vitrina, con los siete negocios reales y sus fechas. La escena destapó un
+bug de datos: decía `vertical: 'barberia'` y la base usa `'barber'`, así que la
+barbería mostraba «primera operación cobrada» en vez de «primer turno cobrado».
+Corregido — y es justo el tipo de error que sólo aparece mirando la pantalla.
+
+849 en verde (18 nuevos), build limpio, los cuatro checks pasan.
+
+### Lo que sigue
+
+Fase 2 (cobrar) **cuando haya una conversación real de venta**, no antes. Y el
+plan tiene un alto explícito: **congelamiento del desarrollo funcional hasta
+tres clientes pagos**.
+
+---
+
+## 21/ago/2026 (cierre 4) — SE DA DE BAJA EL ALIAS CORPORATIVO (0057)
+
+**−1050 líneas netas.** El alta de staff vuelve a ser lo que era: se pone el
+correo de la persona, le llega la invitación, elige su contraseña, entra.
+
+### Por qué se descarta
+
+El alias corporativo necesitaba DOS cosas de Cloudflare: un **destino** —que se
+pudo crear siempre— y una **routing rule**, que es la que hace que el alias
+entregue. Ese permiso (Zone → Email Routing Rules: Edit) no está en el token y
+no apareció forma de conseguirlo.
+
+Sin la regla el alias existe y no entrega: la invitación se pierde en silencio y
+vence a las 24 horas. Cuatro intentos, ninguno cerró el ciclo.
+
+**El correo de trabajo no se descarta como idea; se descarta como REQUISITO para
+dar de alta.** La cuenta de la consola y el correo de la empresa son dos cosas
+distintas y no tenían por qué estorbarse. Si algún día aparece el permiso, el
+alias se crea en Cloudflare a mano y nada de esto cambia.
+
+### Qué se borró
+
+| | |
+|---|---|
+| `src/modules/correoDeEquipo.js` + su test | ya no hay alias que validar |
+| Toda la capa de Cloudflare en `staff-invite` | `cf()`, permisos, zona, destinos, reglas, catch-all, sonda, diagnóstico |
+| El alta de tres pasos en la consola | vuelve a ser un correo, un puesto y un botón |
+| `staff_dominios` (tabla) | sin la exigencia de dominio no la lee nadie, y una tabla que nadie consulta es una que en seis meses alguien lee creyendo que decide algo |
+| La cuenta huérfana `camila.gonzalez@grupodivianco.com` | la había creado la prueba: staff, sin legajo, invitación a un alias que no entregaba |
+
+**La protección del alta no era la lista de dominios**: es que sólo el dueño
+puede dar de alta (`private.es_owner_divianco()`), y eso no cambió. La lista
+filtraba la FORMA del correo, no quién lo daba de alta.
+
+### Lo que se conserva, y vale
+
+Puestos, modalidad, legajo, ficha, foto de perfil. Nada de eso dependía del
+alias. **"Reenviar acceso"** queda en la fila de cada persona: sirve para quien
+olvidó la clave y para quien no recibió la invitación.
+
+### Lo que NO se borró, y casi
+
+Al limpiar borré `tools/vitrina/escenas/equipo.jsx` creyendo que era del equipo
+de Divianco. Es del equipo del NEGOCIO CLIENTE —otra pantalla, otro modelo—.
+Restaurada con `git checkout`. Dos nombres parecidos en dos productos distintos:
+vale releer qué es cada archivo antes de borrarlo, no sólo cómo se llama.
+
+### Verificado
+
+En la vitrina: un correo, un puesto, "Enviar invitación", y la persona aparece
+en la lista. Cero menciones a Cloudflare o a alias en la pantalla.
+
+830 en verde (14 menos: se fueron los del alias), build limpio, los cuatro
+checks pasan, `staff-invite` typechequea.
+
+---
+
+## 21/ago/2026 (cierre 3) — "EL CORREO NO PARECE VÁLIDO": una barra invertida
+
+Sin migración. Un bug propio, y una limpieza que NO había que hacer.
+
+### El bug
+
+El alta rechazaba los cuatro correos de prueba de Ricky con "Ese correo personal
+no parece válido". El patrón, en `crear_correo`, había quedado así:
+
+```
+/^[^@s]+@[^@s]+.[^@s]+$/
+```
+
+Le faltan las barras invertidas. `[^@\s]` —"cualquier cosa que no sea arroba ni
+espacio"— se convirtió en `[^@s]`, que es **una clase que excluye la letra s**.
+Los cuatro correos de prueba tienen una s. Casi cualquier correo tiene una s.
+
+**Cómo se rompió:** ese bloque se reescribió con un script de node metido en un
+heredoc de bash. Tres capas de escapado —bash, template literal de JS, regex— y
+las barras se perdieron en el camino. El typecheck no lo ve: la regex es válida,
+sólo significa otra cosa.
+
+**Regla que queda:** un patrón nunca se escribe atravesando capas de escapado.
+Va con Edit sobre el archivo, y punto. Es la segunda vez en el día que el
+escapado muerde (la otra fue el rango de tildes en `correoDeEquipo.js`, que ahí
+sí se detectó a tiempo).
+
+**Arreglo de fondo:** el patrón estaba a mano en TRES lugares. Ahora hay una sola
+constante `ES_EMAIL`. Tres copias de una regex es tres oportunidades de que una
+se rompa distinto que las otras.
+
+### La limpieza que no se hizo, y por qué
+
+Ricky pidió limpiar cuatro correos de prueba. Antes de borrar, se miró qué eran:
+
+| Correo | Qué es |
+|---|---|
+| `rrodriguezs777@gmail.com` | **Dueño de SEIS tenants**: Cochi, La Nona Pato, Mala Miga, Tienda Demo, Barbería Demo y Prueba Disco |
+| `ricardousa1313@gmail.com` | Dueño de `tienda-nueva` |
+| `camilausa333@gmail.com` | No existe como usuario |
+| `ricardoars13@gmail.com` | No existe como usuario |
+
+Borrar el primero habría dejado **seis negocios sin dueño**, incluidos los tres
+que están en producción. Nadie podría entrar a sus paneles.
+
+Y no hacía falta ninguna limpieza: la base tiene 1 staff (el dueño), 1 legajo y
+3 usuarios. Los correos no estaban en `platform_admins` ni eran destinos de
+Cloudflare —Ricky ya los había borrado de ahí—. **Lo único que bloqueaba era la
+regex.**
+
+Vale como recordatorio del criterio: mirar el objetivo antes de borrarlo no es
+burocracia. Acá la diferencia entre mirar y no mirar era producción.
+
+---
+
 ## 21/ago/2026 (cierre 2) — EL ALTA, SIN FRENOS
 
 Sin migración. Se sacó todo lo que frenaba el alta del correo, porque frenaba
