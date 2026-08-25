@@ -8,6 +8,76 @@
 
 ---
 
+## 25/ago/2026 — Dico Design System v0.1 inventariado (sesión Codex)
+
+Ricky pidió dejar de decidir la interfaz por pantalla y construir el primer
+sistema visual desde el código real. El inventario y las decisiones quedaron
+en `platform/DICO-DESIGN-SYSTEM-V0.1.md`.
+
+### Hecho
+
+- Se auditaron `admin-tokens.css`, `hermes-tokens.css`,
+  `catalog-pro/tokens.css`, `Signup.jsx`, `DicoCara.jsx`, `DicoAvisos.jsx`,
+  `roles.js` y `registry.js`.
+- Apareció una cuarta autoridad que el listado inicial no incluía:
+  `src/index.css` tiene un `@theme` propio. `Signup.jsx`, con 44 estilos inline
+  y cero tokens, funciona además como una quinta fuente informal.
+- Línea de base: en los ocho archivos pedidos hay 104 hex y 68 valores únicos;
+  en todo `src/` hay 1.077 apariciones, 233 hex únicos y 3.346 atributos
+  `style=`. Estos valores sirven para que un guard futuro impida deuda nueva
+  sin pretender arreglar todo de una vez.
+- Se eligió el archivo global existente `src/styles/hermes-tokens.css` como
+  núcleo. No se crea un cuarto/quinto archivo central: ahí vivirán primitivas
+  `--ds-*`, semántica y contratos de componente.
+- `admin-tokens.css`, `catalog-pro/tokens.css` y `index.css @theme` se migran
+  mediante aliases/adaptadores. `.cp-root` y los tres temas del catálogo se
+  conservan porque son parte viva del theming multi-tenant.
+- Se conservaron como base de marca `#E8B947`, DM Sans, Instrument Serif y la
+  neutralidad cálida de carbón/noche. `#F59E0B` deja de mezclar marca con
+  warning; el zinc frío no será el neutral global.
+- Se cerraron las escalas v0.1: spacing 4/8/12/16/24/32, radios 4/6/8/12,
+  tipografía 11/13/15/18/24 + métrica 28 y densidades compact/default/touch
+  con alturas 34/40/48 para inputs y botones.
+- Se documentaron reglas y slots de Dico: uno por pantalla, cinco estados,
+  nunca reemplaza texto ni compite con el CTA, respeta reduced motion y sólo
+  aparece en vacío, asesor, onboarding o confirmación.
+- El primer piloto será `/registro`, sólo presentación: no cambia lógica,
+  campos, validaciones, payload ni rutas. El segundo será Caja/POS.
+
+### Verificado
+
+- El inventario se contrastó con imports y consumidores reales del repo.
+  `--ag-*` y `.cp-root` están vivos; no se encontraron consumidores de
+  `--hg-*`/`.hg-*` fuera de su archivo ni imports actuales de los seis
+  componentes UI que declaran usar el `@theme`.
+- `git diff --check`: limpio antes del cierre.
+- No hubo cambios de runtime, tests ni deploy: esta sesión produjo una
+  especificación basada en código, no una implementación.
+
+### Pendiente inmediato
+
+1. Implementar las tres capas `--ds-*` dentro de `hermes-tokens.css`, dejando
+   aliases de compatibilidad; todavía no retirar tokens vivos.
+2. Mapear `index.css @theme` al núcleo.
+3. Hacer el piloto visual de `/registro` con CSS scoped y verificar todos sus
+   estados a 390 px y desktop, teclado, foco y contraste.
+4. Recién después validar Caja/POS y congelar los valores v0.1.
+5. Agregar un guard incremental: la línea de base de hex/medidas puede bajar,
+   nunca crecer.
+
+### Bloqueado por Ricky
+
+Nada. La implementación del piloto puede empezar con el documento aprobado;
+si Ricky quiere cambiar marca, escalas o ubicación de Dico, conviene hacerlo
+antes de migrar `Signup.jsx`.
+
+### Trabajo local vivo — no pisar
+
+No queda trabajo a medias. El documento v0.1 y este handoff forman un cierre
+documental; no se modificó código de producción.
+
+---
+
 ## 25/ago/2026 — Dico grande para estados vacíos (sesión Codex, trabajo local)
 
 Se separaron los dos usos del personaje para no cargar ilustraciones pesadas
