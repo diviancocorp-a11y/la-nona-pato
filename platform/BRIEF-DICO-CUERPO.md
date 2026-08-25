@@ -1,5 +1,11 @@
 # Brief — el cuerpo de Dico
 
+> **Histórico desde el 25/ago/2026.** El brief original incluía galera. La
+> anatomía Core vigente la retiró junto con bigote y nariz para darle identidad
+> propia a Dico. El cuerpo activo es `poses/moneda.webp`; la versión anterior
+> quedó archivada como `poses/moneda-retro-galera.webp`. No volver a generar el
+> Core con este prompt sin adaptar esa parte.
+
 > **Un solo render, y sin cara.** Reemplaza al brief de seis poses: con la cara
 > de tinta encima, las expresiones son SVG y no hacen falta renders por estado.
 

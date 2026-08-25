@@ -8,6 +8,89 @@
 
 ---
 
+## 25/ago/2026 — Dico Core deja la identidad Monopoly (sesión Codex)
+
+Ricky entregó una directriz de marca nueva que reemplaza una decisión tomada
+horas antes: galera, bigote y nariz ya no son anatomía canónica. Dico Core debe
+ser reconocible como moneda + rostro modular + brazos + guantes, sin piernas,
+mejillas ni pecas. Se implementó sin romper los cinco estados públicos.
+
+### Hecho
+
+- `CaraDeTinta.jsx` ahora es una sola anatomía SVG modular: cejas, ojos,
+  scleras, pupilas, brillos, párpados y bocas son piezas independientes. Se
+  quitaron bigote, nariz, rubor, gota y signo de pregunta flotante.
+- `DicoCara` conserva `idle`, `esperando`, `contento`, `preocupado` y
+  `pregunta`. Sumó mirada paramétrica limitada (`lookX`/`lookY`, -1…1), tres
+  frames opcionales de boca (`speakingFrame`: closed/mid/open), `className`,
+  `style` y `data-dico-core` para poder desplazarlo/recortarlo dentro del futuro
+  DicoSlot.
+- `dico.css` reemplazó salto, squash, encogimiento, gota y balanceo amplio por
+  boya mínima, parpadeo natural y micro-sacadas. `prefers-reduced-motion` sigue
+  dejando todo quieto.
+- Se generó a partir del cuerpo existente un Core sin galera, con centro vacío
+  y alfa real. El derivado activo quedó en `poses/moneda.webp` (800×800,
+  98.684 bytes). El cuerpo anterior se archivó como
+  `poses/moneda-retro-galera.webp` y el glob exacto de `DicoCara` no lo carga.
+  La edición se hizo con imagegen integrado y luego se optimizó a WebP.
+- `DicoAvisos` usa `lookX={0.55}` para mirar hacia el mensaje en vez de mover
+  el cuerpo entero.
+- Se creó `DicoCoreEscena`: conserva burbuja + personaje + CTA pero monta el
+  Core modular, sin importar los siete renders viejos. El vacío operativo real
+  de `ProductsPanel` ya lo usa y Dico mira hacia el CTA con `lookY`.
+- `DicoEscena` queda explícitamente como compatibilidad narrativa heredada para
+  campañas/Retro Moments. Sus siete poses con identidad anterior sólo aparecen
+  en la sección histórica de la vitrina; no están en el flujo operativo.
+- La vitrina muestra mirada paramétrica, estados a 30/48/120 px, Core operativo
+  y poses heredadas separadas. También se corrigió su layout móvil.
+- Se actualizaron `PLAN-DICO.md`, `BRIEF-DICO-CUERPO.md`, el README de poses y
+  las reglas del Design System para que Claude no restaure la identidad vieja.
+
+### Por qué se separó `DicoCoreEscena`
+
+Cambiar solamente la cara chica dejaba dos mascotas simultáneas: el aviso nuevo
+sin accesorios y, debajo, el vacío de Productos con galera/bigote. Además,
+importar `DicoEscena` desde Productos metía siete WebP narrativos en producción.
+El wrapper Core evita ambas cosas sin romper la API histórica. El build final
+transforma 494 módulos y publica sólo `moneda.webp`; ya no lista los siete
+`escena-*.webp` que listaba antes de esta separación.
+
+### Verificado
+
+- Navegador real en la vitrina: escritorio y viewport 390×844, fondos claro y
+  oscuro, tamaños 30/48/120/190, mirada paramétrica y vacío operativo. La cara
+  queda centrada, los estados se distinguen y no hay halo visible ni desborde
+  móvil.
+- Suite completa: **869/869 tests** en 64 archivos.
+- Build `CLIENT=hermes-cochi`: limpio; integridad y schema-sync pasan.
+- ESLint focalizado: 0 errores; cuatro warnings preexistentes de Fast Refresh
+  por exportar constantes junto a componentes.
+- No se desplegó: Ricky pidió implementar/revisar, no deployar.
+
+### Pendiente inmediato
+
+1. Ricky debe aprobar visualmente el Core en la vitrina
+   `http://localhost:5199/?escena=dico`. Si cambia proporciones de ojos o boca,
+   hacerlo en esta única anatomía antes de producir más arte.
+2. No regenerar las siete poses heredadas todavía. Migrarlas sólo cuando una
+   campaña o escena real las necesite; hoy no forman parte de producción.
+3. DicoSlot sigue futuro: la API ya admite desplazamiento/recorte, pero falta
+   diseñar Blue → Gold, emerger/ocultar y el botón accesible “Ocultar Dico”.
+4. El siguiente bloque general continúa siendo el núcleo de tokens y piloto
+   `/registro` documentado en `DICO-DESIGN-SYSTEM-V0.1.md`.
+
+### Bloqueado por Ricky
+
+Nada técnico. Sólo aprobación visual antes de extender esta identidad a nuevo
+arte narrativo.
+
+### Trabajo local vivo — no pisar
+
+No queda trabajo a medias. Código, asset, tests, vitrina y documentación forman
+un único cierre. La vitrina local queda disponible para revisión.
+
+---
+
 ## 25/ago/2026 — Dico Design System v0.1 inventariado (sesión Codex)
 
 Ricky pidió dejar de decidir la interfaz por pantalla y construir el primer

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import DicoCara, { ESTADOS_DICO } from 'app/components/dico/DicoCara.jsx';
 import BurbujaDico from 'app/components/dico/BurbujaDico.jsx';
 import DicoEscena, { POSES_DICO_ESCENA } from 'app/components/dico/DicoEscena.jsx';
+import DicoCoreEscena from 'app/components/dico/DicoCoreEscena.jsx';
 import DicoAvisos from 'app/components/admin/platform/DicoAvisos.jsx';
 
 const TAMANIOS = [30, 48, 120];
@@ -47,10 +48,10 @@ const CASOS_AVISOS = {
 function Fila({ estado, fondo, tinta }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-end', gap: 22, padding: '14px 18px',
+      display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, padding: '14px 18px',
       borderRadius: 12, background: fondo, color: tinta,
     }}>
-      <div style={{ width: 96, fontSize: 12, fontWeight: 700, opacity: .8 }}>{estado}</div>
+      <div style={{ flexBasis: '100%', fontSize: 12, fontWeight: 700, opacity: .8 }}>{estado}</div>
       {TAMANIOS.map((s) => (
         <div key={s} style={{ display: 'grid', placeItems: 'center', gap: 6 }}>
           <DicoCara estado={estado} size={s} />
@@ -73,12 +74,12 @@ function Vitrina() {
     <div style={{ display: 'grid', gap: 26, fontFamily: 'system-ui, sans-serif' }}>
 
       <section style={{
-        display: 'flex', alignItems: 'center', gap: 26, padding: 26,
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 26, padding: 26,
         borderRadius: 16, background: 'linear-gradient(140deg,#1a1712,#0d0b08)',
         color: '#f5f1ea',
       }}>
         <DicoCara key={pasada} estado="idle" size={190} entrada title="Dico" />
-        <div>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <h2 style={{ margin: '0 0 6px', fontSize: 22 }}>Entrada</h2>
           <p style={{ margin: '0 0 14px', fontSize: 13.5, opacity: .7, maxWidth: 330 }}>
             Dico aparece de espaldas y se da vuelta para recibirte. Es el único
@@ -97,10 +98,11 @@ function Vitrina() {
       </section>
 
       <section style={{ display: 'grid', gap: 10 }}>
-        <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Estado vacío real</h3>
+        <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Estado vacío real — Dico Core</h3>
         <div style={{ padding: 18, borderRadius: 14, background: '#f4f1ea' }}>
-          <DicoEscena
-            pose="senala"
+          <DicoCoreEscena
+            estado="pregunta"
+            lookY={0.65}
             texto="Empecemos por tu primer producto. Cargalo y queda publicado en tu catálogo."
             accion="+ Agregar producto"
             onAccion={() => {}}
@@ -145,7 +147,7 @@ function Vitrina() {
       </section>
 
       <section style={{ display: 'grid', gap: 10 }}>
-        <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Poses grandes</h3>
+        <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Poses grandes heredadas — todavía no migradas</h3>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))',
           gap: 10, padding: 14, borderRadius: 14, background: '#141210', color: '#f5f1ea',
@@ -160,9 +162,24 @@ function Vitrina() {
       </section>
 
       <section style={{ display: 'grid', gap: 10 }}>
+        <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Mirada paramétrica</h3>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'end', justifyContent: 'center', gap: 24,
+          padding: 18, borderRadius: 14, background: '#f4f1ea',
+        }}>
+          {[-.8, 0, .8].map(lookX => (
+            <div key={lookX} style={{ display: 'grid', justifyItems: 'center', gap: 5 }}>
+              <DicoCara estado="pregunta" size={96} lookX={lookX} />
+              <span style={{ fontSize: 10, opacity: .55 }}>lookX {lookX}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 14, opacity: .6 }}>Hablando</h3>
         <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 4, padding: 22,
+          display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 4, padding: 22,
           borderRadius: 12, background: '#f4f1ea',
         }}>
           <DicoCara estado={d.estado} size={96} />
@@ -204,6 +221,6 @@ function Vitrina() {
 }
 
 export default {
-  titulo: 'Dico — cara canónica, estados y globo',
+  titulo: 'Dico Core — anatomía modular, estados y globo',
   componente: Vitrina,
 };

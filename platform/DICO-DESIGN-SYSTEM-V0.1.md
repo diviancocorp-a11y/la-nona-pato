@@ -326,17 +326,21 @@ siendo `compact` en una pantalla angosta con desplazamiento controlado.
 
 ## 6. Reglas de Dico
 
-1. Máximo un Dico visible por pantalla o estado de pantalla.
-2. Dico acompaña texto útil; nunca reemplaza labels, errores, instrucciones ni
+1. Dico Core es moneda + rostro modular + brazos + guantes. No usa piernas,
+   galera, bigote, nariz prominente, mejillas ni pecas.
+2. Máximo un Dico visible por pantalla o estado de pantalla.
+3. Dico acompaña texto útil; nunca reemplaza labels, errores, instrucciones ni
    estados accesibles.
-3. No compite con el CTA principal ni se convierte en un segundo CTA.
-4. Usa sólo `idle`, `esperando`, `contento`, `preocupado` y `pregunta` en la
+4. No compite con el CTA principal ni se convierte en un segundo CTA.
+5. Usa sólo `idle`, `esperando`, `contento`, `preocupado` y `pregunta` en la
    interfaz. Las poses grandes pertenecen a escenas con espacio.
-5. `prefers-reduced-motion` deja al personaje quieto.
-6. Los brazos permanecen estáticos hasta tener assets separados; no se finge
+6. `prefers-reduced-motion` deja al personaje quieto.
+7. Los brazos permanecen estáticos hasta tener assets separados; no se finge
    movimiento independiente sobre una imagen fusionada.
-7. Un cambio de rubro cambia el texto mediante `registry.js`, no la identidad
+8. Un cambio de rubro cambia el texto mediante `registry.js`, no la identidad
    visual del personaje.
+9. Las poses completas anteriores son material heredado para Retro Moments;
+   no se mezclan con Dico Core dentro del flujo operativo.
 
 ### Slots permitidos
 

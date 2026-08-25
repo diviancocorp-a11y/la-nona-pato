@@ -1,9 +1,8 @@
 /**
- * DicoEscena — Dico grande para altas, vacios y momentos importantes.
+ * DicoEscena — poses narrativas heredadas para marketing y Retro Moments.
  *
- * DicoCara sigue siendo el personaje liviano del panel. Las poses completas
- * viven aca porque a 30px un brazo que senala no se lee, y cargar siete renders
- * para un aviso chico seria pagar peso sin ganar informacion.
+ * Dentro del flujo operativo usar DicoCoreEscena. Este componente conserva la
+ * API y los siete renders anteriores hasta migrarlos a la identidad nueva.
  */
 import BurbujaDico from './BurbujaDico';
 import celebra from './poses/escena-celebra.webp';

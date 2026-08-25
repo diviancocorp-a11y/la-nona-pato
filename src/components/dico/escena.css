@@ -32,6 +32,15 @@
   -webkit-user-drag: none;
 }
 
+.dico-cuadro--core .dico-cuadro-personaje > .dico {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.dico-cuadro--core .dico-cuadro-personaje {
+  animation: none;
+}
+
 .dico-cuadro-accion {
   position: relative;
   z-index: 2;

@@ -65,6 +65,7 @@ export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
           <DicoCara
             size={82}
             estado={CARA_POR_NIVEL[actual.nivel] || 'idle'}
+            lookX={0.55}
             entrada={entrada}
             title={`Dico: ${avisos.length} ${avisos.length === 1 ? 'cosa para mirar' : 'cosas para mirar'}`}
           />

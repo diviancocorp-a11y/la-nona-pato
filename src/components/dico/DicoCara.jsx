@@ -2,8 +2,8 @@
  * DicoCara — el personaje dentro de la app. Capa 1 del PLAN-DICO.
  *
  * DOS CAPAS: EL CUERPO ES UN RENDER, LA CARA ES TINTA
- * El cuerpo —moneda, galera, brazos y guantes— es un render 3D. Lo unico que
- * actua es la cara, y esa es SVG plano, estilo cartoon de los 30.
+ * El cuerpo —moneda, brazos y guantes— es un render 3D. Lo unico que actua es
+ * la cara, y esa es un SVG modular.
  * Esa division es la decision de fondo y no es solo estetica: hace falta UN
  * render en vez de seis que calcen entre si, una expresion nueva cuesta dos
  * paths, el parpadeo y las pupilas existen, y a 30px la tinta se lee donde un
@@ -24,23 +24,39 @@ import CaraDeTinta, { CAMPO } from './CaraDeTinta';
 import './dico.css';
 
 export const ESTADOS_DICO = ['idle', 'esperando', 'contento', 'preocupado', 'pregunta'];
+const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 // Glob y no import directo: asi el build no se rompe si el archivo no esta.
 const RENDERS = import.meta.glob('./poses/moneda.{png,webp,avif}', { eager: true, import: 'default' });
 const MONEDA = Object.values(RENDERS)[0] || null;
 
-/** La cara, en su grupo de parallax. La galera NO esta aca: viene en el
-    render, con el mismo material que la moneda. */
-function CapaDeTinta() {
-  return <g className="dico-cara"><CaraDeTinta /></g>;
+/** La cara vive en su propio grupo para transformarla sin mover el cuerpo. */
+function CapaDeTinta({ lookX, lookY }) {
+  return <g className="dico-cara"><CaraDeTinta lookX={lookX} lookY={lookY} /></g>;
 }
 
-export default function DicoCara({ estado = 'idle', size = 48, title, entrada = false }) {
+export default function DicoCara({
+  estado = 'idle',
+  size = 48,
+  title,
+  entrada = false,
+  lookX = 0,
+  lookY = 0,
+  speakingFrame,
+  className = '',
+  style,
+}) {
   const seguro = ESTADOS_DICO.includes(estado) ? estado : 'idle';
+  const habla = FRAMES_HABLA.includes(speakingFrame) ? speakingFrame : '';
+  const miradaDirigida = Math.abs(Number(lookX) || 0) > .001 || Math.abs(Number(lookY) || 0) > .001;
   const clases = [
     'dico', `dico--${seguro}`,
     MONEDA ? 'dico--render' : 'dico--provisoria',
+    Number(size) <= 40 ? 'dico--pequena' : '',
+    miradaDirigida ? 'dico--mirada-dirigida' : '',
+    habla ? `dico--habla-${habla}` : '',
     entrada ? 'dico--entrada' : '',
+    className,
   ].filter(Boolean).join(' ');
 
   const accesible = title
@@ -49,14 +65,14 @@ export default function DicoCara({ estado = 'idle', size = 48, title, entrada = 
 
   if (MONEDA) {
     return (
-      <span className={clases} style={{ width: size, height: size }} {...accesible}>
+      <span className={clases} style={{ ...style, width: size, height: size }} data-dico-core="" {...accesible}>
         <span className="dico-escena">
           <span className="dico-piso" />
           <span className="dico-boya">
             <span className="dico-bamboleo">
               <img className="dico-cuerpo-render" src={MONEDA} alt="" draggable="false" />
               <svg className="dico-capa-tinta" viewBox="0 0 120 120" aria-hidden="true">
-                <CapaDeTinta />
+                <CapaDeTinta lookX={lookX} lookY={lookY} />
               </svg>
             </span>
           </span>
@@ -65,15 +81,25 @@ export default function DicoCara({ estado = 'idle', size = 48, title, entrada = 
     );
   }
 
-  return <DicoProvisoria clases={clases} size={size} accesible={accesible} />;
+  return (
+    <DicoProvisoria
+      clases={clases}
+      size={size}
+      accesible={accesible}
+      lookX={lookX}
+      lookY={lookY}
+      style={style}
+    />
+  );
 }
 
-function DicoProvisoria({ clases, size, accesible }) {
+function DicoProvisoria({ clases, size, accesible, lookX, lookY, style }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const g = (n) => `dico-${n}-${uid}`;
 
   return (
-    <svg className={clases} width={size} height={size} viewBox="0 0 120 120" {...accesible}>
+    <svg className={clases} style={style} width={size} height={size} viewBox="0 0 120 120"
+      data-dico-core="" {...accesible}>
       <defs>
         <radialGradient id={g('oro')} cx="34%" cy="26%" r="82%">
           <stop offset="0%" stopColor="#ffe89a" />
@@ -87,10 +113,10 @@ function DicoProvisoria({ clases, size, accesible }) {
         <ellipse className="dico-piso" cx="60" cy="114" rx="24" ry="3.8" fill="#2b1d02" opacity=".26" />
         <g className="dico-boya">
           <g className="dico-bamboleo">
-            <ellipse cx={CAMPO.cx} cy={CAMPO.cy} rx="34.4" ry="37.8" fill={`url(#${g('oro')})`} />
+            <circle cx={CAMPO.cx} cy={CAMPO.cy} r="38" fill={`url(#${g('oro')})`} />
             <ellipse cx={CAMPO.cx} cy={CAMPO.cy} rx={CAMPO.rx} ry={CAMPO.ry}
               fill="none" stroke="#c9880f" strokeWidth="2" opacity=".6" />
-            <CapaDeTinta />
+            <CapaDeTinta lookX={lookX} lookY={lookY} />
           </g>
         </g>
       </g>
