@@ -1,0 +1,72 @@
+/* Dico grande: poses completas para momentos con aire. */
+
+.dico-cuadro {
+  display: grid;
+  justify-items: center;
+  width: min(100%, 430px);
+  margin: 0 auto;
+  padding: 10px 12px 4px;
+}
+
+.dico-cuadro .dico-burbuja {
+  width: min(100%, 390px);
+  max-width: 390px;
+  min-width: min(250px, 100%);
+  margin-bottom: 17px;
+}
+
+.dico-cuadro-personaje {
+  width: min(var(--dico-cuadro-size), 72vw);
+  aspect-ratio: 1;
+  margin-top: 1px;
+  animation: dico-cuadro-respira 4.1s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+.dico-cuadro-personaje img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.dico-cuadro-accion {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 190px;
+  margin-top: -8px;
+  padding: 10px 18px;
+  color: #241a08;
+  background: #f2b830;
+  border: 2px solid #241a08;
+  border-radius: 999px;
+  box-shadow: 0 5px 0 rgba(36, 26, 8, .18);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dico-cuadro-accion:hover { filter: brightness(1.04); }
+.dico-cuadro-accion:active { transform: translateY(2px); box-shadow: 0 3px 0 rgba(36, 26, 8, .18); }
+.dico-cuadro-accion:focus-visible { outline: 3px solid #241a08; outline-offset: 3px; }
+
+@keyframes dico-cuadro-respira {
+  0%, 100% { transform: translateY(0) rotate(-.45deg); }
+  50%      { transform: translateY(-3px) rotate(.45deg); }
+}
+
+@media (max-width: 480px) {
+  .dico-cuadro { padding-inline: 0; }
+  .dico-cuadro .dico-burbuja { min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-cuadro-personaje { animation: none; }
+}

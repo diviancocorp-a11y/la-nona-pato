@@ -1,0 +1,185 @@
+/* Globo de Dico — contorno dibujado, texto de hoy.
+ *
+ * El marco vive en el SVG (ver BurbujaDico.jsx): aca solo va el color, la
+ * tipografia y el pie. El papel es crema en los dos temas a proposito — un
+ * globo de historieta es siempre claro; uno oscuro no lee como globo, lee como
+ * tooltip.
+ */
+
+.dico-burbuja {
+  --bu-papel: #fdf7ea;
+  --bu-tinta: #241a08;
+
+  position: relative;
+  min-width: 250px;
+  max-width: 340px;
+  margin-left: 22px;          /* aire para que la cola no pise a Dico */
+  font-family: var(--ag-font, system-ui, -apple-system, sans-serif);
+}
+
+.dico-burbuja-globo {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Trama de imprenta. Se dibuja con CSS para que cambie de tamanio con el
+   texto; una imagen de fondo obligaria a fijar el globo a una proporcion. */
+.dico-burbuja-globo::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 8px -17px -22px -16px;
+  background-image: radial-gradient(circle, var(--bu-acento) 1.25px, transparent 1.55px);
+  background-size: 7px 7px;
+  opacity: .38;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 0 38%, transparent 76%);
+  mask-image: radial-gradient(ellipse at 50% 55%, #000 0 38%, transparent 76%);
+}
+
+.dico-burbuja-marco {
+  position: absolute;
+  inset: 0;
+  overflow: visible;          /* la cola y los ecos viven afuera */
+  pointer-events: none;
+}
+
+.dico-burbuja-relleno { fill: var(--bu-papel); stroke: none; }
+
+.dico-burbuja-trazo {
+  fill: none;
+  stroke: var(--bu-tinta);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dico-burbuja-trazo { stroke-width: 3.4; }
+
+/* El nivel tine la trama, no el papel ni el texto. */
+.dico-burbuja--alerta     { --bu-acento: #c0392b; }
+.dico-burbuja--aviso      { --bu-acento: #b8801a; }
+.dico-burbuja--sugerencia { --bu-acento: #2f7386; }
+
+.dico-burbuja-contenido {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 15px 18px 14px;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--bu-tinta);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  cursor: default;
+}
+
+.dico-burbuja--cola-centro,
+.dico-burbuja--cola-derecha {
+  margin-left: 0;
+}
+
+.dico-burbuja-texto { font-weight: 550; }
+
+/* Cursor de consola vieja. */
+.dico-burbuja-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 2px;
+  margin-left: 2px;
+  vertical-align: baseline;
+  background: var(--bu-tinta);
+  animation: dico-cursor .5s steps(1, end) infinite;
+}
+@keyframes dico-cursor {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Visible solo para lectores de pantalla. */
+.dico-burbuja-lectura {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dico-burbuja-pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* La cola del SVG baja 24px fuera del viewBox: el pie empieza despues para
+     que nunca atraviese el CTA ni el enlace al siguiente aviso. */
+  margin-top: 28px;
+  padding-left: 4px;
+}
+
+.dico-burbuja-accion,
+.dico-burbuja-mas,
+.dico-burbuja-cerrar {
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.dico-burbuja-accion {
+  padding: 6px 15px;
+  font-weight: 700;
+  color: var(--bu-tinta);
+  background: #f2b830;
+  border: 2px solid var(--bu-tinta);
+}
+.dico-burbuja-accion:active { transform: translateY(1px); }
+
+.dico-burbuja-mas {
+  padding: 5px 10px;
+  color: var(--ag-ink-2, #6b7280);
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+}
+
+.dico-burbuja-cerrar {
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  color: var(--ag-ink-3, #9ca3af);
+  background: var(--ag-bg-soft, rgba(0, 0, 0, .05));
+  border: 0;
+  flex-shrink: 0;
+}
+
+/* Integracion real en el inicio del panel. El personaje y el globo forman una
+   sola frase visual; en telefono el globo cede ancho, no genera scroll. */
+.dico-avisos {
+  padding: 14px 16px 8px;
+}
+
+.dico-avisos-contenido {
+  display: flex;
+  align-items: flex-start;
+  width: min(100%, 470px);
+}
+
+.dico-avisos-personaje {
+  flex: 0 0 auto;
+  margin-top: 7px;
+}
+
+@media (max-width: 520px) {
+  .dico-avisos { padding-inline: 10px; }
+  .dico-avisos-contenido { width: 100%; }
+  .dico-avisos .dico-burbuja {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 5px;
+  }
+  .dico-avisos .dico-burbuja-pie { flex-wrap: wrap; gap: 5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-burbuja-cursor { animation: none; }
+}

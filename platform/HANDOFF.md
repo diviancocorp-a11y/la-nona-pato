@@ -8,6 +8,133 @@
 
 ---
 
+## 25/ago/2026 — Dico grande para estados vacíos (sesión Codex, trabajo local)
+
+Se separaron los dos usos del personaje para no cargar ilustraciones pesadas
+en cada aviso del panel:
+
+- **`DicoCara`** sigue siendo el Dico chico y animado de `DicoAvisos`.
+- **`DicoEscena`** es nuevo: usa poses completas en altas, estados vacíos y
+  momentos con espacio.
+
+### Hecho
+
+- Siete poses fuente quedaron archivadas como WebP de 800×800, con
+  transparencia y entre 85–98 KB: `idle`, `explica`, `pregunta`, `descubre`,
+  `celebra`, `senala` y `fatal`. `fatal` no se usa para errores comunes.
+- `BurbujaDico` conserva texto HTML, tipeo y accesibilidad, pero ahora toma el
+  lenguaje visual elegido por Ricky: marco irregular, cola inferior adaptable
+  y trama de imprenta generada con CSS. No usa la imagen de referencia como
+  fondo rígido.
+- El estado vacío real de `ProductsPanel` usa `DicoEscena pose="senala"`, dice
+  “Empecemos por tu primer producto…” y abre el editor con el CTA que Dico
+  señala. Se eliminó el CTA duplicado que estaba arriba del vacío.
+- La vitrina de Dico muestra la escena real, las siete poses y los cinco estados
+  chicos sobre fondos claro y oscuro.
+- Las skills `/dico` y `/cerrardico` ahora declaran explícitamente que
+  `platform/HANDOFF.md` es el canal Codex ↔ Claude y que no se pisan archivos
+  locales vivos.
+
+### Verificado
+
+- Vitrina inspeccionada con Chrome real a 1365 px y 390 px: la cola cae sobre
+  Dico, el dedo termina en el CTA y no hay desborde móvil.
+- `npx vitest run --maxWorkers=2`: **858/858 tests**.
+- ESLint focalizado: limpio.
+- `CLIENT=hermes-cochi npm run build`: limpio; integridad y schema-sync pasan.
+- No se desplegó.
+
+### Cuerpo neutro definitivo (01:12)
+
+- Ricky entregó el cuerpo final vacío con moneda, galera, brazos y guantes.
+  Quedó optimizado a WebP 800×800 con alfa, **87 KB**, en
+  `src/components/dico/poses/moneda.webp`.
+- Se verificaron los cinco estados de `DicoCara` a 30, 48 y 120 px, sobre claro
+  y oscuro, con Chrome real en desktop y móvil. La cara ya queda centrada: no
+  fue necesario recalibrar `CAMPO`.
+- Los brazos se conservan. A 30 px siguen leyendo como silueta del personaje y
+  a 48/120 px evitan que parezca sólo un ícono de moneda.
+- Verificación final de este reemplazo: test focalizado **3/3** y build
+  `CLIENT=hermes-cochi` limpio (integridad y schema-sync incluidos).
+
+### Cara canónica única (01:31)
+
+- Ricky detectó en la vitrina que `DicoCara` todavía parecía otro personaje:
+  tenía ojos y una boca en W, pero no la nariz ni el bigote del Dico grande.
+- Se corrigió la única fuente de identidad, `CaraDeTinta.jsx`: ahora ojos con
+  doble brillo, nariz redonda y bigote blanco permanecen en los cinco estados.
+  Sólo cambian cejas, mirada y boca. No se agregaron PNG por estado.
+- El mismo SVG se usa automáticamente en 30, 48, 96, 120 y 190 px, sobre el
+  único cuerpo `moneda.webp`. La vitrina lo muestra sobre claro y oscuro.
+- Se agregó un guard de estructura para que ningún cambio futuro quite
+  `.dico-bigote` o `.dico-nariz`: test focalizado **4/4**. Build limpio;
+  ESLint focalizado sin errores (quedan las dos advertencias preexistentes por
+  exportar `CAMPO` y `ZONA` junto al componente).
+
+### Expresiones y entrada corregidas (01:42)
+
+- `preocupado`: las cejas subieron y abren hacia el centro; ya no pisan los
+  ojos ni durante el parpadeo.
+- `contento`: se retiraron las tres rayitas de cada pómulo. Conserva ojos
+  cerrados, bigote y boca abierta.
+- `esperando`: muestra tres puntos secuenciales centrados y con aire sobre la
+  galera, legibles también a 30 px. Se eligió
+  esto en vez del reloj porque brazos y manos todavía forman parte del mismo
+  WebP; fingir un reloj sin separar capas quedaría rígido.
+- `entrada`: se reemplazó la caída/compresión por una vuelta 3D. Primero se ve
+  el cuerpo neutro oscurecido y sin cara (lee como espalda); al girar aparece
+  la tinta y recupera la luz. La copia de la vitrina también fue actualizada.
+- Vitrina inspeccionada en varios frames del giro y en los cinco estados.
+  Test focalizado **5/5**, build limpio y ESLint sin errores.
+
+**Brazos:** hoy están fusionados con `moneda.webp`, por lo que sólo se mueven
+con el cuerpo entero. Si se decide animarlos de forma independiente, el asset
+correcto es cuerpo sin brazos + brazo izquierdo + brazo derecho transparentes.
+En reposo conviene un balanceo mínimo; los gestos grandes se reservan para
+acciones como saludar, señalar o mirar un reloj.
+
+### Burbuja integrada al panel real (02:01)
+
+- `DicoAvisos` ya no dibuja una lista de tarjetas. Usa el Dico chico con la
+  cara correspondiente y un único `BurbujaDico`; desde ahí se puede ejecutar
+  el CTA, cerrar o avanzar con “hay N más”. La expresión cambia junto con la
+  gravedad del mensaje.
+- La vuelta de entrada ocurre sólo la primera vez que aparece el asesor
+  compacto en ese dispositivo. Se registra en `localStorage` con la clave
+  `dico:primera-entrada:v1`; los ingresos siguientes no repiten el efecto.
+- El aviso `catalogo-vacio` se omite sólo en `PlatformAdmin`, porque ese caso ya
+  está resuelto inmediatamente debajo por la escena grande de Dico señalando
+  “+ Agregar producto”. Así no aparecen dos Dicos diciendo lo mismo.
+- La vitrina ahora incluye el componente real con tres casos conmutables:
+  alerta + aviso siguiente, sólo espera y negocio sin avisos. El último no deja
+  hueco en el panel.
+- Verificación de navegador: navegación entre los dos avisos, CTA, espera y
+  ausencia de aviso; composición sin desborde en el ancho angosto de 499 px.
+- Verificación automatizada: **866/866 tests**, incluidos seis de integración
+  nuevos para `DicoAvisos`; build `CLIENT=hermes-cochi` limpio con integridad y
+  schema-sync. ESLint focalizado sin errores; sólo warnings preexistentes de
+  `PlatformAdmin.jsx`.
+- Revisión final de Ricky: la cola del globo llegaba a tocar el CTA. El SVG baja
+  24 px fuera de su caja pero el pie empezaba a 10 px; `burbuja.css` ahora deja
+  28 px. Se verificó en la vitrina con el texto completo: cola, botón y enlace
+  quedan separados.
+- Cierre aprobado: bloque completo commiteado, pusheado y desplegado por CLI a
+  producción; el deployment de `hermes-platform` quedó confirmado en `READY`.
+
+### Pendiente inmediato
+
+1. Esperar la próxima tarea de Ricky: este bloque de Dico está cerrado.
+2. Los brazos quedan para una etapa posterior; no separarlos salvo que una tarea
+   nueva lo pida explícitamente.
+
+### Trabajo local vivo — no pisar
+
+No queda trabajo local de Dico a medias. El código, los assets, la vitrina, los
+tests, los briefs, `AGENTS.md` y las skills de continuidad forman parte del
+mismo cierre y quedaron versionados juntos.
+
+---
+
 ## 24/ago/2026 (cierre) — HAY PROSPECTO: se corta la consola y se mira el sistema
 
 Ricky consiguió el primer prospecto real, **de gastronomía**. Según el plan

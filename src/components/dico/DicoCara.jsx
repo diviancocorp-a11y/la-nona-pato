@@ -1,100 +1,97 @@
 /**
- * DicoCara — la cara de Dico dentro de la app. Capa 1 del PLAN-DICO.
+ * DicoCara — el personaje dentro de la app. Capa 1 del PLAN-DICO.
  *
- * SIN PIERNAS a proposito. La version con piernas y zapatos es para
- * marketing; adentro Dico vive en 26px al lado de un aviso, y a ese tamano
- * las piernas son dos palitos que no se distinguen. Una sola version adentro
- * es lo que hace que cinco estados se sientan el mismo personaje.
+ * DOS CAPAS: EL CUERPO ES UN RENDER, LA CARA ES TINTA
+ * El cuerpo —moneda, galera, brazos y guantes— es un render 3D. Lo unico que
+ * actua es la cara, y esa es SVG plano, estilo cartoon de los 30.
+ * Esa division es la decision de fondo y no es solo estetica: hace falta UN
+ * render en vez de seis que calcen entre si, una expresion nueva cuesta dos
+ * paths, el parpadeo y las pupilas existen, y a 30px la tinta se lee donde un
+ * sombreado 3D se empasta.
  *
- * SVG y no video: los mp4 no tienen canal alfa (el fondo "transparente" sale
- * blanco) y 13 clips pesan mas que toda la app, que se usa desde el telefono
- * de una cocina. Esto pesa kilobytes, escala sin pixelarse y cambia de estado
- * sin cargar nada.
+ * SIN PIERNAS a proposito. La version con piernas y zapatos es para marketing;
+ * adentro Dico vive a 30px al lado de un aviso.
  *
- * El truco para que se vea 3D siendo 2D (ver platform/PLAN-DICO.md):
- *   1. la luz NUNCA se mueve — el degrade, el brillo y la media luna de
- *      sombra quedan clavados aunque el cuerpo se mueva
- *   2. la cara viaja MAS que el cuerpo y se angosta al llegar al borde
- *   3. el canto de la moneda asoma al girar (grosor)
- *   4. squash & stretch conservando volumen
- *   5. la cara llega tarde a lo que hace el cuerpo (follow-through)
+ * SI FALTA EL RENDER se dibuja una moneda provisoria. No es cortesia: un
+ * `import` de un archivo que no existe rompe el build, y el dia que alguien
+ * borre el .webp la app tiene que seguir andando. Es deliberadamente pobre —
+ * un disco con bisel — porque su unico trabajo es que la cara se apoye en algo.
  *
- * Respeta `prefers-reduced-motion`: quien pidio menos movimiento ve a Dico
- * quieto, no una animacion mas suave.
+ * Respeta `prefers-reduced-motion` en los dos modos.
  */
+import { useId } from 'react';
+import CaraDeTinta, { CAMPO } from './CaraDeTinta';
 import './dico.css';
 
 export const ESTADOS_DICO = ['idle', 'esperando', 'contento', 'preocupado', 'pregunta'];
 
-export default function DicoCara({ estado = 'idle', size = 48, title }) {
+// Glob y no import directo: asi el build no se rompe si el archivo no esta.
+const RENDERS = import.meta.glob('./poses/moneda.{png,webp,avif}', { eager: true, import: 'default' });
+const MONEDA = Object.values(RENDERS)[0] || null;
+
+/** La cara, en su grupo de parallax. La galera NO esta aca: viene en el
+    render, con el mismo material que la moneda. */
+function CapaDeTinta() {
+  return <g className="dico-cara"><CaraDeTinta /></g>;
+}
+
+export default function DicoCara({ estado = 'idle', size = 48, title, entrada = false }) {
   const seguro = ESTADOS_DICO.includes(estado) ? estado : 'idle';
+  const clases = [
+    'dico', `dico--${seguro}`,
+    MONEDA ? 'dico--render' : 'dico--provisoria',
+    entrada ? 'dico--entrada' : '',
+  ].filter(Boolean).join(' ');
+
+  const accesible = title
+    ? { role: 'img', 'aria-label': title }
+    : { 'aria-hidden': 'true' };
+
+  if (MONEDA) {
+    return (
+      <span className={clases} style={{ width: size, height: size }} {...accesible}>
+        <span className="dico-escena">
+          <span className="dico-piso" />
+          <span className="dico-boya">
+            <span className="dico-bamboleo">
+              <img className="dico-cuerpo-render" src={MONEDA} alt="" draggable="false" />
+              <svg className="dico-capa-tinta" viewBox="0 0 120 120" aria-hidden="true">
+                <CapaDeTinta />
+              </svg>
+            </span>
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return <DicoProvisoria clases={clases} size={size} accesible={accesible} />;
+}
+
+function DicoProvisoria({ clases, size, accesible }) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const g = (n) => `dico-${n}-${uid}`;
 
   return (
-    <svg
-      className={`dico dico--${seguro}`}
-      width={size}
-      height={size}
-      viewBox="0 0 120 120"
-      role={title ? 'img' : 'presentation'}
-      aria-label={title || undefined}
-      aria-hidden={title ? undefined : 'true'}
-    >
+    <svg className={clases} width={size} height={size} viewBox="0 0 120 120" {...accesible}>
       <defs>
-        {/* Los ids llevan el tamano para no chocar si hay dos Dicos en la
-            misma pantalla: dos <defs> con el mismo id y gana el primero. */}
-        <radialGradient id={`dico-cuerpo-${size}`} cx="38%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#ffd968" />
-          <stop offset="55%" stopColor="#f0b429" />
-          <stop offset="100%" stopColor="#b07d0e" />
+        <radialGradient id={g('oro')} cx="34%" cy="26%" r="82%">
+          <stop offset="0%" stopColor="#ffe89a" />
+          <stop offset="46%" stopColor="#f2b830" />
+          <stop offset="84%" stopColor="#c9880f" />
+          <stop offset="100%" stopColor="#a06f0d" />
         </radialGradient>
-        <radialGradient id={`dico-brillo-${size}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-        </radialGradient>
-        <clipPath id={`dico-clip-${size}`}>
-          <circle cx="60" cy="60" r="46" />
-        </clipPath>
       </defs>
 
-      {/* Bracitos: van detras del cuerpo */}
-      <path className="dico-brazo dico-brazo--izq" d="M17 68 Q 6 74 4 86"
-        stroke="#b07d0e" strokeWidth="7" strokeLinecap="round" fill="none" />
-      <path className="dico-brazo dico-brazo--der" d="M103 68 Q 114 74 116 86"
-        stroke="#b07d0e" strokeWidth="7" strokeLinecap="round" fill="none" />
-
-      <g className="dico-cuerpo">
-        {/* Canto: solo se ve al girar. Es lo que le da grosor de moneda. */}
-        <ellipse className="dico-canto" cx="106" cy="60" rx="5" ry="45" fill="#8a610a" />
-        <circle cx="60" cy="60" r="46" fill={`url(#dico-cuerpo-${size})`} />
-        {/* Media luna de sombra, del lado opuesto a la luz. NO se mueve. */}
-        <path d="M60 14 a46 46 0 0 1 0 92 a41 41 0 0 0 10 -92 z"
-          fill="#8a610a" opacity="0.45" transform="rotate(40 60 60)" />
-        <circle cx="60" cy="60" r="38" fill="none" stroke="#c98f12" strokeWidth="2" opacity="0.7" />
-        {/* Brillo especular: clavado arriba-izquierda, pase lo que pase. */}
-        <ellipse cx="44" cy="36" rx="15" ry="9" fill={`url(#dico-brillo-${size})`}
-          transform="rotate(-28 44 36)" />
-      </g>
-
-      {/* La cara vive RECORTADA por la moneda: por eso puede viajar mas que
-          el cuerpo sin salirse, que es lo que la hace parecer una esfera. */}
-      <g clipPath={`url(#dico-clip-${size})`}>
-        <g className="dico-cara">
-          <path className="dico-ceja dico-ceja--izq" d="M40 42 q6 -5 12 -2"
-            stroke="#5c430a" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-          <path className="dico-ceja dico-ceja--der" d="M68 40 q6 -3 12 2"
-            stroke="#5c430a" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-
-          <ellipse className="dico-ojo dico-ojo--izq" cx="47" cy="56" rx="5" ry="7" fill="#3d2c05" />
-          <ellipse className="dico-ojo dico-ojo--der" cx="73" cy="56" rx="5" ry="7" fill="#3d2c05" />
-          {/* Brillitos del lado de LA LUZ, no del centro del ojo. */}
-          <circle cx="45" cy="53" r="1.6" fill="#fff" opacity="0.9" />
-          <circle cx="71" cy="53" r="1.6" fill="#fff" opacity="0.9" />
-
-          <path className="dico-boca" d="M48 76 Q60 84 72 76"
-            stroke="#3d2c05" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-
-          <ellipse className="dico-cachete" cx="36" cy="70" rx="5.5" ry="3.5" fill="#e08a1e" opacity="0.5" />
-          <ellipse className="dico-cachete" cx="84" cy="70" rx="5.5" ry="3.5" fill="#e08a1e" opacity="0.5" />
+      <g className="dico-escena">
+        <ellipse className="dico-piso" cx="60" cy="114" rx="24" ry="3.8" fill="#2b1d02" opacity=".26" />
+        <g className="dico-boya">
+          <g className="dico-bamboleo">
+            <ellipse cx={CAMPO.cx} cy={CAMPO.cy} rx="34.4" ry="37.8" fill={`url(#${g('oro')})`} />
+            <ellipse cx={CAMPO.cx} cy={CAMPO.cy} rx={CAMPO.rx} ry={CAMPO.ry}
+              fill="none" stroke="#c9880f" strokeWidth="2" opacity=".6" />
+            <CapaDeTinta />
+          </g>
         </g>
       </g>
     </svg>

@@ -661,6 +661,7 @@ export default function PlatformAdmin() {
               recetas={recetas}
               gastos={gastos}
               settings={sett}
+              omitir={products.length === 0 ? ['catalogo-vacio'] : []}
               onIr={setTab}
             />
           )}

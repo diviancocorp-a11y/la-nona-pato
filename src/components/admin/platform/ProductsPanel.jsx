@@ -14,6 +14,7 @@ import ProductEditor from './ProductEditor';
 import { categoriesFrom } from '../../../services/platformAdmin';
 import { margen, indexarInsumos } from '../../../services/platformRecipes';
 import { terminologia } from '../../../modules/registry';
+import DicoEscena from '../../dico/DicoEscena';
 
 function money(n) {
   return `$${Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
@@ -146,23 +147,29 @@ export default function ProductsPanel({
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <button type="button" className="ag-cta" onClick={() => setEditing('new')}>
-            + Agregar {t.singular}
-          </button>
-        </div>
+        {(loading || products.length > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <button type="button" className="ag-cta" onClick={() => setEditing('new')}>
+              + Agregar {t.singular}
+            </button>
+          </div>
+        )}
 
         {loading && <p style={{ color: 'var(--ag-ink-3)', fontSize: 13, textAlign: 'center' }}>Cargando...</p>}
 
         {!loading && products.length === 0 && (
           <div style={{
-            textAlign: 'center', padding: '28px 20px',
+            textAlign: 'center', padding: '12px 16px 20px',
             background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)', borderRadius: 14,
           }}>
-            <div style={{ fontSize: 15, color: 'var(--ag-ink)', marginBottom: 6 }}>Todavía no cargaste nada</div>
-            <div style={{ fontSize: 13, color: 'var(--ag-ink-3)' }}>
-              Tu catálogo está vacío. Agregá el primer {t.singular} y ya queda publicado.
-            </div>
+            <DicoEscena
+              pose="senala"
+              size={188}
+              texto={`Empecemos por tu primer ${t.singular}. Cargalo y queda publicado en tu catálogo.`}
+              accion={`+ Agregar ${t.singular}`}
+              onAccion={() => setEditing('new')}
+              title={`Dico señala el botón para agregar el primer ${t.singular}`}
+            />
           </div>
         )}
 

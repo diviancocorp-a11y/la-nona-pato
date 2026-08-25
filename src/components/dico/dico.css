@@ -1,127 +1,310 @@
-/* Dico — animaciones de la capa 1.
+/* Dico — el personaje, capa 1. Ver platform/PLAN-DICO.md.
  *
- * Todo es transform y opacity: son las dos propiedades que el browser anima
+ * ALMA = MOVIMIENTO, NO DETALLE
+ * Un personaje no se siente vivo porque tenga muchos degrades: se siente vivo
+ * porque nunca se lo ve hacer dos veces exactamente lo mismo. Sale de cuatro
+ * trucos:
+ *
+ *   1. DURACIONES QUE NO SON MULTIPLOS ENTRE SI (3.4s / 5.2s / 6.1s / 7.3s).
+ *      La combinacion tarda minutos en repetirse. Con 3s y 6s el ojo agarra el
+ *      loop en dos ciclos y deja de ser un personaje: es un GIF.
+ *   2. SACADAS. Las pupilas no se deslizan, SALTAN (steps). Un ojo que
+ *      interpola parece animatronico; uno que salta parece que esta pensando.
+ *   3. FOLLOW-THROUGH. La cara llega tarde a lo que hace el cuerpo.
+ *   4. LA LUZ NO SE MUEVE NUNCA, gire lo que gire el cuerpo.
+ *
+ * TODO ES transform Y opacity: las dos unicas propiedades que el browser anima
  * sin recalcular layout. Dico puede estar en pantalla mientras el operador
- * scrollea una lista de 40 productos desde un telefono.
+ * scrollea 40 productos desde el telefono de una cocina.
  *
- * transform-box: fill-box hace que transform-origin sea relativo a CADA
- * forma y no al viewBox entero. Sin eso, un scale(1.1) sobre un ojo lo manda
- * a la otra punta del SVG.
+ * POR QUE TANTOS GRUPOS ANIDADOS: dos animaciones sobre el mismo elemento
+ * pelean por `transform` y gana una sola. Cada capa de movimiento necesita su
+ * propio grupo — escena, boya, bamboleo, cara, pupila.
+ *
+ * LOS MISMOS NOMBRES SIRVEN PARA LAS DOS VERSIONES. La provisoria arma esos
+ * grupos con <g> de SVG y la definitiva con <span> alrededor del render, asi
+ * que todo el movimiento de cuerpo de este archivo aplica igual en las dos sin
+ * una linea repetida.
  */
 
+.dico {
+  display: block;
+  overflow: visible;
+}
+
+/* fill-box hace que transform-origin sea relativo a CADA forma y no al viewBox
+   entero. Sin esto, un scale sobre un ojo lo manda a la otra punta. */
 .dico * {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-/* ── Respiracion: el cuerpo boya y la cara llega tarde ──
-   Los 0,12s de diferencia son el follow-through: es lo que hace que se
-   sienta masa y no un PNG que se traslada. */
-.dico-cuerpo { animation: dico-boya 3.2s ease-in-out infinite; }
-.dico-cara   { animation: dico-boya-cara 3.2s ease-in-out infinite; }
+/* ═══════════════════════ 1. IDLE VIVO ═══════════════════════ */
 
+/* La sombra se achica cuando el cuerpo sube. Es lo unico que apoya a Dico
+   contra un piso: sin ella flota en el vacio. */
+.dico-piso { animation: dico-piso 3.4s ease-in-out infinite; }
+@keyframes dico-piso {
+  0%, 100% { transform: scale(1);   opacity: .26; }
+  50%      { transform: scale(.86); opacity: .15; }
+}
+
+.dico-boya { animation: dico-boya 3.4s ease-in-out infinite; }
 @keyframes dico-boya {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
+  50%      { transform: translateY(-4.5px); }
 }
-@keyframes dico-boya-cara {
+
+.dico-bamboleo { animation: dico-bamboleo 5.2s ease-in-out infinite; }
+@keyframes dico-bamboleo {
+  0%, 100% { transform: rotate(-1.9deg); }
+  50%      { transform: rotate(1.9deg); }
+}
+
+/* 56% y no 50%: la cara llega tarde. Son 200ms y son toda la diferencia entre
+   una moneda con cara dibujada y un personaje. */
+.dico-cara { animation: dico-cara-boya 3.4s ease-in-out infinite; }
+@keyframes dico-cara-boya {
   0%, 100% { transform: translateY(0); }
-  54%      { transform: translateY(-6px); }
+  56%      { transform: translateY(-2.4px); }
 }
 
-/* ── Parpadeo con scaleY, nunca con opacity ──
-   Un ojo que se desvanece parece un fantasma; un ojo que se aplasta parece
-   un parpado. */
-.dico-ojo { animation: dico-parpado 4.6s infinite; }
-@keyframes dico-parpado {
-  0%, 91%, 100% { transform: scaleY(1); }
-  93%, 95%      { transform: scaleY(0.08); }
+/* Parpadeo a la vieja usanza: el ojo se APLASTA hasta ser una linea. En un
+   dibujo de tinta es exactamente como se hacia, y ademas no necesita una tapa
+   del color del fondo — que sobre un render de oro no existiria.
+   El segundo parpadeo pegado es lo que lo saca de metronomo. */
+.dico-ojo-tinta { animation: dico-parpadeo 7.3s infinite; }
+@keyframes dico-parpadeo {
+  0%, 39%, 100% { transform: translateY(0) scaleY(1); }
+  41%, 43%      { transform: translateY(5px) scaleY(.08); }
+  45%, 48%      { transform: translateY(0) scaleY(1); }
+  50%, 52%      { transform: translateY(5px) scaleY(.08); }
+  54%           { transform: translateY(0) scaleY(1); }
 }
 
-/* El canto solo asoma cuando Dico gira. */
-.dico-canto { opacity: 0; transition: opacity .45s, transform .45s; }
-
-.dico-ceja { opacity: 0; transform: translateY(4px); transition: all .3s ease; }
-.dico-boca { transition: d .3s ease; }
-.dico-brazo { transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
-.dico-brazo--izq { transform-origin: 20% 20%; }
-.dico-brazo--der { transform-origin: 80% 20%; }
-
-/* ─────────────────────────── ESTADOS ─────────────────────────── */
-
-/* ESPERANDO — mira de un lado a otro, como buscando algo.
-   La cara viaja 3 veces lo que el cuerpo y se angosta al llegar al borde:
-   ese parallax + escorzo es lo que convierte un circulo en una esfera. */
-.dico--esperando .dico-cuerpo { animation: dico-mira-cuerpo 3.4s ease-in-out infinite; }
-.dico--esperando .dico-cara   { animation: dico-mira-cara 3.4s ease-in-out infinite; }
-.dico--esperando .dico-canto  { animation: dico-mira-canto 3.4s ease-in-out infinite; }
-
-@keyframes dico-mira-cuerpo {
-  0%, 100% { transform: translateX(0) rotate(0); }
-  30%      { transform: translateX(-3px) rotate(-3deg); }
-  70%      { transform: translateX(3px) rotate(3deg); }
-}
-@keyframes dico-mira-cara {
-  0%, 100% { transform: translateX(0) scaleX(1); }
-  30%      { transform: translateX(-11px) scaleX(.9); }
-  70%      { transform: translateX(11px) scaleX(.9); }
-}
-@keyframes dico-mira-canto {
-  0%, 100% { opacity: 0; transform: translateX(0); }
-  30%      { opacity: 1; transform: translateX(2px) scaleX(-1); }
-  70%      { opacity: 1; transform: translateX(-2px); }
+/* Sacadas: steps(1) para que SALTE. Ver nota 2 arriba. */
+.dico-pupila { animation: dico-sacada 6.1s steps(1, end) infinite; }
+@keyframes dico-sacada {
+  0%, 23%   { transform: translate(0, 0); }
+  25%, 39%  { transform: translate(2.2px, -.9px); }
+  41%, 62%  { transform: translate(-2.4px, .6px); }
+  64%, 79%  { transform: translate(.9px, 1.6px); }
+  81%, 100% { transform: translate(0, 0); }
 }
 
-/* CONTENTO — un salto con squash & stretch.
-   Se aplasta ANTES de saltar (anticipacion) y otra vez al aterrizar. Si se
-   estira a lo alto, se angosta a lo ancho: el volumen se conserva o deja de
-   parecer materia. */
-.dico--contento .dico-cuerpo { animation: dico-salto .6s ease-in-out; }
-.dico--contento .dico-cara   { animation: dico-salto-cara .6s ease-in-out; }
-.dico--contento .dico-boca   { d: path("M46 74 Q60 90 74 74"); }
-.dico--contento .dico-brazo--der { transform: rotate(-135deg); }
+/* Los brazos giran desde el hombro, no desde su centro. */
+.dico-brazo--izq { transform-origin: 100% 15%; animation: dico-brazo-izq 4.6s ease-in-out infinite; }
+.dico-brazo--der { transform-origin: 0% 15%;   animation: dico-brazo-der 5.1s ease-in-out infinite; }
+@keyframes dico-brazo-izq {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(5deg); }
+}
+@keyframes dico-brazo-der {
+  0%, 100% { transform: rotate(5deg); }
+  50%      { transform: rotate(-4deg); }
+}
 
+/* ═══════════════════════ 2. PIEZAS QUE APARECEN ═══════════════════════ */
+
+/* Las cejas NO estan aca: en este estilo estan siempre y los estados las
+   mueven. Lo que se prende y se apaga son las bocas y los adornos. */
+.dico-boca, .dico-ojo-feliz, .dico-gota, .dico-signo, .dico-rubor,
+.dico-espera-puntos {
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+.dico--idle .dico-boca--neutra { opacity: 1; }
+
+/* ═══════════════════════ 3. ESTADOS ═══════════════════════ */
+
+/* ── ESPERANDO: busca algo. La cara viaja mas que el cuerpo. ── */
+.dico--esperando .dico-boca--media { opacity: 1; }
+.dico--esperando .dico-bamboleo { animation: dico-buscar-cuerpo 3.9s ease-in-out infinite; }
+.dico--esperando .dico-cara     { animation: dico-buscar-cara 3.9s ease-in-out infinite; }
+.dico--esperando .dico-pupila   { animation: dico-buscar-pupila 3.9s ease-in-out infinite; }
+.dico--esperando .dico-espera-puntos { opacity: 1; }
+.dico--esperando .dico-espera-punto {
+  animation: dico-espera-punto 1.15s ease-in-out infinite;
+}
+.dico--esperando .dico-espera-punto:nth-child(2) { animation-delay: .13s; }
+.dico--esperando .dico-espera-punto:nth-child(3) { animation-delay: .26s; }
+@keyframes dico-buscar-cuerpo {
+  0%, 100% { transform: rotate(-3deg) translateX(-1.5px); }
+  50%      { transform: rotate(3deg) translateX(1.5px); }
+}
+@keyframes dico-buscar-cara {
+  0%, 100% { transform: translateX(-4px); }
+  50%      { transform: translateX(4px); }
+}
+@keyframes dico-buscar-pupila {
+  0%, 100% { transform: translateX(-3px); }
+  50%      { transform: translateX(3px); }
+}
+@keyframes dico-espera-punto {
+  0%, 62%, 100% { transform: translateY(0) scale(.72); opacity: .35; }
+  30%           { transform: translateY(-1.8px) scale(1); opacity: 1; }
+}
+
+/* ── CONTENTO: salto con squash & stretch conservando volumen ──
+   El 12% es ANTICIPACION: se aplasta antes de saltar. Sin eso el salto no se
+   lee, aparece. */
+.dico--contento .dico-boya { animation: dico-salto 1.9s cubic-bezier(.3,.7,.4,1) infinite; }
 @keyframes dico-salto {
-  0%   { transform: scale(1, 1) translateY(0); }
-  18%  { transform: scale(1.1, .88) translateY(3px); }
-  55%  { transform: scale(.94, 1.08) translateY(-11px); }
-  80%  { transform: scale(1.05, .95) translateY(0); }
-  100% { transform: scale(1, 1) translateY(0); }
+  0%, 100% { transform: translateY(0)     scale(1, 1); }
+  12%      { transform: translateY(2px)   scale(1.08, .92); }
+  38%      { transform: translateY(-14px) scale(.93, 1.08); }
+  58%      { transform: translateY(0)     scale(1.07, .93); }
+  76%      { transform: translateY(-3px)  scale(.99, 1.01); }
 }
-@keyframes dico-salto-cara {
-  0%   { transform: translateY(0); }
-  22%  { transform: translateY(4px); }
-  58%  { transform: translateY(-15px); }
-  84%  { transform: translateY(2px); }
-  100% { transform: translateY(0); }
+.dico--contento .dico-boca--feliz,
+.dico--contento .dico-ojo-feliz { opacity: 1; }
+/* Con los arcos de felicidad puestos, el ojo abierto estorba. */
+.dico--contento .dico-ojo-tinta { opacity: 0; animation: none; }
+.dico--contento .dico-brazo--izq { animation: dico-festejo-izq .95s ease-in-out infinite; }
+.dico--contento .dico-brazo--der { animation: dico-festejo-der .95s ease-in-out infinite; }
+@keyframes dico-festejo-izq {
+  0%, 100% { transform: rotate(-16deg); }
+  50%      { transform: rotate(-46deg); }
+}
+@keyframes dico-festejo-der {
+  0%, 100% { transform: rotate(16deg); }
+  50%      { transform: rotate(46deg); }
 }
 
-/* PREOCUPADO — se encoge, aparecen las cejas y la boca se achica.
-   Sin lagrimas ni temblor: el que lo mira ya sabe que algo salio mal, no
-   hace falta dramatizarlo. */
-.dico--preocupado .dico-cuerpo { animation: none; transform: scale(.96); }
-.dico--preocupado .dico-cara   { animation: none; transform: translateY(3px) scale(.95); }
-.dico--preocupado .dico-boca   { d: path("M50 80 Q60 73 70 80"); }
-.dico--preocupado .dico-ceja   { opacity: 1; transform: translateY(0); }
-.dico--preocupado .dico-brazo  { transform: rotate(0) translateY(3px); }
+/* ── PREOCUPADO: se encoge, respira mas rapido y mas corto ── */
+.dico--preocupado .dico-boya { animation: dico-encoge 2.4s ease-in-out infinite; }
+@keyframes dico-encoge {
+  0%, 100% { transform: translateY(1px) scale(.97); }
+  50%      { transform: translateY(-1px) scale(.975); }
+}
+.dico--preocupado .dico-boca--onda,
+.dico--preocupado .dico-gota { opacity: 1; }
+.dico--preocupado .dico-ceja--izq { transform: translateY(-4px) rotate(-8deg); }
+.dico--preocupado .dico-ceja--der { transform: translateY(-4px) rotate(8deg); }
+.dico--preocupado .dico-gota { animation: dico-gota 2.8s ease-in infinite; }
+@keyframes dico-gota {
+  0%, 55%  { transform: translateY(0) scale(.6);    opacity: 0; }
+  65%      { transform: translateY(0) scale(1);     opacity: 1; }
+  95%      { transform: translateY(16px) scale(.9); opacity: 0; }
+  100%     { transform: translateY(16px);           opacity: 0; }
+}
+.dico--preocupado .dico-brazo--izq { animation: none; transform: rotate(22deg); }
+.dico--preocupado .dico-brazo--der { animation: none; transform: rotate(-22deg); }
 
-/* PREGUNTA — cabeza ladeada, una ceja arriba. Para confirmar algo que no
-   tiene vuelta atras. */
-.dico--pregunta .dico-cuerpo { animation: none; transform: rotate(-7deg); }
-.dico--pregunta .dico-cara   { animation: none; transform: rotate(-4deg) translateX(-2px); }
-.dico--pregunta .dico-boca   { d: path("M50 78 Q60 76 70 79"); }
-.dico--pregunta .dico-ceja--der { opacity: 1; transform: translateY(-3px); }
+/* ── PREGUNTA: ladea la cabeza y le sale un signo ── */
+.dico--pregunta .dico-bamboleo { animation: dico-ladeo 3.4s ease-in-out infinite; }
+@keyframes dico-ladeo {
+  0%, 100% { transform: rotate(10deg); }
+  50%      { transform: rotate(6.5deg); }
+}
+.dico--pregunta .dico-boca--o { opacity: 1; }
+/* Una ceja arriba y la otra no: la asimetria es lo que lee como duda. */
+.dico--pregunta .dico-ceja--izq { transform: translateY(-5px) rotate(-10deg); }
+.dico--pregunta .dico-ceja--der { transform: translateY(2px); }
+.dico--pregunta .dico-signo { animation: dico-signo 2.6s ease-in-out infinite; }
+@keyframes dico-signo {
+  0%, 12%   { transform: translateY(6px) scale(.3) rotate(-20deg); opacity: 0; }
+  26%       { transform: translateY(-3px) scale(1.15) rotate(6deg); opacity: 1; }
+  34%, 78%  { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+  92%, 100% { transform: translateY(-4px) scale(.6); opacity: 0; }
+}
 
-/* ── Menos movimiento: quieto, no "mas suave" ──
-   Quien activa esta preferencia muchas veces lo hace por mareo o migrana.
-   Una animacion lenta sigue siendo una animacion. */
+/* ═══════════════════════ 4. ENTRADA ═══════════════════════ */
+
+/* Dico aparece de espalda y se da vuelta. Como el cuerpo base no tiene cara,
+   alcanza con ocultar la tinta durante el dorso: no hace falta otro render. */
+.dico--entrada { perspective: 420px; }
+.dico--entrada .dico-escena {
+  animation: dico-entrada-vuelta 1.45s cubic-bezier(.2,.72,.25,1) both;
+  transform-style: preserve-3d;
+}
+.dico--entrada .dico-cara {
+  animation: dico-cara-vuelta 1.45s ease-out both;
+}
+.dico--entrada .dico-cuerpo-render {
+  animation: dico-luz-vuelta 1.45s ease-out both;
+}
+@keyframes dico-entrada-vuelta {
+  0%   { transform: translateY(3px) rotateY(180deg) scale(.9); opacity: 0; }
+  12%  { opacity: 1; }
+  42%  { transform: translateY(3px) rotateY(180deg) scale(.9); }
+  70%  { transform: translateY(-2px) rotateY(-12deg) scale(1.04); }
+  84%  { transform: translateY(0) rotateY(5deg) scale(.99); }
+  100% { transform: translateY(0) rotateY(0) scale(1); opacity: 1; }
+}
+@keyframes dico-cara-vuelta {
+  0%, 52% { opacity: 0; }
+  64%     { opacity: 1; transform: scale(.94); }
+  100%    { opacity: 1; transform: scale(1); }
+}
+@keyframes dico-luz-vuelta {
+  0%, 46% { filter: brightness(.66) saturate(.8); }
+  70%     { filter: brightness(1.08) saturate(1.05); }
+  100%    { filter: none; }
+}
+
+/* ═══════════════════════ 5. MODO RENDER ═══════════════════════ */
+
+/* Cuando existe `poses/moneda.*`, el cuerpo es esa imagen y la cara se dibuja
+   encima. El armazon de grupos es el mismo, hecho con <span>. */
+
+.dico--render {
+  position: relative;
+  display: inline-block;
+}
+
+/* fill-box es de SVG: en HTML enturbia el origen de los transforms. La capa de
+   tinta sigue siendo SVG y conserva el suyo. */
+.dico--render > .dico-escena,
+.dico--render .dico-boya,
+.dico--render .dico-bamboleo,
+.dico--render .dico-piso,
+.dico--render .dico-cuerpo-render { transform-box: border-box; }
+
+.dico--render .dico-escena,
+.dico--render .dico-boya,
+.dico--render .dico-bamboleo {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.dico--render .dico-cuerpo-render,
+.dico--render .dico-capa-tinta {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.dico--render .dico-cuerpo-render {
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.dico--render .dico-capa-tinta { overflow: visible; }
+
+/* La sombra deja de ser una elipse del dibujo y pasa a ser una del layout,
+   pero se llama igual: hereda la misma animacion. */
+.dico--render .dico-piso {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 1%;
+  height: 5%;
+  border-radius: 50%;
+  background: rgba(43, 29, 2, .26);
+  filter: blur(1.5px);
+}
+
+/* ═══════════════════════ 6. ACCESIBILIDAD ═══════════════════════ */
+
+/* Quien pidio menos movimiento ve a Dico QUIETO, no una animacion mas suave.
+   Los estados se siguen leyendo: boca, cejas, gota y signo son FORMAS. */
 @media (prefers-reduced-motion: reduce) {
   .dico *,
-  .dico-cuerpo,
-  .dico-cara,
-  .dico-ojo,
-  .dico-canto {
+  .dico-escena {
     animation: none !important;
     transition: none !important;
   }
+  .dico-signo, .dico-gota { opacity: 1; }
 }
