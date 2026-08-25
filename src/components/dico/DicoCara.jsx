@@ -1,11 +1,11 @@
 /**
  * DicoCara — el personaje dentro de la app. Capa 1 del PLAN-DICO.
  *
- * DOS CAPAS: EL CUERPO ES UN RENDER, LA CARA ES TINTA
- * El cuerpo —moneda, brazos y guantes— es un render 3D. Lo unico que actua es
- * la cara, y esa es un SVG modular.
- * Esa division es la decision de fondo y no es solo estetica: hace falta UN
- * render en vez de seis que calcen entre si, una expresion nueva cuesta dos
+ * CAPAS: MONEDA, BRAZOS Y TINTA
+ * La moneda conserva el render 3D. Los brazos reutilizan el render original
+ * como dos capas articuladas y la cara sigue siendo un SVG modular.
+ * Esa division es la decision de fondo y no es solo estetica: dos sprites
+ * reusables reemplazan renders por estado, una expresion nueva cuesta CSS y
  * paths, el parpadeo y las pupilas existen, y a 30px la tinta se lee donde un
  * sombreado 3D se empasta.
  *
@@ -27,8 +27,10 @@ export const ESTADOS_DICO = ['idle', 'esperando', 'contento', 'preocupado', 'pre
 const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 // Glob y no import directo: asi el build no se rompe si el archivo no esta.
-const RENDERS = import.meta.glob('./poses/moneda.{png,webp,avif}', { eager: true, import: 'default' });
-const MONEDA = Object.values(RENDERS)[0] || null;
+const BASES = import.meta.glob('./poses/moneda-sin-brazos.{png,webp,avif}', { eager: true, import: 'default' });
+const BRAZOS = import.meta.glob('./poses/moneda.{png,webp,avif}', { eager: true, import: 'default' });
+const MONEDA_BASE = Object.values(BASES)[0] || null;
+const MONEDA_BRAZOS = Object.values(BRAZOS)[0] || null;
 
 /** La cara vive en su propio grupo para transformarla sin mover el cuerpo. */
 function CapaDeTinta({ lookX, lookY }) {
@@ -51,7 +53,7 @@ export default function DicoCara({
   const miradaDirigida = Math.abs(Number(lookX) || 0) > .001 || Math.abs(Number(lookY) || 0) > .001;
   const clases = [
     'dico', `dico--${seguro}`,
-    MONEDA ? 'dico--render' : 'dico--provisoria',
+    MONEDA_BASE && MONEDA_BRAZOS ? 'dico--render' : 'dico--provisoria',
     Number(size) <= 40 ? 'dico--pequena' : '',
     miradaDirigida ? 'dico--mirada-dirigida' : '',
     habla ? `dico--habla-${habla}` : '',
@@ -63,14 +65,19 @@ export default function DicoCara({
     ? { role: 'img', 'aria-label': title }
     : { 'aria-hidden': 'true' };
 
-  if (MONEDA) {
+  if (MONEDA_BASE && MONEDA_BRAZOS) {
     return (
       <span className={clases} style={{ ...style, width: size, height: size }} data-dico-core="" {...accesible}>
         <span className="dico-escena">
           <span className="dico-piso" />
           <span className="dico-boya">
             <span className="dico-bamboleo">
-              <img className="dico-cuerpo-render" src={MONEDA} alt="" draggable="false" />
+              <img className="dico-cuerpo-render dico-cuerpo-render--moneda"
+                src={MONEDA_BASE} alt="" draggable="false" />
+              <img className="dico-cuerpo-render dico-brazo dico-brazo--izq"
+                src={MONEDA_BRAZOS} alt="" draggable="false" />
+              <img className="dico-cuerpo-render dico-brazo dico-brazo--der"
+                src={MONEDA_BRAZOS} alt="" draggable="false" />
               <svg className="dico-capa-tinta" viewBox="0 0 120 120" aria-hidden="true">
                 <CapaDeTinta lookX={lookX} lookY={lookY} />
               </svg>

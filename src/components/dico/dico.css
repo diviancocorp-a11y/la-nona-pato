@@ -92,6 +92,7 @@
 /* ---------- Visibilidad de las expresiones ---------- */
 
 .dico-boca,
+.dico-signo-pregunta,
 .dico-espera-puntos {
   opacity: 0;
   transition: opacity .18s ease;
@@ -101,27 +102,22 @@
   opacity: 1;
 }
 
-/* Esperando: piensa sin recorrer la pantalla ni agitar el cuerpo. */
+/* Esperando: atento y a la expectativa, no cansado ni amargado. */
 .dico--esperando .dico-boca--pensando,
 .dico--esperando .dico-espera-puntos {
   opacity: 1;
 }
 
 .dico--esperando .dico-ceja--izq {
-  transform: translateY(-.8px) rotate(-3deg);
+  transform: translateY(-1.8px);
 }
 
 .dico--esperando .dico-ceja--der {
-  transform: translateY(1px) rotate(3deg);
-}
-
-.dico--esperando .dico-parpado {
-  opacity: 1;
-  transform: translateY(1.5px);
+  transform: translateY(-1.8px);
 }
 
 .dico--esperando:not(.dico--mirada-dirigida) .dico-pupila-estado {
-  transform: translate(1.5px, -1px);
+  transform: translate(.8px, -.7px);
 }
 
 .dico--esperando .dico-espera-punto {
@@ -163,8 +159,9 @@
   transform: translate(-.5px, .5px) rotate(-3deg);
 }
 
-/* Pregunta: asimetria y mirada; sin signo flotante. */
-.dico--pregunta .dico-boca--pregunta {
+/* Pregunta: duda visible, signo y mano al menton. */
+.dico--pregunta .dico-boca--pregunta,
+.dico--pregunta .dico-signo-pregunta {
   opacity: 1;
 }
 
@@ -191,11 +188,6 @@
 .dico--habla-mid .dico-boca--habla-media,
 .dico--habla-open .dico-boca--habla-abierta {
   opacity: 1;
-}
-
-/* A 30px se queda la informacion primaria: ojos, cejas y boca. */
-.dico--pequena .dico-brillo-secundario {
-  display: none;
 }
 
 /* ---------- Entrada ---------- */
@@ -270,6 +262,62 @@
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.dico--render .dico-cuerpo-render--moneda {
+  z-index: 1;
+}
+
+.dico--render .dico-capa-tinta {
+  z-index: 2;
+}
+
+.dico--render .dico-brazo {
+  z-index: 0;
+  transition: transform .34s cubic-bezier(.2, .72, .25, 1);
+}
+
+.dico--render .dico-brazo--izq {
+  clip-path: polygon(0 51%, 17% 51%, 20% 58%, 20% 94%, 14% 97%, 1% 90%);
+  transform-origin: 13.5% 57%;
+}
+
+.dico--render .dico-brazo--der {
+  clip-path: polygon(83% 51%, 100% 51%, 99% 90%, 86% 97%, 80% 94%, 80% 58%);
+  transform-origin: 86.5% 57%;
+}
+
+.dico--esperando .dico-brazo--izq {
+  transform: translate(-1%, -1%) rotate(16deg);
+}
+
+.dico--esperando .dico-brazo--der {
+  transform: translate(1%, -1%) rotate(-16deg);
+}
+
+.dico--contento .dico-brazo--izq {
+  transform: translate(-2%, -3%) rotate(54deg);
+}
+
+.dico--contento .dico-brazo--der {
+  transform: translate(2%, -3%) rotate(-54deg);
+}
+
+.dico--preocupado .dico-brazo--izq {
+  transform: translate(2%, 1%) rotate(-18deg);
+}
+
+.dico--preocupado .dico-brazo--der {
+  transform: translate(-2%, 1%) rotate(18deg);
+}
+
+.dico--pregunta .dico-brazo--izq {
+  z-index: 3;
+  transform: translate(14%, 1%) rotate(-50deg);
+}
+
+.dico--pregunta .dico-brazo--der {
+  transform: translate(-1%, 1%) rotate(9deg);
 }
 
 .dico--render .dico-capa-tinta {

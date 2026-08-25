@@ -22,6 +22,9 @@ describe('DicoEscena', () => {
     expect(container.querySelectorAll('.dico-ojo')).toHaveLength(2);
     expect(container.querySelectorAll('.dico-ceja')).toHaveLength(2);
     expect(container.querySelectorAll('.dico-parpado')).toHaveLength(2);
+    expect(container.querySelectorAll('path.dico-pupila-forma')).toHaveLength(2);
+    expect(container.querySelectorAll('.dico-brazo')).toHaveLength(2);
+    expect(container.querySelector('.dico-parpado > path').getAttribute('fill')).toBe('#fdce18');
     expect(container.querySelector('.dico-bigote')).not.toBeInTheDocument();
     expect(container.querySelector('.dico-nariz')).not.toBeInTheDocument();
     expect(container.querySelector('.dico-rubor')).not.toBeInTheDocument();
@@ -47,12 +50,21 @@ describe('DicoEscena', () => {
     expect(container.querySelector('.dico-boca--habla-abierta')).toBeInTheDocument();
   });
 
-  it('muestra la espera con puntos sin cambiar el cuerpo', () => {
+  it('muestra la espera atenta con puntos y brazos articulados', () => {
     const { container } = render(React.createElement(DicoCara, {
       estado: 'esperando', size: 48, title: 'Dico esperando',
     }));
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
+  });
+
+  it('presenta la pregunta con signo y brazos articulados', () => {
+    const { container } = render(React.createElement(DicoCara, {
+      estado: 'pregunta', size: 120, title: 'Dico pensando una pregunta',
+    }));
+    expect(container.querySelector('.dico-signo-pregunta')).toBeInTheDocument();
+    expect(container.querySelector('.dico-brazo--izq')).toBeInTheDocument();
+    expect(container.querySelector('.dico-brazo--der')).toBeInTheDocument();
   });
 
   it('usa el Core modular en una escena operativa', () => {

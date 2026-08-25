@@ -1,21 +1,23 @@
-# El cuerpo de Dico
+# El cuerpo articulado de Dico
 
-Acá va **una sola imagen**: el render de la moneda, **sin cara ni galera**.
+El Core usa dos fuentes visuales, **sin cara ni galera**:
 
 ```
-moneda.webp     (o .png / .avif)
+moneda-sin-brazos.webp  base limpia de la moneda
+moneda.webp             fuente de los dos brazos y guantes
 ```
 
-La cara la dibuja `CaraDeTinta.jsx` encima, en SVG. Por eso no hay una imagen
-por estado: las expresiones son curvas, no renders.
+`DicoCara.jsx` recorta cada brazo del segundo archivo y lo articula desde el
+hombro. La cara la dibuja `CaraDeTinta.jsx` encima, en SVG. Por eso no hay una
+imagen por estado: expresiones y poses son curvas y transforms, no renders.
 
 `moneda-retro-galera.webp` conserva el cuerpo anterior como fuente para una
-futura escena Retro. El glob de `DicoCara` carga solo `moneda.webp`, por lo que
-ese archivo no forma parte de Dico Core ni aumenta el bundle de la app.
+futura escena Retro. Los globs de `DicoCara` cargan sólo los dos archivos
+nombrados arriba; el cuerpo con galera no forma parte de Dico Core.
 
-- Mientras no exista `moneda.*`, `DicoCara` dibuja una moneda **provisoria** en
-  SVG. Es a propósito: un `import` de un archivo que no existe rompe el build,
-  y producción muestra esto hoy.
+- Mientras falte cualquiera de los dos sprites activos, `DicoCara` dibuja una
+  moneda **provisoria** en SVG. Es a propósito: un `import` de un archivo que
+  no existe rompe el build.
 - Si al ponerla la cara queda corrida, se ajusta `CAMPO` en `CaraDeTinta.jsx`
   —centro y radio del disco liso, en el viewBox de 120— y nada más.
 

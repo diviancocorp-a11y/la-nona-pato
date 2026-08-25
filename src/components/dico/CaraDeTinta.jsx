@@ -18,7 +18,8 @@ export const ZONA = { arriba: 17, abajo: 90 };
 
 const TINTA = '#1b170f';
 const PAPEL = '#fff9ed';
-const OJO = { izq: 49, der: 71, cy: 52, rx: 8.4, ry: 12.2 };
+const ORO_PARAPADO = '#fdce18';
+const OJO = { izq: 49, der: 71, cy: 51.5, rx: 9.1, ry: 13.2 };
 
 function limitar(valor) {
   const numero = Number(valor);
@@ -27,6 +28,8 @@ function limitar(valor) {
 }
 
 function Ojo({ lado, cx, lookX, lookY }) {
+  // Las dos pupilas comparten orientacion: espejarlas hace que Dico parezca bizco.
+  const espejo = 1;
   const mirada = {
     '--dico-look-x': `${limitar(lookX) * 2.6}px`,
     '--dico-look-y': `${limitar(lookY) * 1.8}px`,
@@ -34,35 +37,62 @@ function Ojo({ lado, cx, lookX, lookY }) {
 
   return (
     <g className={`dico-ojo dico-ojo--${lado}`}>
-      <ellipse
-        className="dico-esclera"
-        cx={cx}
-        cy={OJO.cy}
-        rx={OJO.rx}
-        ry={OJO.ry}
-        fill={PAPEL}
-        stroke={TINTA}
-        strokeWidth="2.4"
-      />
+      <g className="dico-ojo-dibujo">
+        <ellipse
+          className="dico-esclera"
+          cx={cx}
+          cy={OJO.cy}
+          rx={OJO.rx}
+          ry={OJO.ry}
+          fill={PAPEL}
+          stroke={TINTA}
+          strokeWidth="2.25"
+        />
 
-      <g className="dico-pupila-estado">
-        <g className="dico-pupila-param" style={mirada}>
-          <g className="dico-pupila-micro">
-            <ellipse className="dico-pupila-forma" cx={cx} cy={OJO.cy + 1} rx="4.9" ry="8.2" fill={TINTA} />
-            <ellipse className="dico-brillo-principal" cx={cx - 1.8} cy={OJO.cy - 3.4} rx="1.55" ry="2.35" fill={PAPEL} />
-            <circle className="dico-brillo-secundario" cx={cx + 1.7} cy={OJO.cy + 4.2} r=".9" fill={PAPEL} opacity=".82" />
+        <g className="dico-pupila-estado">
+          <g className="dico-pupila-param" style={mirada}>
+            <g className="dico-pupila-micro">
+              <path
+                className="dico-pupila-forma"
+                d={`M${cx - 1.4 * espejo} ${OJO.cy - 8.3}
+                  C${cx - 6.2 * espejo} ${OJO.cy - 7.5}, ${cx - 6.6 * espejo} ${OJO.cy - 1.2}, ${cx - 5.2 * espejo} ${OJO.cy + 3.7}
+                  C${cx - 3.8 * espejo} ${OJO.cy + 8.4}, ${cx + 1.3 * espejo} ${OJO.cy + 9.1}, ${cx + 4.9 * espejo} ${OJO.cy + 5.4}
+                  C${cx + 2.7 * espejo} ${OJO.cy + 3.2}, ${cx + 1.2 * espejo} ${OJO.cy + .9}, ${cx + .4 * espejo} ${OJO.cy - 1.2}
+                  C${cx + 1.5 * espejo} ${OJO.cy - 3.6}, ${cx + 3.1 * espejo} ${OJO.cy - 5.2}, ${cx + 4.7 * espejo} ${OJO.cy - 6.2}
+                  C${cx + 2.8 * espejo} ${OJO.cy - 7.8}, ${cx + .6 * espejo} ${OJO.cy - 8.5}, ${cx - 1.4 * espejo} ${OJO.cy - 8.3}Z`}
+                fill={TINTA}
+              />
+
+              {/* Recorte crema angosto: firma retro sin desviar la mirada. */}
+              <path
+                className="dico-recorte-pupila"
+                d={`M${cx + 5 * espejo} ${OJO.cy - 5.7}
+                  C${cx + 3.4 * espejo} ${OJO.cy - 4.3}, ${cx + 2.2 * espejo} ${OJO.cy - 1.5}, ${cx + 2 * espejo} ${OJO.cy + .1}
+                  C${cx + 2.8 * espejo} ${OJO.cy + 1.1}, ${cx + 3.8 * espejo} ${OJO.cy + 3}, ${cx + 5 * espejo} ${OJO.cy + 4.4}Z`}
+                fill={PAPEL}
+              />
+            </g>
           </g>
         </g>
-      </g>
 
-      <path
-        className="dico-parpado"
-        d={`M${cx - 6.8} ${OJO.cy - 1} Q${cx} ${OJO.cy - 5.8} ${cx + 6.8} ${OJO.cy - 1}`}
-        fill="none"
-        stroke={TINTA}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+        <g className="dico-parpado">
+          <path
+            d={`M${cx - 8.8} ${OJO.cy - 1.2}
+              C${cx - 8.1} ${OJO.cy - 9}, ${cx - 4.5} ${OJO.cy - 13}, ${cx} ${OJO.cy - 13}
+              C${cx + 4.5} ${OJO.cy - 13}, ${cx + 8.1} ${OJO.cy - 9}, ${cx + 8.8} ${OJO.cy - 1.2}
+              Q${cx} ${OJO.cy - 6.5} ${cx - 8.8} ${OJO.cy - 1.2}Z`}
+            fill={ORO_PARAPADO}
+          />
+          <path
+            className="dico-parpado-borde"
+            d={`M${cx - 8.8} ${OJO.cy - 1.2} Q${cx} ${OJO.cy - 6.5} ${cx + 8.8} ${OJO.cy - 1.2}`}
+            fill="none"
+            stroke={TINTA}
+            strokeWidth="2.25"
+            strokeLinecap="round"
+          />
+        </g>
+      </g>
     </g>
   );
 }
@@ -71,8 +101,8 @@ export default function CaraDeTinta({ lookX = 0, lookY = 0 }) {
   return (
     <g className="dico-tinta-cara">
       <g className="dico-cejas" stroke={TINTA} strokeWidth="3" strokeLinecap="round" fill="none">
-        <path className="dico-ceja dico-ceja--izq" d="M40 37.5 Q48 33.7 56 37.2" />
-        <path className="dico-ceja dico-ceja--der" d="M64 37.2 Q72 33.7 80 37.5" />
+        <path className="dico-ceja dico-ceja--izq" d="M39.5 36.2 Q47.8 31.8 56.3 36.2" />
+        <path className="dico-ceja dico-ceja--der" d="M63.7 36.2 Q72.2 31.8 80.5 36.2" />
       </g>
 
       <g className="dico-ojos">
@@ -80,22 +110,31 @@ export default function CaraDeTinta({ lookX = 0, lookY = 0 }) {
         <Ojo lado="der" cx={OJO.der} lookX={lookX} lookY={lookY} />
       </g>
 
-      <path className="dico-boca dico-boca--neutra" d="M55 72.5 Q60 75.2 65 72.5"
+      <path className="dico-boca dico-boca--neutra" d="M53.8 71.5 Q59.7 76.8 66.5 70.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
-      <path className="dico-boca dico-boca--pensando" d="M56 74 Q60 72.8 64 74"
+      <path className="dico-boca dico-boca--pensando" d="M55 72.2 Q60 76.2 65.4 71.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
       <g className="dico-boca dico-boca--contenta">
-        <path d="M52 70.5 Q60 76.5 68 70.5 Q67.5 82.5 60 83.5 Q52.5 82.5 52 70.5Z" fill={TINTA} />
-        <path d="M53.7 72 Q60 76 66.3 72 L65.8 75.3 Q60 77.8 54.2 75.3Z" fill={PAPEL} />
+        <path d="M51.5 69.5 Q59.7 76.2 68.7 69 Q68.2 82.8 60.4 84 Q52.2 82.7 51.5 69.5Z" fill={TINTA} />
+        <path d="M53.2 71.2 Q60 75.6 67 70.6 L66.4 74.4 Q60 77.4 53.8 74.7Z" fill={PAPEL} />
       </g>
 
       <path className="dico-boca dico-boca--tensa" d="M54 74.8 Q60 75.4 66 74.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
-      <path className="dico-boca dico-boca--pregunta" d="M55 74.5 Q61 77 66 72.8"
+      <path className="dico-boca dico-boca--pregunta" d="M54.4 73.2 Q60.8 77.5 66.7 71.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
+
+      <g className="dico-signo-pregunta" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <path d="M88.8 18.5 C88.8 12.7 98.1 10.8 100.7 16.4 C103.2 21.8 96.5 24.8 93.8 28.5 L93.8 31"
+          stroke={PAPEL} strokeWidth="5.8" />
+        <circle cx="93.8" cy="36.2" r="2.6" fill={PAPEL} stroke="none" />
+        <path d="M88.8 18.5 C88.8 12.7 98.1 10.8 100.7 16.4 C103.2 21.8 96.5 24.8 93.8 28.5 L93.8 31"
+          stroke={TINTA} strokeWidth="2.8" />
+        <circle cx="93.8" cy="36.2" r="1.1" fill={TINTA} stroke="none" />
+      </g>
 
       {/* Tres frames simples para una futura sensacion de habla. */}
       <path className="dico-boca dico-boca--habla-cerrada" d="M55 74 Q60 75.4 65 74"

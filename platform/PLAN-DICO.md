@@ -1,9 +1,11 @@
 # Plan: Dico, el asistente
 
 > Actualización 25/ago/2026: Dico Core ya no usa galera, bigote ni nariz como
-> anatomía. `CaraDeTinta.jsx` es una cara SVG modular y adulta sobre el cuerpo
-> `moneda.webp` sin galera. Las siete escenas grandes son renders heredados y
-> todavía no se migraron a esta identidad.
+> anatomía. `CaraDeTinta.jsx` usa ojos simétricos de lenguaje retro 50s, con
+> pupila orgánica y recorte crema angosto. La moneda, los dos brazos y la cara
+> son capas independientes: cada estado mueve las manos sin crear otro render.
+> `pregunta` muestra signo y mano al mentón; `esperando` se ve atento, no
+> cansado. Las siete escenas grandes siguen heredadas y aún no se migraron.
 
 > Estado al 16/ago/2026. **Nada de esto está hecho todavía.** Es el plan
 > acordado para no construir la parte cara antes que la barata.

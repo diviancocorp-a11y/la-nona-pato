@@ -8,6 +8,78 @@
 
 ---
 
+## 25/ago/2026 — Dico Core retro y brazos articulados (sesión Codex)
+
+Ricky rechazó la primera cara sin accesorios porque seguía viéndose genérica
+y luego detectó que las pupilas espejadas hacían parecer bizco a Dico. La
+dirección aprobada para seguir iterando es cartoon editorial de los años 50,
+sin volver a galera, bigote, nariz, mejillas ni pecas.
+
+### Hecho
+
+- `CaraDeTinta.jsx` tiene ojos perfectamente simétricos en posición, tamaño y
+  altura. Las dos pupilas comparten orientación —nunca se espejan— y usan una
+  masa negra orgánica con recorte crema angosto. Así miran juntas y conservan
+  la firma retro de la referencia sin copiar otro personaje.
+- Los párpados son formas sólidas `#FDCE18`, color muestreado de la moneda, con
+  borde inferior negro. Si una emoción los activa no aparece una línea
+  transparente sobre el cuerpo.
+- `esperando` dejó la pose cansada: ojos abiertos, cejas simétricas levantadas,
+  sonrisa leve, mirada apenas elevada, puntos de proceso y manos algo abiertas.
+- `pregunta` muestra un `?` SVG con halo crema para funcionar en fondos claros
+  y oscuros. La mano izquierda entra desde abajo y queda bajo el mentón; no
+  cruza ojos ni boca.
+- El cuerpo dejó de ser un único render rígido. `DicoCara.jsx` monta tres capas:
+  `moneda-sin-brazos.webp`, brazo izquierdo y brazo derecho recortados del
+  `moneda.webp` original. Los brazos viven detrás de la moneda para ocultar el
+  empalme; sólo la mano pensante pasa delante en `pregunta`.
+- `dico.css` define una pose de manos para los cinco estados: reposo (`idle`),
+  expectativa (`esperando`), apertura/celebración (`contento`), manos bajas
+  hacia adentro (`preocupado`) y mentón (`pregunta`). Son transforms sobre dos
+  sprites, no cinco renders nuevos.
+- La moneda limpia se produjo editando el activo existente y quedó como WebP
+  transparente 800×800. Los dos activos de runtime siguen por debajo de 100 KB
+  cada uno. Se actualizaron el README de poses y `PLAN-DICO.md` para que Claude
+  no vuelva a tratar brazos y moneda como una sola pieza.
+- `dicoEscena.test.jsx` ahora cubre las dos capas de brazos y la anatomía de la
+  pregunta. La suite pasó de 869 a 870 tests.
+
+### Verificado
+
+- Vitrina real `http://localhost:5199/?escena=dico`: fondos claro/oscuro,
+  estados 30/48/120 px, composición operativa y viewport 390×844. Las pupilas
+  miran juntas, la abertura crema se mantiene legible, no hay halo de fondo en
+  la moneda limpia y las cinco poses de manos se distinguen.
+- Suite completa: **870/870 tests** en 64 archivos.
+- Build `CLIENT=hermes-cochi`: limpio; integridad y schema-sync pasan. El build
+  transforma 495 módulos y publica sólo los dos WebP activos del Core.
+- ESLint focalizado: 0 errores; tres warnings preexistentes de Fast Refresh.
+- Producción sigue READY en el commit `18c5ae4`; esta identidad no se desplegó
+  porque Ricky no pidió deploy.
+
+### Pendiente inmediato
+
+1. Ricky debe revisar la versión articulada en la vitrina. Si cambia una pose,
+   ajustar sólo sus transforms en `dico.css`, no generar otro cuerpo.
+2. Después de aprobarla, usar esta mirada neutral como master para cualquier
+   estado nuevo. No volver a espejar pupilas ni introducir diferencias de
+   altura entre ojos.
+3. No migrar aún las siete escenas heredadas: siguen fuera del flujo operativo
+   y convertirlas antes de necesitar una escena concreta crea arte descartable.
+4. El bloque general siguiente continúa siendo tokens + piloto `/registro`.
+
+### Bloqueado por Ricky
+
+Sólo aprobación visual y decisión de deploy. No hay bloqueo técnico.
+
+### Trabajo local vivo — no pisar
+
+Al cerrar esta sección no debe quedar trabajo local: rostro, sprites, CSS,
+tests y documentación se entregan juntos en un único commit. Los PNG generados
+durante la separación quedaron fuera del repo; sólo entra el WebP final.
+
+---
+
 ## 25/ago/2026 — Dico Core deja la identidad Monopoly (sesión Codex)
 
 Ricky entregó una directriz de marca nueva que reemplaza una decisión tomada
