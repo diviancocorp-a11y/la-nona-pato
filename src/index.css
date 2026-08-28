@@ -6,7 +6,7 @@
 
 /* ─── Accessibility: Focus Visible ──────────────────── */
 *:focus-visible {
-  outline: 2px solid var(--ac, #C45D3E);
+  outline: 2px solid var(--ac, var(--ds-color-focus-ring));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -54,41 +54,41 @@
  * Usage: bg-bg, text-tx, bg-accent, text-accent, etc.
  */
 @theme {
-  /* ── Fonts ── */
-  --font-sans: 'DM Sans', sans-serif;
-  --font-serif: 'DM Serif Display', serif;
+  /* Compatibility bridge. New UI consumes --ds-* directly. */
+  --font-sans: var(--ds-compat-tailwind-font-sans);
+  --font-serif: var(--ds-compat-tailwind-font-serif);
 
   /* ── Colors: Background ── */
-  --color-bg: #FBF7F2;
-  --color-bg2: #F3EDE4;
-  --color-bg3: #FFF;
+  --color-bg: var(--ds-compat-tailwind-bg);
+  --color-bg2: var(--ds-compat-tailwind-bg-2);
+  --color-bg3: var(--ds-compat-tailwind-bg-3);
 
   /* ── Colors: Text ── */
-  --color-tx: #2D1B0E;
-  --color-t2: #6B5744;
-  --color-t3: #9C8B7A;
+  --color-tx: var(--ds-compat-tailwind-text);
+  --color-t2: var(--ds-compat-tailwind-text-2);
+  --color-t3: var(--ds-compat-tailwind-text-3);
 
   /* ── Colors: Accent (terracotta) ── */
-  --color-accent: #C45D3E;
-  --color-accent-light: #FFF0EB;
+  --color-accent: var(--ds-compat-tailwind-accent);
+  --color-accent-light: var(--ds-compat-tailwind-accent-light);
 
   /* ── Colors: Semantic ── */
-  --color-green: #3A7D44;
-  --color-green-light: #E8F5E9;
-  --color-yellow: #D4A017;
-  --color-yellow-light: #FFF8E1;
-  --color-red: #C62828;
-  --color-red-light: #FFEBEE;
-  --color-blue: #1565C0;
-  --color-blue-light: #E3F2FD;
+  --color-green: var(--ds-compat-tailwind-success);
+  --color-green-light: var(--ds-compat-tailwind-success-light);
+  --color-yellow: var(--ds-compat-tailwind-warning);
+  --color-yellow-light: var(--ds-compat-tailwind-warning-light);
+  --color-red: var(--ds-compat-tailwind-error);
+  --color-red-light: var(--ds-compat-tailwind-error-light);
+  --color-blue: var(--ds-compat-tailwind-info);
+  --color-blue-light: var(--ds-compat-tailwind-info-light);
 
   /* ── Spacing / Radius ── */
-  --radius-base: 16px;
-  --radius-sm: 10px;
-  --radius-lg: 24px;
+  --radius-base: var(--ds-compat-tailwind-radius-base);
+  --radius-sm: var(--ds-compat-tailwind-radius-sm);
+  --radius-lg: var(--ds-compat-tailwind-radius-lg);
 
   /* ── Shadows ── */
-  --shadow-card: 0 2px 12px rgba(45, 27, 14, 0.08);
-  --shadow-elevated: 0 8px 24px rgba(45, 27, 14, 0.12);
-  --shadow-accent: 0 4px 15px rgba(196, 93, 62, 0.3);
+  --shadow-card: var(--ds-compat-tailwind-shadow-card);
+  --shadow-elevated: var(--ds-compat-tailwind-shadow-elevated);
+  --shadow-accent: var(--ds-compat-tailwind-shadow-accent);
 }
