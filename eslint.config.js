@@ -7,6 +7,12 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist', 'node_modules', 'playwright-report', 'test-results',
+    // Worktrees de agentes: son copias COMPLETAS del repo en otro commit.
+    // Sin esto, `eslint .` lintea codigo viejo con la config nueva y falla
+    // localmente por reglas que ya no existen — mientras en CI pasa, porque
+    // el checkout limpio no las tiene. Un lint que dice cosas distintas en
+    // cada maquina deja de ser un gate.
+    '.claude/worktrees',
     // TS files need @typescript-eslint/parser which we don't ship; skip them
     // from lint. They're still type-checked by tsc (typecheck job).
     '**/*.ts', '**/*.tsx',

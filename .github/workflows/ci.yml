@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `platform/runtime-tenant` es donde vive el edificio y donde se trabaja
+    # todos los dias. Hasta el 29/ago CI solo escuchaba `main` (el legacy), asi
+    # que esa rama tenia CERO corridas... mientras Vercel SI la auto-deploya a
+    # produccion en cada push. O sea: el commit llegaba al cliente sin pasar por
+    # ningun gate. Esto cierra ese hueco.
+    branches: [main, platform/runtime-tenant]
   pull_request:
-    branches: [main]
+    branches: [main, platform/runtime-tenant]
 
 concurrency:
   group: ci-${{ github.ref }}
