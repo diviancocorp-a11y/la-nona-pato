@@ -97,9 +97,68 @@ una directiva de **Tailwind v4**: el design system de Dico se está construyendo
 *sobre* Tailwind. Sacarlo rompe `designSystemTokens.test.js` y el trabajo de
 Machine Soul. Queda descartado, no pospuesto.
 
+### Segunda tanda del 29/ago — implementación
+
+Commiteado en 7 commits chicos y de un solo tema (para que Codex pueda revertir
+uno sin perder el resto). **Nada pusheado**: `git push` en esta rama deploya a
+producción.
+
+| Commit | Qué |
+|---|---|
+| `c9772c1` | CI corre en `platform/runtime-tenant`; eslint ignora `.claude/worktrees` |
+| `e730de7` | Release de Sentry unificado en `src/lib/release.js` + test anti-drift |
+| `61ddb67` | Borrados `src/config/*`, `plugins.test.js`, assets del scaffold |
+| `5c46739` | Migración 0060 (`signup_tenant` lee `biz_name`) |
+| `3d9057b` | HANDOFF + las dos skills |
+| `3ba8c08` | **Suscripción en solo lectura** — paso 1 de 7 de la monetización |
+| `ff14618` | **Guard de drift de funciones** + migración 0061 |
+
+**Suscripción (paso 1).** `fetchMyTenant` ahora trae `plan_id, ciclo,
+paga_hasta, suspendido_at`, y `usePlatformTenant` expone `suscripcion`.
+**No recorta nada**: `puedeOperar` sale de `tenants.status`, que lo escribe el
+server — el front no deduce suspensiones de la fecha, porque un front que
+calcula quién está al día puede dejar afuera a alguien que pagó. Los dos
+estados que hoy dan en producción (`sin_fecha` para los 7 negocios, `sin_plan`
+para toda alta nueva) están cubiertos por tests: si alguien cablea el bloqueo
+antes de tiempo, esos tests avisan que dejaría afuera a todos los clientes.
+
+**Guard de drift.** `scripts/check-functions-drift.mjs` compara el cuerpo
+(`pg_proc.prosrc`, que Postgres guarda literal) de 7 funciones críticas contra
+la última migración que las define. Necesita el RPC de la 0061; sin
+credenciales o sin el RPC saltea con exit 0. Ya está enganchado a
+`morning-health.mjs`.
+
+### Bloqueado: no pude aplicar las migraciones
+
+El clasificador de permisos bloquea `apply_migration` sobre producción, igual
+que bloquea el deploy de Vercel. **Las 0060 y 0061 quedan escritas y sin
+aplicar.** Van juntas:
+
+```
+0060  signup_tenant lee biz_name   (arregla el bug latente del alta)
+0061  function_snapshot() RPC      (habilita el guard de drift)
+```
+
+Estado previo de `signup_tenant` guardado para revertir:
+`md5 = 33aac832a052223afbe65281d139e983`, con `business_name` y sin `biz_name`.
+Después de aplicar, verificar:
+
+```sql
+select pg_get_functiondef('public.signup_tenant'::regproc) like '%biz_name%';
+```
+
+`_migrations_through` ya está en `0061` y es correcto aunque todavía no se
+apliquen: ese marcador dice hasta qué migración se revisó el snapshot de
+**columnas**, y ninguna de las dos toca columnas.
+
+**Aplicar el archivo del repo tal cual**, no una versión resumida: el guard de
+drift compara el cuerpo desplegado contra ese archivo, así que cualquier
+diferencia —aunque sea equivalente— lo va a reportar como drift la primera vez
+que corra.
+
 ### Pendiente, en orden (riesgo creciente)
 
-1. Aplicar la 0060 y probar el alta punta a punta.
+1. Aplicar la 0060 y la 0061, y probar el alta punta a punta.
 2. `retry_signup_tenant(p_slug text)` como **RPC nueva** — no como parámetro de
    `signup_tenant()`: agregarle firma crea un overload y PostgREST resuelve por
    argumentos. Es el callejón sin salida de `Bienvenido.jsx` cuando el slug se
