@@ -13,14 +13,14 @@
 // — se ve QUE toco el cliente, no SUS datos.
 import * as Sentry from '@sentry/react';
 import business from '@business';
+import { RELEASE } from './release.js';
 
 const dsn = import.meta.env.VITE_SENTRY_DSN || '';
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.0.0';
 
 if (dsn) {
   Sentry.init({
     dsn,
-    release: `hermes-gastro@${APP_VERSION}`,
+    release: RELEASE,
     environment: import.meta.env.MODE || 'production',
     integrations: [
       Sentry.replayIntegration({ maskAllText: true, blockAllMedia: false }),

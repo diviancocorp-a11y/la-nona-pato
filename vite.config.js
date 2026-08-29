@@ -115,6 +115,15 @@ function versionJsonPlugin() {
 // Setup: crear token en Sentry > Settings > Auth Tokens (scope project:releases)
 // y agregar SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT a las env del build.
 const SENTRY_ENABLED = !!process.env.SENTRY_AUTH_TOKEN
+
+// El release TIENE que ser identico al que emite el runtime
+// (src/lib/release.js). Antes eran `${CLIENT}@${npm_package_version}` aca y
+// `hermes-gastro@${VITE_APP_VERSION}` alla: prefijos incompatibles, asi que
+// los sourcemaps se subian a un release que ningun evento reportaba y todo
+// stack trace de produccion llegaba minificado. src/test/sentryRelease.test.js
+// compara los dos formatos y falla si vuelven a divergir.
+const SENTRY_RELEASE = `dico@${BUILD_ID}`
+
 async function sentryPlugins() {
   if (!SENTRY_ENABLED) return []
   try {
@@ -123,7 +132,7 @@ async function sentryPlugins() {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
-      release: { name: `${CLIENT}@${process.env.npm_package_version || 'dev'}` },
+      release: { name: SENTRY_RELEASE },
       sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.map'] },
     })]
   } catch {

@@ -9,9 +9,10 @@
  * for basic error reporting in a small app.
  */
 
+import { RELEASE } from './release.js';
+
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || '';
 const ANALYTICS_ID = import.meta.env.VITE_ANALYTICS_ID || '';
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.0.0';
 const ENV = import.meta.env.MODE || 'production';
 
 // ─── Persistent context (tenant + user) ──────────────────
@@ -60,7 +61,7 @@ function buildSentryEnvelope(error, context = {}) {
     platform: 'javascript',
     level: 'error',
     environment: ENV,
-    release: `hermes-gastro@${APP_VERSION}`,
+    release: RELEASE,
     exception: {
       values: [{
         type: error.name || 'Error',
