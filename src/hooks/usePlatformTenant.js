@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase';
 import { getSession, logout } from '../services/auth';
 import { fetchMyTenant } from '../services/platformAdmin';
 import { captureException } from '../lib/observability.js';
+import { resumenDeSuscripcion } from '../modules/suscripcion';
 
 export default function usePlatformTenant() {
   const [session, setSession] = useState(null);
@@ -94,6 +95,11 @@ export default function usePlatformTenant() {
 
   return {
     session, tenant, role, roles, branchIds, status,
+    // Suscripcion en SOLO LECTURA: que plan tiene y como viene la fecha.
+    // Todavia no recorta nada — `suscripcion.puedeOperar` sale de
+    // `tenants.status`, que lo escribe el server. Ver src/modules/suscripcion.js
+    // para el orden en que se va a ir encendiendo.
+    suscripcion: resumenDeSuscripcion(tenant),
     isOwner: roles.includes('owner') || role === 'owner',
     // Lista vacia = sin limite de sucursal (el caso del duenio).
     todasLasSucursales: branchIds.length === 0,

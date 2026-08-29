@@ -92,7 +92,12 @@ export async function fetchMyTenant() {
 
   const { data, error } = await supabase
     .from('tenants')
-    .select('id, slug, name, vertical, status, settings, tenant_members(role, roles, branch_id)')
+    // La suscripcion viaja aca (plan_id, ciclo, paga_hasta, suspendido_at) para
+    // que el panel pueda MOSTRARLA. Todavia no bloquea nada: ver
+    // src/modules/suscripcion.js, que explica por que la lectura va primero.
+    .select('id, slug, name, vertical, status, settings, '
+      + 'plan_id, ciclo, paga_hasta, suspendido_at, '
+      + 'tenant_members(role, roles, branch_id)')
     .eq('slug', slug)
     .maybeSingle();
 
