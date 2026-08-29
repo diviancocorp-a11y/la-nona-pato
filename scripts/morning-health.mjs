@@ -85,7 +85,15 @@ async function main() {
   if (drift.rojo) problemas.push(`Snapshot del edificio DESACTUALIZADO — correr npm run schema:sync`);
   detalles.push(`schema: ${drift.texto}`);
 
-  /* ── 5. Sentry (opcional) ────────────────────────────── */
+  /* ── 5. Drift de funciones (opcional, exige service role) ─
+     El de schema mira COLUMNAS; este mira el CUERPO de las funciones
+     criticas. Es el unico que habria visto que `signup_tenant` desplegada no
+     la producia ninguna migracion del repo (29/ago). */
+  const fnDrift = checkFunctionsDrift();
+  if (fnDrift.rojo) problemas.push(`Funciones DRIFTEADAS vs migraciones — node scripts/check-functions-drift.mjs --verbose`);
+  detalles.push(`funciones: ${fnDrift.texto}`);
+
+  /* ── 6. Sentry (opcional) ────────────────────────────── */
   const sentry = await checkSentry();
   if (sentry.rojo) problemas.push(`Sentry: ${sentry.texto}`);
   else detalles.push(`sentry: ${sentry.texto}`);
@@ -173,6 +181,23 @@ function checkSchemaDrift() {
   if (/salteado/.test(salida)) return { rojo: false, texto: 'sin credenciales — salteado' };
   if (r.status === 0) return { rojo: false, texto: '✓ al dia' };
   return { rojo: true, texto: 'DESACTUALIZADO' };
+}
+
+/**
+ * El cuerpo de las funciones criticas vs lo que dicen las migraciones.
+ *
+ * Distinto de checkSchemaDrift: ese compara COLUMNAS y este el CODIGO. Una
+ * funcion que drifteo no falla —hace algo distinto de lo que dice el repo— y
+ * ningun otro guard lo ve.
+ */
+function checkFunctionsDrift() {
+  const r = spawnSync(process.execPath, [join(HERE, 'check-functions-drift.mjs')], {
+    encoding: 'utf-8', timeout: 60000,
+  });
+  const salida = `${r.stdout || ''}${r.stderr || ''}`;
+  if (/salteado/.test(salida)) return { rojo: false, texto: 'sin credenciales — salteado' };
+  if (r.status === 0) return { rojo: false, texto: '✓ coinciden' };
+  return { rojo: true, texto: 'DRIFT' };
 }
 
 /** Issues sin resolver vistos en las ultimas 24h. Sin token se saltea. */
