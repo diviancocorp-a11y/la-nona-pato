@@ -93,6 +93,44 @@ Los nombres `hermes-*` de la infraestructura **se dejan como están**:
 renombrarlos rompe deploys a cambio de nada, no los ve ningún cliente.
 
 ### Trampas que ya nos costaron tiempo
+
+- **`vitest` con el pool `forks` cuelga workers en Windows y sale exit 0
+  igual.** El 29/ago la suite decia `749 passed` con `11 errors` y exit 0: esos
+  11 eran archivos de test que **nunca se ejecutaron**. Con `--pool=threads`
+  corren los 64 archivos / 862 tests en ~45 s y sin errores. Si el numero de
+  tests baja sin motivo, es esto. Correr siempre:
+  `NODE_ENV=test npx vitest run --pool=threads`
+- **La funcion DESPLEGADA puede no ser la que dice la migracion.** Paso con
+  `signup_tenant()`: la de produccion era mas nueva que cualquier archivo del
+  repo y leia `business_name`, un campo que no escribe nadie (el cliente manda
+  `biz_name`). Ningun gate lo detecta: `check-schema-freshness.mjs` compara
+  *hasta que migracion* dice estar al dia el snapshot, no si lo desplegado
+  coincide con lo que esa migracion produce. **Antes de razonar sobre una RPC,
+  trae su cuerpo real**:
+  `select pg_get_functiondef('public.signup_tenant'::regproc)`.
+  Leer la migracion y asumir que eso corre ya costo una conclusion equivocada.
+- **Tailwind v4 es infraestructura, no deuda.** `src/index.css` tiene un bloque
+  `@theme { ... }` que mapea los tokens `--ds-*` del design system a Tailwind.
+  Sacarlo rompe `src/test/designSystemTokens.test.js` y Machine Soul entero.
+  Que casi no haya clases utilitarias en el JSX **no** significa que sobre.
+- **El release de Sentry se arma en UN solo lugar**: `src/lib/release.js`,
+  formato `dico@<BUILD_ID>`. Estuvo partido en tres con prefijos incompatibles
+  y los sourcemaps quedaban colgados de un release fantasma: todos los stack
+  traces de produccion llegaban minificados, sin que fallara nada.
+  `src/test/sentryRelease.test.js` compara el uploader (`vite.config.js`) con
+  el runtime y falla si divergen. **No borrar ese test.**
+- **CI corre en `main` y en `platform/runtime-tenant`** (desde el 29/ago). Ojo:
+  **Vercel auto-deploya `platform/runtime-tenant` a produccion en cada push** —
+  los deployments traen `githubDeployment:1` con esa ref. El `"link": null` que
+  devuelve la API de Vercel es una limitacion del endpoint, no significa que no
+  haya integracion git. No deducir de ahi.
+- **`npm audit --audit-level=high` esta rojo** (undici, vite 8.0.0-8.0.15,
+  launch-editor: son dev-deps, no llegan al browser). `npm audit fix` toca
+  `package-lock.json`: coordinar con quien lo tenga tomado.
+- **No deducir ausencia de un `grep`.** Un `grep -ril` sobre binarios solo
+  matchea los que contienen la cadena adentro. Se reportaron tres PNGs de marca
+  como inexistentes y estaban versionados. Para "existe este archivo?" va `ls`
+  o `git ls-files`, nunca un grep de contenido.
 - **Deploy a producción va por CLI**, no por git:
   `npx vercel --prod --scope diviancocorp-a11ys-projects --yes`.
   El trabajo vive en la rama `platform/runtime-tenant`; `main` es el legacy y

@@ -8,6 +8,241 @@
 
 ---
 
+## 29/ago/2026 — Auditoría técnica: CI, Sentry y drift de `signup_tenant` (sesión Claude)
+
+Auditoría de 5 fases contrastada contra la base de producción, Vercel y GitHub.
+Ricky la revisó a su vez y corrigió dos errores míos. Lo que sigue es el
+resultado ya depurado. **Codex: leé la sección "Zonas y dueños" antes de tocar
+nada — hay cosas que dejé sin hacer justamente para no pisarte.**
+
+### Zonas y dueños al 29/ago
+
+| Zona | Dueño | Estado |
+|---|---|---|
+| `src/index.css`, `src/styles/hermes-tokens.css` | **Codex** (`dico-machine-soul-phase1`) | commiteado en `621c492` — **no toqué** |
+| `package.json`, `.gitignore`, `e2e/`, `playwright.*`, `clients/dico-qa-lite/`, `scripts/qa-lite/`, `platform/qa-lite/` | **Codex** (`dico-qa-lite`) | sin commitear — **no toqué** |
+| `src/components/dico/**` | **Ricky** | sin commitear — **no toqué** |
+| `.github/workflows/ci.yml`, `eslint.config.js`, `src/lib/observability.js`, `src/lib/sentryFull.js`, `vite.config.js` (sólo el bloque Sentry), `platform/migrations/0060`, `src/lib/release.js`, `src/test/sentryRelease.test.js` | **Claude** (esta sesión) | hecho |
+
+### Hecho
+
+- **CI corría en `main` únicamente.** `platform/runtime-tenant` tenía **0 runs**
+  mientras Vercel **sí** la auto-deploya a producción en cada push
+  (verificado: los 20 deployments traen `githubDeployment:1` y
+  `githubCommitRef: platform/runtime-tenant`). O sea: el commit llegaba al
+  cliente sin pasar por ningún gate. Agregada la rama a los triggers de
+  `ci.yml`. Antes de encenderlo verifiqué los 6 gates a mano: typecheck,
+  eslint, integrity, schema, freshness y columns pasan todos.
+- **`eslint.config.js` ahora ignora `.claude/worktrees`.** Era el origen del
+  único error de lint del repo: linteaba una worktree de agente en un commit
+  viejo con la config nueva. Fallaba local y pasaba en CI.
+- **Sentry unificado.** Había tres lugares armando el release con prefijos
+  incompatibles (`${CLIENT}@...` en el uploader, `hermes-gastro@...` en los dos
+  reporters): los sourcemaps se subían a un release que ningún evento
+  reportaba, así que **todo stack trace de producción llegaba minificado**.
+  Ahora hay un solo origen, `src/lib/release.js`, con formato `dico@<BUILD_ID>`
+  — el SHA corto del commit, que ya se emitía en `/version.json`.
+  `src/test/sentryRelease.test.js` compara uploader y runtime y falla si vuelven
+  a divergir. **No borrar ese test**: es lo único que impide que se repita.
+- **Limpieza acotada** (sólo fuera de las zonas de Codex): borrados
+  `src/config/delivery.js`, `src/config/payments.js`, `src/test/plugins.test.js`
+  (el registry de plugins no lo leía nadie salvo su propio test) y
+  `src/assets/{hero.png,react.svg,vite.svg}`.
+
+### Escrito y NO aplicado — decisión de Ricky
+
+- **`platform/migrations/0060_signup_tenant_lee_biz_name.sql`.** La función
+  `signup_tenant()` **desplegada no la produce ninguna migración del repo**: es
+  más nueva que la 0041 y lee el nombre del negocio de `business_name`, campo
+  que no existe en ningún lado (`signup.js` manda `biz_name`, y las 4
+  migraciones anteriores leen `biz_name`). El `coalesce` cae siempre al
+  fallback: **el próximo alta va a guardar el negocio con su slug como nombre**
+  ("Panadería del Sur" → `panaderia-del-sur`), y no hay UI para corregirlo.
+  Es latente, no observado: los 7 tenants tienen `name <> slug` porque los dos
+  últimos son del 15/ago, anteriores al drift. La migración reproduce el cuerpo
+  desplegado **exacto** con un solo cambio, así que aplicarla sin el fix sería
+  un no-op — esa propiedad la hace segura de revisar.
+  El marcador `_migrations_through` del snapshot ya está en `0060`.
+
+  **Codex:** tu harness QA aplica migraciones hasta 0059. Cuando se aplique la
+  0060 hay que subir ese número en `platform/qa-lite/`.
+
+### Verificado, no deducido
+
+- 7 tenants, los 7 con `paga_hasta = NULL`, 0 suspendidos, 1 con primer valor.
+- `cron.job` tiene **un solo job**: `release_dormant_tenants(45)`.
+  `suspender_impagos()` existe y no está agendada.
+- `tenant_puede_operar()` no la invoca ninguna policy, RPC ni pantalla.
+- 47/47 tablas con RLS. Las 3 sin policies son fail-closed a propósito.
+- `npm audit --audit-level=high` **ya estaba rojo** antes de esta sesión: 7
+  high (undici, vite 8.0.0–8.0.15, launch-editor). No lo arreglé porque
+  `npm audit fix` toca `package-lock.json`, que Codex tiene modificado.
+  **Queda para cuando qa-lite aterrice.**
+
+### Dos cosas que la auditoría dijo mal (corregidas)
+
+1. Dije que `hermes-icon-192/512.png` y `hermes-apple-touch.png` estaban
+   referenciados pero no existían. **Existen y están versionados.** Los deduje
+   ausentes de un `grep` de contenido sobre binarios en vez de correr `ls`.
+2. Dije que el proyecto Vercel `hermes-platform` no tenía integración Git,
+   por un `"link": null` de la API. **Sí la tiene** y auto-deploya. Eso hace
+   el problema de CI *peor*, no mejor.
+
+### Anulado: NO sacar Tailwind
+
+La auditoría proponía eliminar Tailwind porque los únicos consumidores de
+clases utilitarias eran componentes huérfanos. **Es incorrecto.** El
+`src/index.css` de Codex en `621c492` tiene un bloque `@theme { ... }`, que es
+una directiva de **Tailwind v4**: el design system de Dico se está construyendo
+*sobre* Tailwind. Sacarlo rompe `designSystemTokens.test.js` y el trabajo de
+Machine Soul. Queda descartado, no pospuesto.
+
+### Pendiente, en orden (riesgo creciente)
+
+1. Aplicar la 0060 y probar el alta punta a punta.
+2. `retry_signup_tenant(p_slug text)` como **RPC nueva** — no como parámetro de
+   `signup_tenant()`: agregarle firma crea un overload y PostgREST resuelve por
+   argumentos. Es el callejón sin salida de `Bienvenido.jsx` cuando el slug se
+   ocupa entre el registro y la confirmación del mail: pantalla terminal, sin
+   botón, y cada login futuro repite el error.
+3. Contrato E2E: `ci.yml` pasa `BASE_URL` y `playwright.config.ts` sólo lee
+   `TARGET_URL`; además ese job no pasa `E2E_SUPABASE_ANON_KEY`, así que los
+   tests con `test.skip(!ANON_KEY)` se saltan en silencio. **Coordinar con
+   Codex**: qa-lite está construyendo su propio config.
+4. `npm audit fix` (después de qa-lite).
+5. Monetización, **gradual**: exponer plan en lectura → mostrar "Mi
+   suscripción" → asignar plan en el alta → límites con aviso → bloqueo →
+   cobros → **recién al final** el cron de suspensión.
+6. Limpieza en cola, ya verificada y **sin hacer** por cercanía a Codex:
+   `src/components/ui/{Avatar,Badge,Button,Card,Input,Modal,Toast,OptimizedImage}.jsx`
+   (0 importadores), `src/App.css` (0 importadores), la worktree abandonada
+   `.claude/worktrees/admiring-hofstadter-b27a5d` (8 MB).
+
+### Mejora de proceso
+
+El drift de `signup_tenant` pasó por un hueco real: `check-schema-freshness.mjs`
+compara **hasta qué migración** dice estar al día el snapshot, no si la función
+desplegada es la que esa migración produce. Un `apply_migration` por MCP sin
+archivo es invisible para todos los gates.
+
+Propuesta: `scripts/check-functions-drift.mjs` que traiga
+`pg_get_functiondef` de las funciones críticas (`signup_tenant`,
+`complete_order`, `submit_order`, `sumar_staff`) y lo compare contra el
+`create or replace` de la última migración que las define. Sumado a
+`morning-health.mjs`, convierte "alguien aplicó algo y no escribió el archivo"
+de invisible a un mensaje de Telegram. Es el mismo antídoto que ya existe para
+las columnas, aplicado a funciones.
+
+**Además**: en esta máquina `vitest` con el pool `forks` cuelga workers y sale
+**exit 0 igual** (11 unhandled errors, y en un caso 0 tests corridos con exit
+0). Con `--pool=threads` la suite corre en ~18 s y sin errores. Vale evaluar
+fijarlo en `vite.config.js` — **pero eso toca la config que Codex está
+usando para qa-lite, así que lo dejo propuesto, no hecho.**
+
+---
+
+## 28/ago/2026 — DICO-QA-Lite implementado; gate visual todavía pendiente (sesión Codex)
+
+Phase 1 de Machine Soul permanece cerrada como checkpoint local en
+`621c4925365506862035fdd66fc6a4dec6d1b42b`. Para demostrar su neutralidad se
+armó un harness QA aislado que compara los refs reales `621c492^` y `621c492`.
+No se empezó `/registro` y no se modificó `src/**` desde el worktree QA.
+
+### Hecho
+
+- Worktree `C:\Users\ricar\Proyectos\hermes-gastro-qa-lite`, rama
+  `codex/dico-qa-lite`, creado desde `621c492`. El trabajo sigue local y sin
+  commit para permitir la auditoría técnica antes de publicarlo.
+- `platform/qa-lite/`: Supabase local pinneado, 58 migraciones copiadas a un
+  directorio generado/ignorado, seed sintético, bootstrap de Auth con UUID
+  efímero, reset y salida capturada/sanitizada. No hay credenciales en repo ni
+  en manifiestos.
+- El seed colisionaba con `settings_pkey`: la migración
+  `0025_settings_table.sql` crea `settings(tenant_id, biz_name)` mediante el
+  trigger `tenants_crear_settings` al insertar el tenant. El seed usa la misma
+  PK `10000000-0000-4000-8000-000000000001`. Se corrigió con
+  `ON CONFLICT (tenant_id) DO UPDATE SET ...` explícito para garantizar todos
+  los valores QA; no usa `DO NOTHING` ni borra settings.
+- `scripts/qa-lite/`: comparación de dos worktrees Git exactos, builds y
+  previews separados, secuencia estrictamente serial
+  `reset -> base -> reset -> candidate`, comparación estructural/PNG y
+  manifiesto sin secrets.
+- `e2e/qa-lite/`: guard de red, Google Fonts CSS+binarios servidos con fixtures
+  locales, reloj/render estabilizados, contrato DOM/layout/computed styles y
+  las ocho capturas bloqueantes acordadas.
+- Launcher cross-platform centralizado: `.cmd` en Windows pasa por
+  `ComSpec /d /c` con rechazo de metacaracteres; comandos nativos (`docker`,
+  `git`, `node`) se ejecutan por nombre vía PATH. Docker conserva diagnóstico
+  sanitizado con command/args/status/signal/error/stdout/stderr.
+- El fallo más reciente del runner BASE era del harness: `loginAdmin()` hacía
+  `page.evaluate(localStorage...)` sobre una página potencialmente
+  `about:blank`. Se separaron responsabilidades: `loginAdmin()` sólo autentica
+  y `openAdmin()` instala el theme antes de navegar. El helper nuevo
+  `e2e/qa-lite/admin-theme.mjs` usa `addInitScript`, no recarga, y resuelve
+  correctamente light/dark aun cuando la misma Page acumula init scripts.
+- Tests unitarios agregados para resolver `.cmd`/Docker, contrato trigger-seed
+  y theme Admin light/dark sin tocar localStorage en `about:blank`.
+
+### Verificado
+
+- Antes de los últimos fixes: suite del repo **877/877**, build del cliente
+  `dico-qa-lite`, typecheck y lint sin errores; QA unit tests **9/9** después
+  del fix de seed (dato confirmado por Ricky).
+- Ricky confirmó desde Node en este mismo worktree: Supabase local levanta,
+  aplica migraciones hasta `0059`, seed y Auth local completan correctamente.
+- El compare llegó al runner BASE y expuso el bug de `page.evaluate`; por eso
+  DOM parity y pixel parity todavía **no corrieron**.
+- Después del fix de theme, el ejecutor integrado de esta sesión no pudo
+  repetir el gate porque su proceso no resuelve `docker` (`spawnSync docker
+  ENOENT`). Ricky verificó que desde su Node/terminal sí resuelve Docker 29.7.2;
+  no es evidencia de un fallo del repo.
+- El test nuevo de `admin-theme.mjs` quedó escrito pero no fue ejecutado en esta
+  sesión: la orden posterior autorizada era únicamente `qa:lite:compare`.
+- Phase 1 sigue limpia en su worktree. No hubo push, merge ni deploy.
+
+### Pendiente inmediato
+
+1. En el worktree QA y desde el entorno de Ricky que sí ve Docker, ejecutar
+   `npm run qa:lite:test`. Debe incluir el test nuevo de theme; no asumir que
+   pasa hasta verlo.
+2. Ejecutar exactamente
+   `npm run qa:lite:compare -- --base=621c492^ --candidate=621c492`.
+3. Si vuelve a fallar, detenerse en el primer error completo; no cambiar
+   selectors, contratos DOM ni criterios del gate para conseguir igualdad.
+4. Si DOM, pixels y red externa dan igualdad, marcar Phase 1 como
+   `VISUALLY VERIFIED / MERGEABLE`; recién entonces diseñar Phase 2A
+   `/registro`.
+5. Antes de cualquier commit/push de QA Lite, revisar el diff técnico completo.
+   No reescribir ni amendear el checkpoint `621c492`.
+
+### Bloqueado por Ricky
+
+- La ejecución final debe lanzarse desde su terminal/Node, único entorno que
+  en esta sesión resolvió Docker. No requiere secrets productivos ni cambios
+  en paneles externos.
+- Hace falta su veredicto sobre el diff y autorización separada antes de push,
+  merge o deploy.
+
+### Trabajo local vivo — no pisar
+
+- **QA Lite (nuevo de esta sesión, a medias):** worktree
+  `C:\Users\ricar\Proyectos\hermes-gastro-qa-lite`, rama
+  `codex/dico-qa-lite`, con cambios en `.gitignore`, `package*.json`,
+  `clients/dico-qa-lite/`, `public/clients/dico-qa-lite/`,
+  `platform/qa-lite/`, `e2e/qa-lite/`, `scripts/qa-lite/` y
+  `playwright.qa-lite.config.ts`. No está commiteado ni pusheado. La
+  implementación está completa, pero el gate posterior al fix de theme no.
+- **WIP de Dico previo, ajeno a QA Lite:** el worktree original
+  `platform/runtime-tenant` conserva modificaciones en
+  `src/components/dico/DicoCara.jsx`, `src/components/dico/dico.css`,
+  `src/components/dico/poses/README.md`, `src/test/dicoEscena.test.jsx` y el
+  archivo nuevo `src/components/dico/poses/brazos.webp`. No fueron tocados por
+  esta sesión y no deben mezclarse con el commit de QA.
+- **Phase 1:** worktree `hermes-gastro-phase1`, rama
+  `codex/dico-machine-soul-phase1`, limpio en `621c492`.
+
+---
+
 ## 25/ago/2026 — Dico Core retro y brazos articulados (sesión Codex)
 
 Ricky rechazó la primera cara sin accesorios porque seguía viéndose genérica
