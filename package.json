@@ -24,7 +24,11 @@
     "deploy": "npm run deploy:web && npm run deploy:functions",
     "deploy:web": "npx --yes vercel --prod --scope diviancocorp-a11ys-projects --yes",
     "deploy:functions": "node platform/scripts/deploy-functions.mjs --all",
-    "check:functions": "node platform/scripts/check-functions.mjs"
+    "check:functions": "node platform/scripts/check-functions.mjs",
+    "qa:lite:setup": "node platform/qa-lite/prepare-local.mjs",
+    "qa:lite:compare": "node scripts/qa-lite/compare-refs.mjs",
+    "qa:lite:motion-inventory": "node scripts/qa-lite/inventory-motion.mjs",
+    "qa:lite:test": "node --test e2e/qa-lite/unit/guards.test.mjs e2e/qa-lite/unit/compare.test.mjs e2e/qa-lite/unit/seed.test.mjs e2e/qa-lite/unit/admin-theme.test.mjs e2e/qa-lite/unit/finite-animation-quiescence.test.mjs e2e/qa-lite/unit/dico-neutral.test.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.57.0",
@@ -40,6 +44,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@fontsource/dm-sans": "5.3.0",
+    "@fontsource/dm-serif-display": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/source-serif-4": "5.3.0",
     "@playwright/test": "^1.50.0",
     "@sentry/vite-plugin": "^5.3.0",
     "@tailwindcss/vite": "^4.2.2",
@@ -57,6 +67,9 @@
     "husky": "^9.1.7",
     "jsdom": "^29.0.2",
     "lint-staged": "^15.5.2",
+    "pixelmatch": "7.2.0",
+    "pngjs": "7.0.0",
+    "supabase": "2.116.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.1",

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Producto clasico">
+  <rect width="600" height="400" fill="#f3e7d3"/>
+  <circle cx="300" cy="200" r="118" fill="#c45d3e"/>
+  <circle cx="300" cy="200" r="72" fill="#f5c86b"/>
+</svg>

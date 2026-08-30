@@ -44,3 +44,10 @@ coverage/
 
 # Temporales del CLI de Supabase (los deja el deploy de functions)
 supabase/.temp/
+
+# DICO-QA-Lite: runtime local, migraciones copiadas y evidencia generada.
+platform/qa-lite/supabase/migrations/
+platform/qa-lite/supabase/seed.sql
+platform/qa-lite/supabase/.temp/
+platform/qa-lite/supabase/.branches/
+.qa-lite/

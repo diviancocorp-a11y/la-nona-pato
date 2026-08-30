@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Producto dulce">
+  <rect width="600" height="400" fill="#efe2dc"/>
+  <rect x="175" y="105" width="250" height="190" rx="36" fill="#70412f"/>
+  <circle cx="235" cy="165" r="18" fill="#e0ac3c"/>
+  <circle cx="355" cy="225" r="18" fill="#e0ac3c"/>
+</svg>
