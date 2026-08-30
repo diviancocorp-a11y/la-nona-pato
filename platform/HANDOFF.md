@@ -154,6 +154,13 @@ por probarlo contra producción en vez de darlo por bueno:
 Los dos son la misma lección: un guard contra fallas silenciosas que falla
 silenciosamente es peor que no tenerlo.
 
+### Pusheado el 29/ago
+
+`21b33e5 → d3ec75a`, 12 commits. **Es el primer push con CI activo en esta
+rama.** Recordar: el job `audit` sale rojo por `undici`/`vite` (dev-deps
+preexistentes, no llegan al browser); no bloquea el `build`. Se arregla con
+`npm audit fix`, que toca `package-lock.json` — coordinar con qa-lite.
+
 ### Pendiente menor: los dos `sumar_staff`
 
 Hay dos firmas vivas, `(p_email text)` de la 0053 y `(p_email text, p_puesto
@@ -161,7 +168,9 @@ text)` de la 0057. La 0054 creó la segunda y nadie dropeó la primera —
 `create or replace` con otra firma **crea**, no reemplaza. No es urgente: la
 consola no usa esa RPC, va por la edge function `staff-invite`, que escribe
 `platform_admins` con service role. Cuando se limpie:
-`drop function public.sumar_staff(text);`
+Ya esta escrita: `platform/migrations/0062_drop_sumar_staff_de_un_argumento.sql`
+(sin aplicar — el clasificador bloquea DDL en produccion). El mock muerto de
+la vitrina que la simulaba ya se borro.
 
 ### Referencia histórica (ya resuelto)
 
