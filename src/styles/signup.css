@@ -17,7 +17,7 @@
   align-items: start;
   background: var(--signup-paper);
   color: var(--signup-ink);
-  font-family: var(--ds-font-compat-ui);
+  font-family: var(--ds-font-ui);
 }
 
 .signup-page *,
@@ -93,7 +93,7 @@
   position: relative;
   width: max-content;
   color: var(--signup-gold);
-  font-family: var(--ds-font-compat-ui);
+  font-family: var(--ds-font-ui);
   font-size: var(--ds-type-xl);
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -116,7 +116,7 @@
 .signup-technical {
   margin: 0 0 var(--ds-space-4);
   color: var(--ds-color-intelligence-label);
-  font-family: var(--ds-font-compat-technical);
+  font-family: var(--ds-font-technical);
   font-size: var(--ds-type-xs);
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -126,7 +126,7 @@
 
 .signup-brand__message h1 {
   margin: 0;
-  font-family: var(--ds-font-compat-heading);
+  font-family: var(--ds-font-soul);
   font-size: clamp(64px, 6vw, 94px);
   font-weight: 400;
   letter-spacing: -0.035em;
@@ -158,7 +158,7 @@
   display: grid;
   gap: 6px;
   color: var(--ds-color-neutral-400);
-  font-family: var(--ds-font-compat-technical);
+  font-family: var(--ds-font-technical);
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -198,7 +198,7 @@
 .signup-eyebrow {
   margin: 0 0 var(--ds-space-2);
   color: var(--signup-gold-dark);
-  font-family: var(--ds-font-compat-technical);
+  font-family: var(--ds-font-technical);
   font-size: var(--ds-type-xs);
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -208,7 +208,7 @@
 .signup-intro h2,
 .signup-success h2 {
   margin: 0;
-  font-family: var(--ds-font-compat-heading);
+  font-family: var(--ds-font-soul);
   font-size: clamp(42px, 4.2vw, 64px);
   font-weight: 400;
   letter-spacing: -0.025em;
@@ -255,16 +255,16 @@
 
 .signup-card__heading span {
   color: var(--signup-gold-dark);
-  font-family: var(--ds-font-compat-technical);
+  font-family: var(--ds-font-technical);
   font-size: var(--ds-type-xs);
   letter-spacing: 0.08em;
 }
 
 .signup-card__heading h3 {
   margin: 0;
-  font-family: var(--ds-font-compat-heading);
+  font-family: var(--ds-font-soul);
   font-size: var(--ds-type-xl);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -476,7 +476,7 @@
   border-radius: 0 var(--ds-radius-2) var(--ds-radius-2) 0;
   background: var(--signup-soft);
   color: var(--signup-muted);
-  font-family: var(--ds-font-compat-technical);
+  font-family: var(--ds-font-technical);
   font-size: var(--ds-type-xs);
   white-space: nowrap;
 }

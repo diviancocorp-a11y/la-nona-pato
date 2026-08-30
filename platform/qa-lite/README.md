@@ -79,9 +79,10 @@ antes de salir a red:
 - esas requests se registran como `fulfilledLocal`;
 - cualquier otra URL externa se aborta y hace fallar la prueba.
 
-Las fuentes son exclusivamente las activas hoy: DM Sans, DM Serif Display,
-Instrument Serif, Inter, Source Serif 4 y JetBrains Mono. No hay Söhne, Canela
-ni archivos trial.
+Las fuentes legacy interceptadas son DM Sans, DM Serif Display, Instrument
+Serif, Inter, Source Serif 4 y JetBrains Mono. La tipografía DICO nueva
+(Overused Grotesk + Butler) se sirve localmente desde `public/fonts/dico`;
+no hay Söhne, Canela ni archivos trial.
 
 Los productos del seed usan SVG locales en `public/clients/dico-qa-lite`.
 

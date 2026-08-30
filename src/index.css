@@ -1,3 +1,6 @@
+/* DICO self-hosted typefaces must be declared before token consumers. */
+@import "./styles/dico-fonts.css";
+
 /* Hermes Sistema Visual (tokens editoriales + tipografia + clases base) */
 @import "./styles/hermes-tokens.css";
 

@@ -50,12 +50,12 @@
 }
 
 /* ─── BG del DOCUMENTO según tema (afecta body completo, no solo .cp-root) ─── */
-body[data-cp-theme="ambar"]  { background: #FFFFFF !important; color: #262626; }
-body[data-cp-theme="noche"]  { background: #161412 !important; color: #F4EAD0; }
-body[data-cp-theme="carbon"] { background: #FAF5EE !important; color: #1A1612; }
+body[data-ui-owner="catalog"][data-cp-theme="ambar"]  { background: #FFFFFF !important; color: #262626; }
+body[data-ui-owner="catalog"][data-cp-theme="noche"]  { background: #161412 !important; color: #F4EAD0; }
+body[data-ui-owner="catalog"][data-cp-theme="carbon"] { background: #FAF5EE !important; color: #1A1612; }
 
 /* ─── TEMA AMBAR (alias del default — colores naturales de Hermes) ─── */
-body[data-cp-theme="ambar"] .cp-root {
+body[data-ui-owner="catalog"][data-cp-theme="ambar"] .cp-root {
   --bg:  #FFFFFF;
   --b2:  #F9FAFB;
   --b3:  #F3F4F6;
@@ -71,7 +71,7 @@ body[data-cp-theme="ambar"] .cp-root {
 }
 
 /* ─── TEMA NOCHE (oscuro, base marrón-cálido con acento dorado) ─── */
-body[data-cp-theme="noche"] .cp-root {
+body[data-ui-owner="catalog"][data-cp-theme="noche"] .cp-root {
   --bg:  #161412;
   --b2:  #211E1A;
   --b3:  #2D2924;
@@ -87,7 +87,7 @@ body[data-cp-theme="noche"] .cp-root {
 }
 
 /* ─── TEMA CARBON (light boutique: cremoso cálido + acento chocolate/grafito) ─── */
-body[data-cp-theme="carbon"] .cp-root {
+body[data-ui-owner="catalog"][data-cp-theme="carbon"] .cp-root {
   --bg:  #FAF5EE;
   --b2:  #F1EBE0;
   --b3:  #FFFFFF;

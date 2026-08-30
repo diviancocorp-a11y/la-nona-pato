@@ -44,9 +44,21 @@
     <!-- __BIZ_STRUCTURED_DATA__ -->
     </script>
 
-    <!-- Prevent FOUC: apply dark mode before paint -->
+    <!-- Resolve the visual owner before paint. Tenant theme state is never
+         applied to platform/admin routes. Keep this resolver in sync with
+         src/lib/themeOwnership.js. -->
     <script>
       (function(){
+        var path = window.location.pathname;
+        var host = window.location.hostname.toLowerCase();
+        var platformRoot = host === 'divianco.app' || host === 'www.divianco.app';
+        var owner = /^\/(admin(?:\/|$)|mp-callback$)/.test(path)
+          ? 'admin'
+          : (/^\/(registro|consola|bienvenido|entrar)(?:\/|$)/.test(path) || platformRoot)
+            ? 'platform'
+            : 'catalog';
+        window.__DICO_THEME_OWNER__ = owner;
+
         var t=localStorage.getItem('hermes-theme');
         if(t==='dark'||((!t)&&window.matchMedia('(prefers-color-scheme:dark)').matches)){
           document.documentElement.setAttribute('data-theme','dark');
@@ -63,6 +75,9 @@
     <script>
       (function(){
         try {
+          var owner = window.__DICO_THEME_OWNER__ || 'platform';
+          document.body.setAttribute('data-ui-owner', owner);
+          if (owner !== 'catalog') return;
           var t = localStorage.getItem('cp_theme');
           var bgs = { ambar: '#FFFFFF', noche: '#161412', carbon: '#FAF5EE' };
           if (t && bgs[t]) {

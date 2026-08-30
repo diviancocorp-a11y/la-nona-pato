@@ -1,10 +1,14 @@
 # Dico Design System v0.1
 
 > Inventario y decisiones basados en el código real al 25/ago/2026.
-> Estado: **autoridad propuesta; migración todavía no iniciada**.
+> Estado: **autoridad activa; Phase 2A y Phase 2B en implementación**.
 >
 > El primer piloto será `/registro`, sin cambiar lógica, campos ni flujo. El
 > segundo será Caja/POS para validar densidad táctil y velocidad operativa.
+>
+> La autoridad tipográfica vigente está en
+> `platform/DICO-BRAND-TYPOGRAPHY.md`; reemplaza Söhne/Canela por
+> Overused Grotesk/Butler Free.
 
 ---
 
@@ -47,7 +51,7 @@ entrar con una lista base de deuda existente y fallar sólo ante deuda nueva.
 
 - Se importa desde `Admin.jsx` y `PlatformAdmin.jsx`.
 - Los aliases `--ag-*` se usan ampliamente en el panel.
-- Tipografía: DM Sans.
+- Tipografía legacy: DM Sans; su migración al contrato DICO queda por fases.
 - Neutral actual: zinc frío (`#262626`, `#6B7280`, `#9CA3AF`, `#E5E7EB`).
 - Marca/acción: `#F59E0B`, hoy demasiado cerca del significado de warning.
 - Colores de sección: ventas, pedidos, stock, CRM, preparación y recetas.
@@ -67,7 +71,7 @@ modo oscuro.
   fuera del propio archivo.
 - Ya contiene spacing 4/8/12/16/24/32, sombras, movimiento y componentes
   genéricos, pero mezcla primitivas, semántica y componentes.
-- Tipografía editorial: Instrument Serif; UI: DM Sans; datos: JetBrains Mono.
+- Tipografía legacy: Instrument Serif/DM Sans; datos: JetBrains Mono.
 - Radios: 8, 14 y 22.
 - Botones: 36, 44 y 52 px; input: 48 px.
 
@@ -81,7 +85,7 @@ cambiarlo hoy tiene poco riesgo de regresión. No se crea otro archivo central.
 - Tiene tres temas: ámbar, noche y carbón.
 - Noche y carbón ya aportan una neutralidad cálida aprovechable.
 - Usa Inter para UI y Source Serif 4 para títulos, duplicando descargas y el
-  papel que ya cumplen DM Sans e Instrument Serif.
+  papel que cumplirá la dupla DICO Overused Grotesk + Butler.
 - Spacing: 4/8/12/16/24/32/48/64.
 - Radios: 6/10/16. Botones: 36/44/52 px.
 
@@ -159,8 +163,9 @@ los componentes visuales no deben ramificarse por rubro.
 |---|---|---|
 | `#E8B947` de Signup/noche | **Se conserva** | `--ds-color-gold-500`; marca Dico |
 | Neutral cálido de carbón/noche | **Se conserva** | base neutral común |
-| DM Sans | **Se conserva** | UI y números de operación |
-| Instrument Serif | **Se conserva** | marca, títulos editoriales y marketing |
+| Overused Grotesk | **Nueva autoridad** | UI y números de operación DICO |
+| Butler | **Nueva autoridad** | voz Soul, títulos editoriales y marketing |
+| DM Sans / Instrument Serif | **Compatibilidad temporal** | superficies legacy hasta su migración explícita |
 | `.cp-root` + 3 temas | **Se conserva** | adaptador de tema del catálogo |
 | Cinco estados de `DicoCara` | **Se conservan** | vocabulario oficial del personaje |
 | Terminología de `registry.js` | **Se conserva** | única fuente de copy por vertical |
@@ -171,7 +176,7 @@ los componentes visuales no deben ramificarse por rubro.
 | `--bg`, `--tx`, `--ac` del catálogo | **Se migran** | aliases de compatibilidad por tema |
 | `@theme` con valores crudos | **Se migra** | puente de Tailwind hacia `--ds-*` |
 | Estilos visuales inline de Signup | **Se migran** | CSS scoped + tokens canónicos |
-| Inter y Source Serif 4 | **Se migran** | DM Sans + Instrument Serif |
+| Inter y Source Serif 4 | **Se conservan en catálogo** | identidad tenant; no heredan la marca de plataforma |
 | Zinc frío como neutral global | **Se depreca** | neutral cálido común |
 | Escalas de radios 10/11/14/16/18/22/24 | **Se deprecian** | 4/6/8/12 + pill excepcional |
 | Clases `.hg-*` sin consumidores | **Se deprecian** | retirar tras comprobar strings dinámicos |
@@ -204,7 +209,8 @@ Nombran valores, no intenciones:
 --ds-color-neutral-900: #1a1612;
 --ds-space-4: 16px;
 --ds-radius-3: 8px;
---ds-font-ui: 'DM Sans', sans-serif;
+--ds-font-ui: 'Overused Grotesk', sans-serif;
+--ds-font-soul: 'Butler', serif;
 ```
 
 ### Semántica
@@ -314,9 +320,9 @@ siendo `compact` en una pantalla angosta con desplazamiento controlado.
 | `xl` | 24 px | título de pantalla |
 | `metric` | 28 px | importes y métricas principales |
 
-- UI: DM Sans.
-- Marca/editorial: Instrument Serif.
-- Métricas: DM Sans 700 con números tabulares.
+- UI: Overused Grotesk 300–900.
+- Marca/editorial: Butler Regular/Medium.
+- Métricas: Overused Grotesk 700 con números tabulares.
 - JetBrains Mono queda reservado para códigos e identificadores, no para toda
   cifra. Así se evita una tercera fuente en superficies que no la necesitan.
 - Los displays de marketing pueden superar `xl`; no amplían la escala de la
@@ -370,7 +376,7 @@ onboarding. Sólo sobrevive el primero aplicable.
 
 - Mantener exactamente la lógica, campos, validaciones y llamadas existentes.
 - Extraer únicamente la presentación inline a CSS scoped.
-- Aplicar neutral cálido, DM Sans, marca gold y escalas v0.1.
+- Aplicar neutral cálido, Overused Grotesk + Butler, marca gold y escalas v0.1.
 - Usar densidad `touch` para inputs y CTA; el alta debe ser cómoda en móvil.
 - Restaurar un foco visible inequívoco y validar navegación sólo con teclado.
 - Mantener error junto al campo o bloque que lo origina; Dico no sustituye el

@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import QrRedirect from './pages/QrRedirect'
 import InfoPage from './pages/InfoPage'
 import { lazy, Suspense } from 'react'
@@ -23,6 +23,8 @@ import business from '@business'
 import { useEffect } from 'react'
 import { fetchSettings } from './services/settings'
 import { supabase } from './lib/supabase'
+import { fetchActiveTheme, applyTheme, clearAppliedTheme } from './services/theme'
+import { resolveThemeOwner, THEME_OWNERS } from './lib/themeOwnership'
 
 // lazy con auto-recuperacion (fix HERMES-GASTRO-8, 11/jun): si el usuario
 // tiene la app abierta de ANTES de un deploy, el chunk viejo ya no existe y
@@ -69,9 +71,37 @@ const Loading = () => (
 )
 
 export default function App() {
-  useTheme();
+  const location = useLocation();
+  const themeOwner = resolveThemeOwner({
+    pathname: location.pathname,
+    hostname: window.location.hostname,
+  });
+  useTheme(themeOwner);
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (themeOwner !== THEME_OWNERS.CATALOG) {
+      clearAppliedTheme();
+      return undefined;
+    }
+
+    fetchActiveTheme()
+      .then((theme) => {
+        if (!cancelled && document.body.getAttribute('data-ui-owner') === THEME_OWNERS.CATALOG) {
+          applyTheme(theme);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [themeOwner]);
+
+  useEffect(() => {
+    if (themeOwner !== THEME_OWNERS.CATALOG) return undefined;
+
     let cancelled = false;
     const apply = (sett) => {
       const t = ['ambar','noche','carbon'].includes(sett?.catalog_theme) ? sett.catalog_theme : 'ambar';
@@ -127,7 +157,7 @@ export default function App() {
         (payload) => apply(payload?.new))
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, []);
+  }, [themeOwner]);
 
   return (
     <ErrorBoundary>

@@ -44,11 +44,13 @@ describe('Phase 2A /registro visual canary', () => {
     cleanup();
   });
 
-  it('uses the DICO token contract and licensed-font fallbacks only', () => {
+  it('uses the approved self-hosted DICO typography contract', () => {
     expect(signupCss).toContain('var(--ds-color-brand-gold-500)');
-    expect(signupCss).toContain('var(--ds-font-compat-ui)');
-    expect(signupCss).toContain('var(--ds-font-compat-heading)');
-    expect(signupCss).toContain('var(--ds-font-compat-technical)');
+    expect(signupCss).toContain('var(--ds-font-ui)');
+    expect(signupCss).toContain('var(--ds-font-soul)');
+    expect(signupCss).toContain('var(--ds-font-technical)');
+    expect(signupCss).not.toContain('var(--ds-font-compat-ui)');
+    expect(signupCss).not.toContain('var(--ds-font-compat-heading)');
     expect(signupCss).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(signupCss).not.toMatch(/url\s*\(/i);
   });

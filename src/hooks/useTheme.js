@@ -1,20 +1,17 @@
 // src/hooks/useTheme.js
-// Theme hook — el admin usa la paleta de Dico (terracotta unificado).
-// Cada cliente tiene su identidad en el catálogo (vía catalogBg / catalogCardBg
-// / etc. en business.js → Catalog.jsx), pero el panel de gestión se queda
-// con los colores de plataforma para reforzar la marca Dico.
+// Transitional theme API. Phase 2B makes document ownership explicit while
+// legacy callers keep the read-only light-theme shape they already consume.
 import { useState, useEffect, useCallback } from 'react';
+import { applyThemeOwner, THEME_OWNERS } from '../lib/themeOwnership';
 
 const THEME = 'light';
 
-export default function useTheme() {
+export default function useTheme(owner = THEME_OWNERS.PLATFORM) {
   const [theme] = useState(THEME);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', THEME);
-    document.body.style.background = '#FBF7F2';
-  }, []);
+    applyThemeOwner(owner);
+  }, [owner]);
 
   const setTheme = useCallback(() => {}, []);
   const toggleTheme = useCallback(() => {}, []);

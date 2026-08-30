@@ -4,7 +4,8 @@
  * Soporta tema dark / light vía clase en el contenedor raíz.
  * ──────────────────────────────────────────────────────── */
 
-:root {
+body[data-ui-owner="admin"],
+.ag-root {
   /* Tipografía admin */
   --ag-font: 'DM Sans', system-ui, -apple-system, sans-serif;
 

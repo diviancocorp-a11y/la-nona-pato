@@ -35,9 +35,9 @@
   --ds-color-status-error: #e2564b;
   --ds-color-status-info: #3f8bd6;
 
-  /* Typography targets. Licensed Söhne/Canela files are not active yet. */
-  --ds-font-ui: 'Söhne', 'DM Sans', system-ui, -apple-system, sans-serif;
-  --ds-font-soul: 'Canela', 'Instrument Serif', Georgia, serif;
+  /* Typography targets: approved, self-hosted Machine Soul pairing. */
+  --ds-font-ui: 'Overused Grotesk', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --ds-font-soul: 'Butler', 'Instrument Serif', Georgia, serif;
   --ds-font-technical: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 
   /* Runtime font compatibility: keeps the current rendering in Phase 1. */

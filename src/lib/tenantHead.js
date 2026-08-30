@@ -94,6 +94,8 @@ export const CATALOG_THEMES = ['ambar', 'noche', 'carbon'];
 export function applyCatalogTheme(theme) {
   if (typeof document === 'undefined') return;
   const t = CATALOG_THEMES.includes(theme) ? theme : 'ambar';
+  const owner = document.body.getAttribute('data-ui-owner');
+  if (owner && owner !== 'catalog') return t;
   document.body.setAttribute('data-cp-theme', t);
   // Cache para el anti-flash de index.html: la proxima carga pinta el tema
   // correcto antes de que vuelva el RPC.

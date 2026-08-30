@@ -83,6 +83,19 @@ export function applyTheme(theme) {
   loadFontUrl(theme.font_url);
 }
 
+const APPLIED_ROOT_PROPERTIES = [
+  '--bg', '--b2', '--b3', '--tx', '--t2', '--t3', '--ac', '--al',
+  '--r', '--rs', '--font-body', '--font-heading',
+];
+
+/** Remove the legacy tenant theme before a platform/admin surface takes over. */
+export function clearAppliedTheme() {
+  if (typeof document === 'undefined') return;
+  const style = document.documentElement.style;
+  APPLIED_ROOT_PROPERTIES.forEach((property) => style.removeProperty(property));
+  document.getElementById('theme-font-link')?.remove();
+}
+
 /** Inject a <link> for Google Fonts if not already present */
 function loadFontUrl(url) {
   if (!url) return;
