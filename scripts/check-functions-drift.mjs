@@ -65,14 +65,34 @@ const ok = (m) => console.log(`\x1b[32m✓\x1b[0m ${m}`);
 const mal = (m) => console.log(`\x1b[31m✗\x1b[0m ${m}`);
 const info = (m) => console.log(`  ${m}`);
 
-/** Saca comentarios SQL y colapsa espacios: reindentar no es drift. */
+/**
+ * Saca comentarios SQL y espacios: reformatear no es drift.
+ *
+ * COLAPSAR NO ALCANZA. Probando contra produccion, `tenant_puede_operar` dio
+ * drift siendo el MISMO codigo: el repo lo tiene partido en varias lineas
+ *
+ *     coalesce(
+ *       (select ...
+ *
+ * y en la base quedo en una sola: `coalesce((select ...`. Colapsando espacios
+ * el primero queda `coalesce( (select` y el segundo `coalesce((select` — un
+ * espacio de diferencia, cero diferencia de codigo.
+ *
+ * Por eso ademas se borra el espacio que toca puntuacion: si a alguno de los
+ * dos lados hay algo que no es [a-z0-9_], el espacio no separa tokens y no
+ * significa nada. Un guard que grita en falso se termina ignorando, y ahi deja
+ * de proteger igual que si no existiera.
+ */
 export function normalizar(sql) {
   return String(sql || '')
     .replace(/--[^\n]*/g, ' ')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .toLowerCase()
     .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+    // espacio pegado a puntuacion, de un lado o del otro
+    .replace(/ (?=[^a-z0-9_])/g, '')
+    .replace(/(?<=[^a-z0-9_]) /g, '')
+    .trim();
 }
 
 /**

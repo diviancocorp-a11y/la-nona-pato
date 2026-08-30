@@ -39,6 +39,16 @@ describe('normalizar', () => {
     expect(normalizar('/* bloque */ select 1;')).toBe(normalizar('select 1;'));
   });
 
+  it('reformatear alrededor de puntuacion tampoco es drift', () => {
+    // El caso real: `tenant_puede_operar` esta partido en varias lineas en la
+    // 0052 y en una sola en la base. Colapsar espacios no alcanzaba —quedaba
+    // `coalesce( (select` contra `coalesce((select`— y el guard daba drift
+    // sobre codigo identico. Un guard que grita en falso se termina ignorando.
+    const multilinea = ['coalesce(', '    (select 1),', '    false)'].join('\n');
+    expect(normalizar(multilinea)).toBe(normalizar('coalesce((select 1), false)'));
+    expect(normalizar('t.id = p_tenant')).toBe(normalizar('t.id=p_tenant'));
+  });
+
   it('cambiar el CODIGO si cuenta', () => {
     expect(normalizar("v := meta->>'biz_name';"))
       .not.toBe(normalizar("v := meta->>'business_name';"));
@@ -69,7 +79,8 @@ describe('cuerpoSegunElRepo', () => {
     const dir = migracionesFalsas({
       '0001_a.sql': 'create or replace function public.h() returns int language plpgsql as $function$ begin return 1; end $function$;',
     });
-    expect(normalizar(cuerpoSegunElRepo('h', dir).cuerpo)).toBe('begin return 1; end');
+    // 'begin return 1;end': el espacio pegado al ';' se va, por diseno.
+    expect(normalizar(cuerpoSegunElRepo('h', dir).cuerpo)).toBe('begin return 1;end');
   });
 
   it('acepta la funcion escrita sin el prefijo public.', () => {
