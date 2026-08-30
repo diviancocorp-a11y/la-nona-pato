@@ -8,6 +8,76 @@
 
 ---
 
+## 30/ago/2026 — Phase 2B aprobada; Phase 3 Admin Shell lista para empezar (sesión Codex)
+
+Ricky aprobó visualmente el canary `/registro`: Butler sostiene la voz Soul y
+Overused Grotesk mantiene precisa la capa Machine. La superficie ya se siente
+DICO sin depender del logo master ni de texturas; esos dos refinamientos quedan
+deliberadamente fuera de esta fase.
+
+### Hecho
+
+- Phase 1 quedó cerrada en `621c492` con foundation tokens visualmente neutros.
+  El gate determinista QA Lite se versionó en `e1652ce` y compara DOM, layout,
+  motion y raster sin tocar `src/**`.
+- Phase 2A `/registro` quedó en `066d820`: primer canary Machine/Soul.
+- Phase 2B quedó en `c165943`: fuentes locales Butler/Overused, autoridad
+  tipográfica documentada y ownership de tema sin migración masiva de Admin/POS.
+- `platform/PHASE-2B-VALIDATION.md` registra la aprobación humana, el alcance,
+  los pendientes y las nueve vulnerabilidades observadas sin ejecutar
+  `npm audit fix`. El cierre documental es `ea6f85e`.
+- Se creó `codex/dico-phase3-admin-shell` exactamente desde `ea6f85e`. Phase 3
+  todavía no tiene cambios de implementación; no reabrir Phase 2B desde esta
+  rama salvo decisión explícita nueva.
+
+### Verificado
+
+- QA Lite: unitarios 27/27, TypeScript y motion inventory PASS; BASE↔BASE 3/3,
+  CANDIDATE↔CANDIDATE y BASE↔CANDIDATE PASS. El cross-ref final tuvo DOM igual,
+  raw pixels 0, `blockingDiffPixels` 0 y tráfico externo 0.
+- Bundle Phase 2B verificado antes de importarlo: commit `c165943`, padre
+  `066d820`, 8.336.845 bytes y SHA-256
+  `302A36E7157CB37C20A98D8225B2E844C6CAC6F13C3943E194FFC3AC260112F3`.
+- Browser real en `http://localhost:5173/registro`: formulario completo;
+  headings computados con Butler e inputs/botones con Overused Grotesk. La
+  captura inicial no mostró errores, pero Vite registró después
+  `slug_available: Failed to fetch` en el entorno aislado. No bloqueó la
+  revisión visual; disponibilidad de slug y submit funcional no quedaron
+  validados en esta sesión.
+- Hooks del commit documental: integridad, schema, TypeScript y smoke tests
+  **87/87 PASS**.
+- No hubo merge ni deploy. Phase 2B se revisó desde un worktree aislado.
+
+### Pendiente inmediato
+
+1. Antes de editar, inventariar el shell Admin actual y capturar baseline. No
+   reconstruir Phase 1/2A/2B ni volver a calibrar QA Lite.
+2. Phase 3 puede intervenir sólo `AdminBackdrop`, `AdminTopbar`, `AdminDrawer`,
+   `BottomNav`, `AdminProfileMenu`, capa de toasts, raíz `.ag-root` y el antiguo
+   `theme-color` ámbar.
+3. Mantener fuera pantallas funcionales, cálculos/datos, catálogo, Dico,
+   texturas, migración tipográfica masiva de Admin/POS y toda DB/RLS/auth.
+4. Al completar el shell, repetir autoconsistencia QA antes de atribuir cualquier
+   diferencia cross-ref al producto.
+
+### Bloqueado por Ricky
+
+- Logo master definitivo: pendiente de entrega/aprobación, pero no bloquea
+  Phase 3 porque el placeholder actual fue aceptado.
+- Texturas: refinamiento posterior decidido; no bloquea Phase 3 y no debe
+  adelantarse dentro del shell.
+
+### Trabajo local vivo — no pisar
+
+- Worktree: `C:\Users\ricar\Proyectos\hermes-gastro-phase2b`.
+- Rama activa al cierre: `codex/dico-phase3-admin-shell`.
+- HEAD antes de este handoff: `ea6f85e`.
+- No hay implementación Phase 3 a medias ni archivos locales sin seguimiento.
+- `npm ci` quedó instalado localmente; `node_modules` está ignorado. El servidor
+  Vite usado para la revisión se detiene al cerrar esta sesión.
+
+---
+
 ## 25/ago/2026 — Dico Core retro y brazos articulados (sesión Codex)
 
 Ricky rechazó la primera cara sin accesorios porque seguía viéndose genérica
