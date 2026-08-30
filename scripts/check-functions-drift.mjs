@@ -143,6 +143,19 @@ async function traerDesplegadas() {
   return { funciones: await res.json() };
 }
 
+/**
+ * Todas las firmas desplegadas de `fn`.
+ *
+ * El snapshot viene con clave `nombre(args)` justamente para no perder
+ * overloads: `sumar_staff` tiene dos en produccion porque la 0054 creo la de
+ * dos argumentos y nadie dropeo la de uno.
+ */
+export function overloadsDe(snapshot, fn) {
+  return Object.entries(snapshot || {})
+    .filter(([clave, v]) => (v && v.name === fn) || clave.startsWith(`${fn}(`))
+    .map(([, v]) => v);
+}
+
 /** Primer tramo donde difieren, para no imprimir cuerpos enteros. */
 export function primeraDiferencia(a, b) {
   let i = 0;
@@ -166,12 +179,16 @@ async function main() {
   let comparadas = 0;
 
   for (const fn of CRITICAS) {
-    const desplegada = funciones[fn];
+    // La clave del snapshot es `nombre(args)`, asi que una funcion con varias
+    // firmas aparece varias veces. Se juntan todas: cual corre en produccion
+    // lo decide el caller (PostgREST resuelve por argumentos), asi que basta
+    // con que ALGUNA coincida con el repo.
+    const overloads = overloadsDe(funciones, fn);
     const enRepo = cuerpoSegunElRepo(fn);
 
-    if (!desplegada && !enRepo) continue;
+    if (overloads.length === 0 && !enRepo) continue;
 
-    if (!desplegada) {
+    if (overloads.length === 0) {
       mal(`${fn}: esta en las migraciones y NO esta desplegada`);
       info(`la define ${enRepo.archivo} — falta aplicarla`);
       problemas++;
@@ -185,11 +202,19 @@ async function main() {
       continue;
     }
 
+    // Mas de una firma no es drift, pero es un riesgo: cual se ejecuta depende
+    // de con cuantos argumentos la llamen. Se avisa sin hacer fallar.
+    if (overloads.length > 1) {
+      info(`⚠ ${fn}: ${overloads.length} firmas desplegadas — ${overloads.map((o) => `(${o.args})`).join(' ')}`);
+      info('  cual corre lo decide el caller. Dropea la que sobre.');
+    }
+
     comparadas++;
-    if (normalizar(enRepo.cuerpo) !== normalizar(desplegada.body)) {
-      mal(`${fn}: lo desplegado NO coincide con ${enRepo.archivo}`);
+    const esperado = normalizar(enRepo.cuerpo);
+    if (!overloads.some((o) => normalizar(o.body) === esperado)) {
+      mal(`${fn}: ninguna firma desplegada coincide con ${enRepo.archivo}`);
       if (VERBOSE) {
-        const d = primeraDiferencia(normalizar(enRepo.cuerpo), normalizar(desplegada.body));
+        const d = primeraDiferencia(esperado, normalizar(overloads[0].body));
         info(`repo       …${d.repo}…`);
         info(`desplegado …${d.desplegado}…`);
       }

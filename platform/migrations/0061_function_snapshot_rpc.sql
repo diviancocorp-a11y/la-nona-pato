@@ -27,6 +27,26 @@
 -- el del archivo es fiable, y comparar `pg_get_functiondef` entero no lo es:
 -- daria falsos positivos en cada migracion.
 
+-- ══════════════════ POR QUE LA CLAVE LLEVA LOS ARGUMENTOS ══════════════════
+--
+-- Primera version de esta migracion agregaba por `proname` a secas. Al probarla
+-- contra produccion aparecio que `sumar_staff` tiene DOS overloads vivos:
+--
+--   sumar_staff(p_email text)              <- 0052/0053, quedo dando vueltas
+--   sumar_staff(p_email text, p_puesto text default 'soporte')  <- 0054/0057
+--
+-- La 0054 creo la de dos argumentos y nadie dropeo la de uno: `create or
+-- replace` no reemplaza una firma distinta, crea una funcion nueva.
+--
+-- Con la clave sin argumentos, `jsonb_object_agg` se queda con UNA de las dos
+-- y descarta la otra SIN ERROR. O sea que el guard que vino a detectar drift
+-- silencioso habria tenido, el mismo, un agujero silencioso.
+--
+-- Con `nombre(args)` como clave las dos aparecen, y el script puede ademas
+-- avisar cuando una funcion critica tiene mas de una firma — que es un
+-- problema por si mismo: PostgREST resuelve overloads por los argumentos que
+-- le manden, asi que cual corre depende del caller.
+
 create or replace function public.function_snapshot()
 returns jsonb
 language sql
@@ -35,8 +55,10 @@ set search_path = public, pg_catalog, pg_temp
 as $$
   select coalesce(
     jsonb_object_agg(
-      p.proname,
+      -- Clave: `nombre(args)`. Unica aun con overloads.
+      p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
       jsonb_build_object(
+        'name', p.proname,
         'args', pg_get_function_identity_arguments(p.oid),
         -- prosrc es el cuerpo literal, sin el encabezado que Postgres reescribe.
         'body', p.prosrc,

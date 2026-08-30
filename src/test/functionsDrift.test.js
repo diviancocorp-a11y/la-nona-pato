@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, afterAll } from 'vitest';
 import {
-  normalizar, cuerpoSegunElRepo, primeraDiferencia, CRITICAS,
+  normalizar, cuerpoSegunElRepo, primeraDiferencia, overloadsDe, CRITICAS,
 } from '../../scripts/check-functions-drift.mjs';
 
 const tmps = [];
@@ -118,5 +118,48 @@ describe('el caso real: el drift de signup_tenant', () => {
     // las suyas. Si alguna deja de encontrarse, el guard dejo de mirarla.
     const sinCuerpo = CRITICAS.filter((fn) => cuerpoSegunElRepo(fn) === null);
     expect(sinCuerpo).toEqual([]);
+  });
+});
+
+describe('overloads: el caso sumar_staff', () => {
+  // En produccion hay DOS sumar_staff: la 0054 creo la de dos argumentos y
+  // nadie dropeo la de uno, porque `create or replace` con una firma distinta
+  // no reemplaza, crea. Si el snapshot agrupara por nombre a secas, una
+  // pisaria a la otra sin error — el guard tendria el mismo agujero silencioso
+  // que vino a detectar.
+  const snapshot = {
+    'sumar_staff(p_email text)': {
+      name: 'sumar_staff', args: 'p_email text', body: 'begin return 1; end',
+    },
+    'sumar_staff(p_email text, p_puesto text)': {
+      name: 'sumar_staff', args: 'p_email text, p_puesto text', body: 'begin return 2; end',
+    },
+    'slug_available(p_slug text)': {
+      name: 'slug_available', args: 'p_slug text', body: 'select true',
+    },
+  };
+
+  it('junta las dos firmas, no se queda con una', () => {
+    expect(overloadsDe(snapshot, 'sumar_staff')).toHaveLength(2);
+  });
+
+  it('no confunde funciones distintas', () => {
+    expect(overloadsDe(snapshot, 'slug_available')).toHaveLength(1);
+    expect(overloadsDe(snapshot, 'no_existe')).toHaveLength(0);
+  });
+
+  it('alcanza con que UNA firma coincida con el repo', () => {
+    const cuerpos = overloadsDe(snapshot, 'sumar_staff').map((o) => normalizar(o.body));
+    expect(cuerpos.includes(normalizar('begin  return 2;  end'))).toBe(true);
+  });
+
+  it('si ninguna coincide, es drift', () => {
+    const cuerpos = overloadsDe(snapshot, 'sumar_staff').map((o) => normalizar(o.body));
+    expect(cuerpos.includes(normalizar('begin return 99; end'))).toBe(false);
+  });
+
+  it('tolera un snapshot vacio o nulo', () => {
+    expect(overloadsDe(null, 'sumar_staff')).toEqual([]);
+    expect(overloadsDe({}, 'sumar_staff')).toEqual([]);
   });
 });
