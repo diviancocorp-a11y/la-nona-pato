@@ -128,11 +128,44 @@ la última migración que las define. Necesita el RPC de la 0061; sin
 credenciales o sin el RPC saltea con exit 0. Ya está enganchado a
 `morning-health.mjs`.
 
-### Bloqueado: no pude aplicar las migraciones
+### ✅ 0060 y 0061 APLICADAS (29/ago, por Ricky desde el editor SQL)
 
-El clasificador de permisos bloquea `apply_migration` sobre producción, igual
-que bloquea el deploy de Vercel. **Las 0060 y 0061 quedan escritas y sin
-aplicar.** Van juntas:
+El clasificador de permisos bloquea `apply_migration` sobre producción, así que
+las aplicó Ricky a mano. Verificado contra la base:
+
+- `signup_tenant` lee `biz_name` y conserva `business_name` como fallback.
+  Hash: `33aac832…` → `108cd427…`
+- `function_snapshot()` existe, sin permiso para `anon` ni `authenticated`.
+- **El guard corre y da 7/7**, con el aviso no bloqueante de los dos overloads
+  de `sumar_staff`.
+- Sin daño: 7 tenants (0 con `name = slug`), 66 productos, 2 pedidos,
+  47/47 tablas con RLS, 1 cron activo. Advisors de seguridad idénticos a antes.
+
+**Dos bugs que encontré en mi propio guard antes de que se aplicara**, los dos
+por probarlo contra producción en vez de darlo por bueno:
+
+1. El RPC agregaba por `proname` y `jsonb_object_agg` descartaba en silencio
+   uno de los dos overloads de `sumar_staff`. La clave ahora es `nombre(args)`.
+2. El normalizador daba drift en `tenant_puede_operar` siendo el mismo código:
+   el repo lo tiene en varias líneas y la base en una, así que colapsar
+   espacios dejaba `coalesce( (select` contra `coalesce((select`. Ahora borra
+   también el espacio pegado a puntuación.
+
+Los dos son la misma lección: un guard contra fallas silenciosas que falla
+silenciosamente es peor que no tenerlo.
+
+### Pendiente menor: los dos `sumar_staff`
+
+Hay dos firmas vivas, `(p_email text)` de la 0053 y `(p_email text, p_puesto
+text)` de la 0057. La 0054 creó la segunda y nadie dropeó la primera —
+`create or replace` con otra firma **crea**, no reemplaza. No es urgente: la
+consola no usa esa RPC, va por la edge function `staff-invite`, que escribe
+`platform_admins` con service role. Cuando se limpie:
+`drop function public.sumar_staff(text);`
+
+### Referencia histórica (ya resuelto)
+
+Cuando estaban sin aplicar, iban juntas:
 
 ```
 0060  signup_tenant lee biz_name   (arregla el bug latente del alta)
