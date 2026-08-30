@@ -148,14 +148,11 @@ export default {
       },
     },
     rpc: {
-      sumar_staff: ({ p_email }) => {
-        const filas = filasDe('platform_admins');
-        filas.push({
-          user_id: `u${filas.length + 1}`, email: p_email,
-          rol: 'staff', created_at: 'hoy',
-        });
-        return { ok: true };
-      },
+      // El mock de `sumar_staff` vivia aca y se saco el 29/ago: la consola
+      // dejo de llamar esa RPC cuando el alta paso por la edge function
+      // `staff-invite` (0057), asi que la vitrina simulaba un camino que ya no
+      // existe. Un mock de algo que nadie llama no es inofensivo: hace creer
+      // que el camino esta cubierto.
       cambiar_puesto: ({ p_user_id, p_puesto }) => {
         const fila = filasDe('platform_admins').find(x => x.user_id === p_user_id);
         if (!fila) return { ok: false, error: 'no_esta' };

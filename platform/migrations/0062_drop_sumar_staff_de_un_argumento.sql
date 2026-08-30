@@ -1,0 +1,52 @@
+-- 0062 Se va el `sumar_staff` de un argumento.
+-- NO APLICADA TODAVIA.
+--
+-- ══════════════════ POR QUE HAY DOS ══════════════════
+--
+-- El guard de funciones (0061) avisa que hay DOS firmas vivas:
+--
+--   sumar_staff(p_email text)                  <- 0052, reescrita por 0053
+--   sumar_staff(p_email text, p_puesto text)   <- 0054, reescrita por 0057
+--
+-- `create or replace function` con una firma DISTINTA no reemplaza: crea otra
+-- funcion. La 0054 sumo el parametro `p_puesto` y con eso nacio una segunda
+-- funcion; nadie dropeo la primera, y quedaron las dos.
+--
+-- El riesgo no es teorico: PostgREST resuelve overloads por los argumentos que
+-- le manden. Un caller que mande solo `p_email` cae en la version vieja —la
+-- que NO conoce los puestos— y da de alta a alguien sin puesto, sin error.
+--
+-- ══════════════════ POR QUE ES SEGURO SACARLA ══════════════════
+--
+-- Se verifico por cuatro lados el 29/ago y no la llama NADIE:
+--
+--   1. Base: ninguna funcion, vista, trigger ni policy la menciona.
+--      (consulta sobre pg_proc.prosrc, pg_get_viewdef, pg_get_triggerdef y
+--       pg_policy — cero filas)
+--   2. Front: no hay ni una `rpc('sumar_staff')` en src/.
+--   3. Worktrees de Codex: nada.
+--   4. Repo: solo aparecia en un mock de la vitrina, que se borro en el mismo
+--      commit que esta migracion.
+--
+-- El alta de staff pasa entera por la edge function `staff-invite`, que
+-- escribe `platform_admins` con service role. Esa ruta no toca esta funcion.
+--
+-- ══════════════════ COMO REVERTIR ══════════════════
+--
+-- Re-aplicar el bloque `create or replace function public.sumar_staff(p_email
+-- text)` de platform/migrations/0053_un_solo_dueno_de_la_plataforma.sql.
+-- No hay datos de por medio: es solo codigo.
+
+-- La firma va explicita: sin ella Postgres no sabe cual de las dos dropear.
+drop function if exists public.sumar_staff(text);
+
+-- ══════════════════ DESPUES DE APLICARLA ══════════════════
+--
+--   node scripts/check-functions-drift.mjs
+--
+-- Tiene que seguir diciendo 7/7 y YA NO mostrar el aviso de las dos firmas.
+-- El guard compara contra la ultima migracion que define `sumar_staff`, que es
+-- la 0057 (la de dos argumentos): esa es justo la que queda.
+--
+-- Y subir `_migrations_through` a "0062" en scripts/platform-schema.json
+-- (no toca columnas, asi que el snapshot no se regenera).
