@@ -24,6 +24,7 @@ describe('DicoEscena', () => {
     expect(container.querySelectorAll('.dico-parpado')).toHaveLength(2);
     expect(container.querySelectorAll('path.dico-pupila-forma')).toHaveLength(2);
     expect(container.querySelectorAll('.dico-brazo')).toHaveLength(2);
+    expect(container.querySelector('.dico-brazo').getAttribute('src')).toContain('brazos');
     expect(container.querySelector('.dico-parpado > path').getAttribute('fill')).toBe('#fdce18');
     expect(container.querySelector('.dico-bigote')).not.toBeInTheDocument();
     expect(container.querySelector('.dico-nariz')).not.toBeInTheDocument();

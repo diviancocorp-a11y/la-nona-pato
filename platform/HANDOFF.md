@@ -10,6 +10,22 @@
 
 ## 31/ago/2026 — Recuperacion de continuidad Dico Presence / Slot
 
+### Checkpoint Native arms — clean sprite
+
+- `DicoCara` ya no recorta brazos desde `moneda.webp` con poligonos.
+- Nuevo `poses/brazos.webp`: 800x800 RGBA, dos componentes de brazos/guantes
+  limpios sobre alfa; se deriva de los renders alineados existentes sin
+  introducir un tercer cuerpo visual.
+- Cada brazo se separa por mitad con `clip-path: inset(...)` y conserva su
+  transform-origin de hombro. Esto elimina las cuñas doradas que aparecian al
+  rotar el sprite fuente junto con fragmentos de la moneda.
+- Se portaron los offsets/angulos ya validados en
+  `feature/dico-native-pose-system` para `esperando`, `contento`, `preocupado`
+  y `pregunta`.
+- Test contractual: `.dico-brazo` debe resolver un asset cuyo `src` contiene
+  `brazos`. `moneda.webp` queda archivado como fuente, no runtime.
+
+
 Se reconstruyo desde el bundle `DICO_PHASE3B_9e77b0a.bundle` el primer
 checkpoint posterior al corte de Work. La rama local de recuperacion parte
 exactamente de `9e77b0a`.
