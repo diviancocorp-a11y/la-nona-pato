@@ -9,8 +9,12 @@ body[data-ui-owner="admin"],
 /* El root de overlays (OverlayPortal) es hijo de <body> y queda FUERA de
    `.ag-root`. Sin esta linea un dialogo en portal no recibiria ningun token
    —seria el mismo bug de fondo congelado, con otra forma—. El tema oscuro
-   llega por la clase `ag-theme-dark`, que OverlayPortal copia del panel. */
-#dico-overlay-root {
+   llega por la clase `ag-theme-dark`, que OverlayPortal copia del panel.
+
+   Es una CLASE y no `#dico-overlay-root` a proposito: un selector de id tiene
+   especificidad (1,0,0) y le ganaria al `.ag-theme-dark` (0,1,0), dejando el
+   overlay siempre en claro. Se midio: pasaba. */
+.ag-overlay-root {
   /* Tipografía admin */
   --ag-font: 'DM Sans', system-ui, -apple-system, sans-serif;
 
@@ -179,7 +183,7 @@ body[data-ui-owner="admin"],
 }
 /* El root de overlays hereda tipografia y tinta pero NO fondo: es un
    contenedor transparente de cero altura; cada overlay se pinta solo. */
-#dico-overlay-root {
+.ag-overlay-root {
   font-family: var(--ag-font);
   color: var(--ag-ink);
   -webkit-font-smoothing: antialiased;

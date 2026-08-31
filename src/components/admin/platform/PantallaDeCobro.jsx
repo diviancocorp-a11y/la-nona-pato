@@ -121,7 +121,12 @@ export default function PantallaDeCobro({
     <Dialog
       open
       onClose={onCerrar}
-      labelledBy={tituloId}
+      // aria-label y no aria-labelledby: el contrato de QA Lite localiza este
+      // dialogo por `[role="dialog"][aria-label^="Cobrar el pedido"]`
+      // (e2e/qa-lite/surfaces.ts). Cambiarlo por el titulo visible romperia el
+      // gate sin ganar nada: el nombre accesible es el mismo texto.
+      label={`Cobrar el pedido ${pedido.code || ''}`}
+      describedBy={tituloId}
       variante="sheet"
       className="ag-cobro"
     >

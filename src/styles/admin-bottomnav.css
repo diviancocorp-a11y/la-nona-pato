@@ -288,3 +288,10 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-nav-mas-item { transition: none; }
 }
+
+/* A 360px el item activo con su label (114.9px) hacia que la fila pidiera 21px
+   mas de los disponibles. Nada quedaba inalcanzable —la barra scrollea— pero
+   un scroll dentro de la pildora no es el patron: se acota el label. */
+@media (max-width: 400px) {
+  .ag-nav-item.active .ag-nav-label { max-width: 86px; }
+}

@@ -30,6 +30,8 @@ import { createPortal } from 'react-dom';
 
 /** Id del contenedor unico. Uno solo para todos los overlays. */
 export const OVERLAY_ROOT_ID = 'dico-overlay-root';
+/** La clase que engancha los tokens `--ag-*`. Ver el comentario de abajo. */
+export const OVERLAY_ROOT_CLASS = 'ag-overlay-root';
 
 /**
  * Devuelve el root de overlays, creandolo si hace falta.
@@ -42,6 +44,11 @@ export function obtenerOverlayRoot(doc = document) {
   if (!root) {
     root = doc.createElement('div');
     root.id = OVERLAY_ROOT_ID;
+    // La clase —y no el id— es la que engancha los tokens en CSS. Un selector
+    // de id tiene especificidad (1,0,0) y le ganaria a `.ag-theme-dark`
+    // (0,1,0): el overlay se quedaria SIEMPRE en claro. Medido: con el id, el
+    // dialogo de cobro salia con la paleta clara dentro de un panel oscuro.
+    root.className = OVERLAY_ROOT_CLASS;
     // Sin estilos propios: el root no pinta ni ocupa. Cada overlay se
     // posiciona solo. Si el root tuviera position/z-index volveria a crear
     // el problema que este archivo existe para evitar.
@@ -62,6 +69,7 @@ export function obtenerOverlayRoot(doc = document) {
 export function sincronizarTema(root, doc = document) {
   const panel = doc.querySelector('.ag-root');
   const oscuro = !!panel && panel.classList.contains('ag-theme-dark');
+  root.classList.add(OVERLAY_ROOT_CLASS);
   root.classList.toggle('ag-theme-dark', oscuro);
   root.classList.toggle('ag-theme-light', !oscuro);
   return oscuro ? 'dark' : 'light';

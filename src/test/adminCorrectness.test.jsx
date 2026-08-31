@@ -10,7 +10,7 @@ import { useRef, useState } from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Dialog from '../components/ui/Dialog';
-import OverlayPortal, { OVERLAY_ROOT_ID, obtenerOverlayRoot, sincronizarTema } from '../components/ui/OverlayPortal';
+import OverlayPortal, { OVERLAY_ROOT_ID, OVERLAY_ROOT_CLASS, obtenerOverlayRoot, sincronizarTema } from '../components/ui/OverlayPortal';
 import useFocusTrap, { focusablesDe } from '../hooks/useFocusTrap';
 import NavInferior, { PRIMARIAS } from '../components/admin/platform/NavInferior';
 
@@ -174,10 +174,20 @@ describe('primitiva de overlay', () => {
     expect(root.getAttribute('style')).toBeNull();
   });
 
+  it('engancha los tokens por CLASE y no por id (especificidad)', () => {
+    // Con `#dico-overlay-root` en el CSS, ese selector (1,0,0) le gana a
+    // `.ag-theme-dark` (0,1,0) y el overlay queda siempre en claro. Se midio
+    // en el navegador antes de arreglarlo.
+    render(<DialogoDePrueba />);
+    const root = document.getElementById(OVERLAY_ROOT_ID);
+    expect(root.classList.contains(OVERLAY_ROOT_CLASS)).toBe(true);
+  });
+
   it('copia el tema del panel al root del portal', () => {
     document.body.innerHTML = '<div class="ag-root ag-theme-dark"></div>';
     const root = obtenerOverlayRoot();
     expect(sincronizarTema(root)).toBe('dark');
+    expect(root.classList.contains(OVERLAY_ROOT_CLASS)).toBe(true);
     expect(root.classList.contains('ag-theme-dark')).toBe(true);
     document.querySelector('.ag-root').className = 'ag-root ag-theme-light';
     expect(sincronizarTema(root)).toBe('light');
