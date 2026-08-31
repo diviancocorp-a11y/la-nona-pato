@@ -42,6 +42,9 @@ import "../styles/admin-bottomnav.css";
 import "../styles/admin-cards.css";
 import "../styles/admin-orders.css";
 import "../styles/admin-shared.css";
+// Machine Soul (Phase 3B): reemplaza la capa visual del shell. Va ultimo
+// a proposito, para pisar la de admin-topbar/bottomnav sin tocar su markup.
+import "../styles/admin-shell.css";
 
 export default function Admin() {
   // Tab inicial desde query param (?tab=orders): lo usa el push de "pedido

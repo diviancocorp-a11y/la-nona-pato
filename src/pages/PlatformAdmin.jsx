@@ -113,6 +113,9 @@ import '../styles/admin-topbar.css';
 import '../styles/admin-bottomnav.css';
 import '../styles/admin-cards.css';
 import '../styles/admin-shared.css';
+// Machine Soul (Phase 3B): reemplaza la capa visual del shell. Va ultimo
+// a proposito, para pisar la de admin-topbar/bottomnav sin tocar su markup.
+import '../styles/admin-shell.css';
 
 // El registry es data pura (sin JSX) para poder leerlo desde services y tests.
 // Los iconos se mapean aca, por id de modulo.
@@ -644,6 +647,18 @@ export default function PlatformAdmin() {
           display: 'flex', flexDirection: 'column', minHeight: 0,
           paddingBottom: 'var(--ag-bottom-nav-h, 76px)',
         }}>
+          {/* Encabezado de seccion (Phase 3B). Unico lugar del shell donde
+              habla Butler, y con escala contenida: una pantalla de trabajo no
+              es una landing. El nombre sale de `tabs`, la misma fuente que la
+              navegacion — no hay una segunda lista de rotulos. */}
+          <div className="ag-section-head">
+            <h1 className="ag-section-title">
+              {(tabs.find(t => t.id === tab) || {}).label || tenant?.name || 'Panel'}
+            </h1>
+            {openCount > 0 && tab !== 'orders' && (
+              <span className="ag-section-meta">{openCount} en curso</span>
+            )}
+          </div>
           {/* Dico vive en la pestania de entrada, que es donde cae el que
               abre el panel. `listo` evita el peor error posible: decirle
               "todavia no cargaste ningun producto" a alguien que tiene
@@ -653,6 +668,13 @@ export default function PlatformAdmin() {
               tocaba nadie y los 3 tenants tenian CERO suscripciones admin.
               Se suscribe ESTE dispositivo (la tablet del local). */}
           {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
+          {/* The Slot — `advisor.top`: debajo del encabezado y arriba del
+              contenido. El contrato de layout vive en `.ag-slot`
+              (admin-shell.css): capa de contenido, nunca sobre la navegacion
+              ni sobre controles persistentes, y un dialogo abierto lo cubre.
+              Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
+              Native 2D o Physical 3D sin mover el shell. */}
+          <div className="ag-slot">
           {tab === 'products' && (
             <DicoAvisos
               listo={!loadingProducts && recetas !== null}
@@ -682,6 +704,7 @@ export default function PlatformAdmin() {
               onIr={setTab}
             />
           )}
+          </div>
           {tab === 'products' && (
             <ProductsPanel
               products={products}
