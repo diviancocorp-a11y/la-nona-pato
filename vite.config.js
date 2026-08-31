@@ -4,13 +4,24 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import fs from 'fs'
 import { pathToFileURL } from 'url'
+import { resolveBuildIdentity } from './scripts/build-identity.mjs'
 
 const CLIENT = process.env.CLIENT || 'la-nona-pato'
 
-// Build id unico por deploy. En Vercel usa el SHA del commit; local, un timestamp.
-// Se bakea en el bundle (__BUILD_ID__) y se emite en /version.json — el runtime
-// compara ambos y avisa "hay actualizacion" cuando difieren (chunk viejo tras deploy).
-const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 8) || String(Date.now())
+// Build id unico por deploy: los primeros 8 caracteres del SHA del commit.
+// Se bakea en el bundle (__BUILD_ID__), se emite en /version.json y nombra el
+// release de Sentry — el runtime compara los dos primeros y avisa "hay
+// actualizacion" cuando difieren (chunk viejo tras deploy).
+//
+// La resolucion vive en scripts/build-identity.mjs y es FAIL-CLOSED: en un
+// build de release, sin SHA valido no hay artefacto. Antes habia un
+// `|| String(Date.now())` aca mismo que tapaba la ausencia del dato: el deploy
+// del 30/ago salio con un timestamp por buildId y ningun stack trace de
+// produccion se pudo atribuir a un commit.
+const { buildId: BUILD_ID, source: BUILD_ID_SOURCE } = resolveBuildIdentity()
+// Se imprime a proposito: si un build de produccion vuelve a salir con una
+// identidad que no viene de un SHA, tiene que verse en el log del build.
+console.log(`[build-identity] buildId=${BUILD_ID} source=${BUILD_ID_SOURCE}`)
 
 function loadClientEnv() {
   const envFile = path.resolve(__dirname, `.env.${CLIENT}`)

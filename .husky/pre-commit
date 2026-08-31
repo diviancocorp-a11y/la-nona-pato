@@ -2,6 +2,7 @@
 # 1. git diff --check (conflict markers + trailing whitespace)
 # 2. Auto-arregla trailing newline en archivos staged (--fix)
 # 3. Valida integridad GLOBAL de src/ (NULL bytes, EOF, JSON, JSX-en-.js)
+# 3b. node_modules coincide con package-lock.json
 # 4. Corre eslint sobre archivos staged (lint-staged)
 # 5. Schema ↔ DB sync
 # 6. Typecheck global
@@ -30,6 +31,13 @@ fi
 # Check global de src/ — atrapa NULL bytes en archivos no staged (workdir contaminado por tools)
 echo "→ Integridad global de src/ (NULL bytes, EOF, sintaxis)..."
 npm run check:integrity --silent
+
+# node_modules vs package-lock: que la suite y el build corran contra lo que
+# dice el lockfile. El 30/ago convivian react-router-dom 7.18.2 y react-router
+# 7.15.1 con un lockfile en 7.18.3 — los tests pasaron sin probar lo que se iba
+# a publicar. Los opcionales de otra plataforma no cuentan como problema.
+echo "→ node_modules vs lockfile..."
+node scripts/check-install-state.mjs
 
 # Check de columnas Supabase referenciadas en .select() contra schema snapshot.
 # Atrapa el bug clase "agregaste columna al select pero la migration no
