@@ -215,12 +215,18 @@
   margin: 0 18px;
   overflow: hidden;
 }
-/* A proposito NO hay `.ag-slot:empty { display: none }`. Ese toggle hace que
-   la altura del slot salte entre 0 y su contenido mientras el asesor carga, y
-   el same-ref lo detecto: `scrollHeight` variaba entre 1000 y 1059 en el
-   checkpoint `after-open-admin`, en direcciones opuestas segun la corrida.
-   Un slot vacio sin la regla contribuye exactamente 0 igual, pero de forma
-   estable. El espacio inferior lo pone el contenido, no el hueco. */
+/* A proposito NO hay `.ag-slot:empty { display: none }`: un toggle de display
+   hace que la altura salte entre 0 y su contenido, y un hueco vacio contribuye
+   0 igual sin el. Es una mejora de determinismo por si misma.
+
+   Lo que NO arregla —y conviene que quede escrito— es la inestabilidad de
+   `scrollHeight` en el checkpoint `after-open-admin`. Se probo y siguio igual.
+   La causa real es otra: ese checkpoint (surfaces.ts:743) cae ANTES del click
+   a la burbuja (:768) y antes de que el cursor desaparezca (:773), o sea con
+   el asesor todavia tipeando y su altura en movimiento. El encabezado de
+   seccion nuevo empujo la pagina por encima del alto del viewport, y con eso
+   un reflujo que antes quedaba absorbido pasa a verse en `scrollHeight`.
+   Es una carrera preexistente que este lote hizo visible, no una que creo. */
 .ag-slot > * { margin-bottom: 12px; }
 
 @media (prefers-reduced-motion: reduce) {

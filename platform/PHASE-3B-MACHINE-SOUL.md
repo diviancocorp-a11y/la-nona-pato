@@ -198,6 +198,40 @@ El brief dice «sidebar **o** navegación principal». No introduje un sidebar:
 Lo que sí se hizo es que la barra **lea como chasis**, con rail de oro. Si el
 sidebar es la dirección, merece su propio lote estructural.
 
+## 7bis. QA same-ref y una inestabilidad abierta
+
+| | |
+|---|---|
+| `domEqual` | **true** |
+| `blockingDiffPixels` | **0** |
+| Red externa nueva | **cero** |
+| `rawDiffPixels` | 52, todos antialiasing (34) + redondeo (18) |
+| Motion inventory | **7 animaciones infinitas — idéntico a Phase 3A** (2 glows + 5 Dico). Trace no agregó ninguna. |
+
+**Lo que no cerró: el scroll trace.** 2 de 36 checkpoints difieren en el
+same-ref: `scrollHeight` da 1000 en una corrida y 1071 en la otra, en el
+checkpoint `after-open-admin`. Phase 3A tenía ese trace idéntico.
+
+**Primera hipótesis, equivocada**: `.ag-slot:empty { display: none }` haciendo
+saltar la altura del hueco. Se quitó el toggle, se volvió a medir y **siguió
+igual**. Queda como mejora de determinismo por sí sola, pero no era la causa.
+
+**Causa real, verificada en el código del harness**: `after-open-admin`
+(`e2e/qa-lite/surfaces.ts:743`) se registra **antes** del click a la burbuja
+(`:768`) y antes de que se exija que el cursor desapareció (`:773`). O sea que
+el checkpoint cae con el asesor **todavía tipeando** y su altura en movimiento.
+El encabezado de sección nuevo empujó la página por encima del alto del
+viewport, y con eso un reflujo que antes quedaba absorbido pasa a verse en
+`scrollHeight`.
+
+Es una carrera **preexistente que este lote hizo visible**, no una que creó.
+
+**No se achicó el encabezado para esconderla.** Eso taparía el síntoma sin
+resolver la causa, y la causa —el reflujo del asesor mientras escribe— es
+trabajo de Dico y The Slot. Las salidas razonables son esperar la quiescencia
+del asesor antes del checkpoint (toca el harness) o darle al slot una altura
+reservada mientras tipea (toca Dico). Ninguna de las dos es shell.
+
 ## 8. Deuda visual restante
 
 - **30 `'DM Sans'` inline en 18 componentes de módulo.** Interior de pantalla.
@@ -207,6 +241,7 @@ sidebar es la dirección, merece su propio lote estructural.
 - **`dico-burbuja-texto` a 1.16:1** — **artefacto de medición**, no defecto: el
   papel de la burbuja es un `fill` de SVG, así que la sonda lee el fondo del
   shell. El texto real va sobre `#FDF7EA`.
+- **Scroll trace inestable en `after-open-admin`** — ver 7bis. Abierta.
 - **`src/components/ui/Modal.jsx`** sigue huérfano y basado en Tailwind.
 - Los overlays legacy (`.ag-page-over`, `Dialogs.jsx` con `z-index: 9999`)
   siguen con sus números, mapeados pero no migrados.
