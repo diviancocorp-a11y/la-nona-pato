@@ -24,6 +24,9 @@
   y `pregunta`.
 - Test contractual: `.dico-brazo` debe resolver un asset cuyo `src` contiene
   `brazos`. `moneda.webp` queda archivado como fuente, no runtime.
+- Layout del retorno corregido: `.ag-dico-stack` reserva los 164 px mientras
+  exista `.dico-slot--visible`, incluyendo la fase `cerrando`; el contenido no
+  salta hacia arriba antes de que termine la animacion inversa.
 
 
 Se reconstruyo desde el bundle `DICO_PHASE3B_9e77b0a.bundle` el primer

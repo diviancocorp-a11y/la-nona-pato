@@ -267,6 +267,9 @@
   }
 }
 
-.ag-dico-stack:has(.dico-slot--abierto) {
+/* Reserva el volumen mientras Physical siga montado. Durante `cerrando` el
+   personaje tarda ~700 ms en volver al Slot; colapsar el padding al inicio de
+   esa fase haria saltar el contenido debajo antes de que Dico termine de bajar. */
+.ag-dico-stack:has(.dico-slot--visible) {
   padding-top: 164px;
 }
