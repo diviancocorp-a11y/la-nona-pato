@@ -8,6 +8,68 @@
 
 ---
 
+## 31/ago/2026 — Stage B1: presencia centralizada y cerrada (sesión Codex)
+
+B1 quedó terminado en `be5d6b5` y se detuvo ahí por instrucción. No se empezó
+B2/B3, no se tocó posición de burbuja, typewriter, cara, materiales, roles ni
+Golden Screen. No hubo push, preview, deploy ni producción.
+
+### Hecho
+
+- Antes de tocar código se creó el snapshot recuperable
+  `C:\Users\ricar\Downloads\DICO_STAGE_A_APPROVED_c3582a0.bundle`: historia
+  completa, HEAD `c3582a0`, 8.761.217 bytes y SHA-256
+  `10899a2d0088128ec179da4f29d93222ad33796a78af4ee5047b386c726e3270`.
+- `src/components/dico/DicoPresence.jsx` es la única autoridad de presencia.
+  Usa el reducer puro de `dicoPresenceMachine.js` con `native_idle`,
+  `native_notice`, `physical_opening`, `physical_open` y `physical_closing`.
+- `DicoSlot.jsx` quedó controlado: no guarda fase, no controla avisos y sólo
+  emite intención de abrir/cerrar y fin real de las animaciones Physical.
+- `DicoAvisos.jsx` quedó controlado: conserva paginado/entrada, pero ya no
+  guarda si el aviso está abierto. `PlatformAdmin.jsx` monta una sola
+  `DicoPresence` en el mismo lugar y sin wrapper de layout nuevo.
+- Reduced Motion usa el mismo reducer y recorre los mismos estados; completa
+  opening/closing en efectos inmediatos, sin esperar una animación visual.
+- Checkpoint obligatorio: `be5d6b5 refactor(dico): centralize native and
+  physical presence state`.
+
+### Verificado
+
+- Tests dirigidos finales: **5 archivos / 53 tests PASS**. Incluyen los nueve
+  contratos B1: idle, notice, opening, open, cierre completo, restauración,
+  cierre del notice al abrir Physical, Reduced Motion y exclusión absoluta.
+- Suite completa: **76 archivos / 1.036 tests PASS**, con `--pool=threads` y un
+  worker para evitar omisiones de Windows.
+- Integridad: 325 archivos PASS. Typecheck PASS. ESLint dirigido: 0 errores;
+  sólo 10 warnings preexistentes de `PlatformAdmin.jsx`.
+- `git diff --check`: PASS antes del checkpoint.
+- Producción no se modificó. El último deploy consultado sigue `READY` en
+  `d86c8a9`; B1 sólo fue verificado localmente.
+
+### Pendiente inmediato
+
+1. Ricky debe revisar `be5d6b5` y confirmar el contrato B1.
+2. Sólo con ese GO continuar a B2/B3 según el Plan Maestro v2. El motivo de la
+   pausa es aislar la máquina de estados antes de cualquier cambio visual.
+3. Al iniciar el siguiente bloque, conservar el test de exclusión como gate:
+   ningún estado puede montar Native y Physical simultáneamente.
+
+### Bloqueado por Ricky
+
+- B2/B3 requieren su aprobación explícita del checkpoint B1.
+- La rama no se pusheó porque el usuario autorizó snapshot por bundle o push y
+  se eligió el bundle para evitar cualquier preview/deploy involuntario.
+
+### Trabajo local vivo
+
+- Rama: `feat/dico-panorama-v1`.
+- Checkpoint técnico B1: `be5d6b5`.
+- No hay código a medias ni cambios de DB/migraciones/RLS/auth.
+- Esta sección y la actualización de estado son documentación posterior al
+  checkpoint técnico; no cambian su comportamiento ni sus gates.
+
+---
+
 ## 31/ago/2026 — Stage A: recovery integrado y checkpoint verde (sesión Codex)
 
 Stage A quedó cerrado hasta el checkpoint de integración pedido. No se avanzó
