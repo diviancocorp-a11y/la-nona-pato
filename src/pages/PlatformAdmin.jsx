@@ -24,6 +24,7 @@ import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
+import NavInferior from '../components/admin/platform/NavInferior';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -859,27 +860,10 @@ export default function PlatformAdmin() {
           )}
         </main>
 
-        <nav className="ag-bottom-nav" aria-label="Navegación principal">
-          {tabs.map(({ id, label, Icon }) => {
-            const isActive = tab === id;
-            const badge = id === 'orders' ? openCount : 0;
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`ag-nav-item ${isActive ? 'active' : ''}`}
-                data-section={id}
-                onClick={() => setTab(id)}
-                aria-current={isActive ? 'page' : undefined}
-                aria-label={`${label}${badge ? ` (${badge} en curso)` : ''}`}
-              >
-                {badge > 0 && <span className="ag-nav-badge">{badge > 99 ? '99+' : badge}</span>}
-                <Icon />
-                <span className="ag-nav-label">{label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {/* La nav sale a su propio modulo porque ahora tiene estado (el
+            desborde) y un contrato de accesibilidad propio. La lista de
+            secciones sigue siendo `tabs`: una sola fuente. */}
+        <NavInferior tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
       </div>
     </ConfirmSlideProvider>
   );
