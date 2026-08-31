@@ -278,46 +278,48 @@
 }
 
 .dico--render .dico-brazo--izq {
-  clip-path: polygon(0 51%, 17% 51%, 20% 58%, 20% 94%, 14% 97%, 1% 90%);
-  transform-origin: 13.5% 57%;
+  clip-path: inset(0 50% 0 0);
+  transform: translateY(8%);
+  transform-origin: 15.5% 44.5%;
 }
 
 .dico--render .dico-brazo--der {
-  clip-path: polygon(83% 51%, 100% 51%, 99% 90%, 86% 97%, 80% 94%, 80% 58%);
-  transform-origin: 86.5% 57%;
+  clip-path: inset(0 0 0 50%);
+  transform: translateY(8%);
+  transform-origin: 84.5% 44.5%;
 }
 
 .dico--esperando .dico-brazo--izq {
-  transform: translate(-1%, -1%) rotate(16deg);
+  transform: translate(-1%, 7%) rotate(14deg);
 }
 
 .dico--esperando .dico-brazo--der {
-  transform: translate(1%, -1%) rotate(-16deg);
+  transform: translate(1%, 7%) rotate(-14deg);
 }
 
 .dico--contento .dico-brazo--izq {
-  transform: translate(-2%, -3%) rotate(54deg);
+  transform: translate(-2%, 5%) rotate(48deg);
 }
 
 .dico--contento .dico-brazo--der {
-  transform: translate(2%, -3%) rotate(-54deg);
+  transform: translate(2%, 5%) rotate(-48deg);
 }
 
 .dico--preocupado .dico-brazo--izq {
-  transform: translate(2%, 1%) rotate(-18deg);
+  transform: translate(2%, 9%) rotate(-16deg);
 }
 
 .dico--preocupado .dico-brazo--der {
-  transform: translate(-2%, 1%) rotate(18deg);
+  transform: translate(-2%, 9%) rotate(16deg);
 }
 
 .dico--pregunta .dico-brazo--izq {
   z-index: 3;
-  transform: translate(14%, 1%) rotate(-50deg);
+  transform: translate(14%, 3%) rotate(-50deg);
 }
 
 .dico--pregunta .dico-brazo--der {
-  transform: translate(-1%, 1%) rotate(9deg);
+  transform: translate(-1%, 9%) rotate(9deg);
 }
 
 .dico--render .dico-capa-tinta {

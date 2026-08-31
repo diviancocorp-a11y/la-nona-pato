@@ -4,16 +4,20 @@ El Core usa dos fuentes visuales, **sin cara ni galera**:
 
 ```
 moneda-sin-brazos.webp  base limpia de la moneda
-moneda.webp             fuente de los dos brazos y guantes
+brazos.webp             brazos y guantes limpios sobre alfa
+moneda.webp             fuente original archivada
 ```
 
-`DicoCara.jsx` recorta cada brazo del segundo archivo y lo articula desde el
-hombro. La cara la dibuja `CaraDeTinta.jsx` encima, en SVG. Por eso no hay una
-imagen por estado: expresiones y poses son curvas y transforms, no renders.
+`DicoCara.jsx` separa `brazos.webp` por su mitad vacía y articula cada brazo
+desde el hombro. No usa polígonos alrededor de la silueta: esos recortes
+arrastraban cuñas de la moneda al rotar. La cara la dibuja `CaraDeTinta.jsx`
+encima, en SVG. Por eso no hay una imagen por estado: expresiones y poses son
+curvas y transforms, no renders.
 
 `moneda-retro-galera.webp` conserva el cuerpo anterior como fuente para una
-futura escena Retro. Los globs de `DicoCara` cargan sólo los dos archivos
-nombrados arriba; el cuerpo con galera no forma parte de Dico Core.
+futura escena Retro. Los globs de `DicoCara` cargan sólo
+`moneda-sin-brazos.webp` y `brazos.webp`; los cuerpos fuente no forman parte
+de Dico Core.
 
 - Mientras falte cualquiera de los dos sprites activos, `DicoCara` dibuja una
   moneda **provisoria** en SVG. Es a propósito: un `import` de un archivo que

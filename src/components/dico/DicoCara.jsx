@@ -28,7 +28,7 @@ const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 // Glob y no import directo: asi el build no se rompe si el archivo no esta.
 const BASES = import.meta.glob('./poses/moneda-sin-brazos.{png,webp,avif}', { eager: true, import: 'default' });
-const BRAZOS = import.meta.glob('./poses/moneda.{png,webp,avif}', { eager: true, import: 'default' });
+const BRAZOS = import.meta.glob('./poses/brazos.{png,webp,avif}', { eager: true, import: 'default' });
 const MONEDA_BASE = Object.values(BASES)[0] || null;
 const MONEDA_BRAZOS = Object.values(BRAZOS)[0] || null;
 
