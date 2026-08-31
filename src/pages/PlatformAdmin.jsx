@@ -669,12 +669,10 @@ export default function PlatformAdmin() {
               tocaba nadie y los 3 tenants tenian CERO suscripciones admin.
               Se suscribe ESTE dispositivo (la tablet del local). */}
           {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
-          {/* The Slot — `advisor.top`: debajo del encabezado y arriba del
-              contenido. El contrato de layout vive en `.ag-slot`
-              (admin-shell.css): capa de contenido, nunca sobre la navegacion
-              ni sobre controles persistentes, y un dialogo abierto lo cubre.
-              Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
-              Native 2D o Physical 3D sin mover el shell. */}
+          {/* Presence boundary — `advisor.top`: Slot arriba, Native debajo.
+              El Slot controla solo Physical; Native controla solo avisos.
+              El contrato de layout vive en `.ag-slot` y nunca flota sobre
+              navegacion, controles persistentes ni dialogos. */}
           <div className="ag-slot">
           <div className="ag-dico-stack">
             <DicoSlot />

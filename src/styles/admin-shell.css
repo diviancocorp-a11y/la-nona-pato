@@ -195,9 +195,8 @@
 .ag-root .ag-metric { font-weight: var(--ms-w-metric); }
 
 /* ── The Slot ───────────────────────────────────────────────────────────
- * Contrato de layout reservado para el asesor contextual (hoy DicoAvisos;
- * mañana Dico Native 2D o Physical 3D). NO se incorpora el personaje en esta
- * rama: se reserva el hueco y sus reglas.
+ * Contrato de layout de la frontera Native / Physical. El Slot ya controla
+ * Physical; Native vive debajo y los avisos son una capa de mensaje aparte.
  *
  *   Posicion  `advisor.top`: debajo del encabezado, arriba del contenido.
  *   Capa      contenido normal (--ag-z-content). Nunca por encima de sticky.

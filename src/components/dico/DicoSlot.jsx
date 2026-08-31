@@ -10,14 +10,57 @@ import './dico.css';
 import physicalBody from './poses/dico-physical-body.webp';
 import './dico-slot.css';
 
+function reduceMotionActivo() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export default function DicoSlot() {
-  const [abierto, setAbierto] = useState(false);
+  const [fase, setFase] = useState('cerrado');
+  const visible = fase !== 'cerrado';
+  const abierto = fase === 'abierto';
+  const cerrando = fase === 'cerrando';
+
+  function alternar() {
+    if (cerrando) return;
+    if (!visible) {
+      setFase('abierto');
+      return;
+    }
+
+    if (reduceMotionActivo()) {
+      setFase('cerrado');
+      return;
+    }
+
+    setFase('cerrando');
+  }
+
+  function terminarRetorno(event) {
+    if (event.currentTarget !== event.target || fase !== 'cerrando') return;
+    setFase('cerrado');
+  }
+
+  const clases = [
+    'dico-slot',
+    visible ? 'dico-slot--visible' : '',
+    abierto ? 'dico-slot--abierto' : '',
+    cerrando ? 'dico-slot--cerrando' : '',
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className={`dico-slot${abierto ? ' dico-slot--abierto' : ''}`}>
+    <div className={clases}>
       <div className="dico-slot-stage" aria-live="polite">
-        {abierto && (
-          <div className="dico-physical" role="img" aria-label="Dico Physical">
+        {visible && (
+          <div
+            className="dico-physical"
+            role="img"
+            aria-label="Dico Physical"
+            onAnimationEnd={terminarRetorno}
+          >
             <img
               className="dico-physical-cuerpo"
               src={physicalBody}
@@ -36,9 +79,14 @@ export default function DicoSlot() {
       <button
         type="button"
         className="dico-slot-control"
-        onClick={() => setAbierto(valor => !valor)}
+        onClick={alternar}
+        disabled={cerrando}
         aria-expanded={abierto}
-        aria-label={abierto ? 'Guardar Dico Physical' : 'Abrir Dico Physical'}
+        aria-label={cerrando
+          ? 'Guardando Dico Physical'
+          : abierto
+            ? 'Guardar Dico Physical'
+            : 'Abrir Dico Physical'}
       >
         <span className="dico-slot-ranura" aria-hidden="true">
           <span className="dico-slot-luz" />

@@ -25,18 +25,21 @@ exactamente de `9e77b0a`.
 - `PlatformAdmin` monta Native en todas las pestanas, no solo Productos.
 - Se actualizaron estilos responsive/focus y tests de contrato del componente.
 
-### Pendiente inmediato
+### Estado inmediato
 
-1. The Slot ya tiene control propio y gobierna exclusivamente Physical 3D.
-   Usa el asset de produccion `dico-physical-body.webp` derivado del PNG
-   1254x1254 aprobado, con cara SVG modular encima.
+1. The Slot gobierna exclusivamente Physical 3D con el asset de produccion
+   `dico-physical-body.webp` derivado del PNG 1254x1254 aprobado y cara SVG
+   modular encima.
 2. El control visual es una ranura Zinc contenida con actividad Blue; Gold llega
    con el personaje. Native queda debajo y su toggle sigue abriendo solo avisos.
-3. Falta validar visualmente en browser real proporciones de la cara Physical,
-   escala del personaje, emergence y espacio reservado al abrirse.
-4. Ejecutar suite y browser review en el worktree real de Windows: este entorno
-   de recuperacion no pudo completar `npm ci`, por lo que solo se verifico
-   `git diff --check` y la consistencia estatica del diff.
+3. Physical implementa ida y regreso: perfil/objeto -> frente -> brazos ->
+   rostro; al cerrar invierte la secuencia antes de desmontarse. Reduced Motion
+   lo retira sin desplazamiento.
+4. Siguiente gate: browser real. Validar proporciones de cara, escala Physical,
+   clipping del Slot en desktop/mobile y apertura de burbuja con Physical cerrado.
+5. Ejecutar suite en el worktree real de Windows. Este entorno no puede bajar
+   las dependencias faltantes del registry npm (`EAI_AGAIN`), por lo que el gate
+   automatico completo sigue pendiente.
 
 ### Regla de continuidad
 
