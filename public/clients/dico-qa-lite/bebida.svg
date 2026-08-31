@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Bebida">
+  <rect width="600" height="400" fill="#dfe9ef"/>
+  <path d="M235 75h130l-18 250h-94L235 75Z" fill="#4985a6"/>
+  <path d="M255 155h90" stroke="#f7efe0" stroke-width="15"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Producto vegetal">
+  <rect width="600" height="400" fill="#e8eddf"/>
+  <path d="M300 70c100 72 120 180 0 260-120-80-100-188 0-260Z" fill="#52734d"/>
+  <path d="M300 100v210" stroke="#f4f0df" stroke-width="16"/>
+</svg>

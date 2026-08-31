@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { contrastOn, letterFavicon, applyTenantHead, applyCatalogTheme } from '../lib/tenantHead';
 
 describe('tenantHead', () => {
+  beforeEach(() => {
+    document.body.setAttribute('data-ui-owner', 'catalog');
+    document.body.removeAttribute('data-cp-theme');
+  });
+
   describe('contrastOn', () => {
     it('usa texto claro sobre fondo oscuro', () => {
       expect(contrastOn('#111111')).toBe('#ffffff');
@@ -107,6 +112,12 @@ describe('tenantHead', () => {
       expect(applyCatalogTheme('neon')).toBe('ambar');
       expect(applyCatalogTheme(null)).toBe('ambar');
       expect(applyCatalogTheme(undefined)).toBe('ambar');
+    });
+
+    it('no escribe el tema del catalogo dentro de Admin', () => {
+      document.body.setAttribute('data-ui-owner', 'admin');
+      expect(applyCatalogTheme('noche')).toBe('noche');
+      expect(document.body.hasAttribute('data-cp-theme')).toBe(false);
     });
   });
 });

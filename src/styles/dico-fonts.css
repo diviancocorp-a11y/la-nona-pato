@@ -1,0 +1,23 @@
+/* DICO typography — self-hosted to keep rendering and availability deterministic. */
+@font-face {
+  font-family: 'Overused Grotesk';
+  src: url('/fonts/dico/overused-grotesk/OverusedGrotesk-VF.woff2') format('woff2-variations');
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Butler';
+  src: url('/fonts/dico/butler/Butler-Free-Rmn.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Butler';
+  src: url('/fonts/dico/butler/Butler-Free-Med.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}

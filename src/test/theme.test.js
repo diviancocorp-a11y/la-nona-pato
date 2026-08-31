@@ -89,4 +89,16 @@ describe('theme service', () => {
     expect(s.getPropertyValue('--ac')).toBe(service.DEFAULT_THEME.color_accent);
     expect(s.getPropertyValue('--r')).toBe(`${service.DEFAULT_THEME.radius_base}px`);
   });
+
+  it('clearAppliedTheme releases legacy root variables and font link', () => {
+    service.applyTheme(service.DEFAULT_THEME);
+    expect(document.documentElement.style.getPropertyValue('--bg')).toBeTruthy();
+    expect(document.getElementById('theme-font-link')).not.toBeNull();
+
+    service.clearAppliedTheme();
+
+    expect(document.documentElement.style.getPropertyValue('--bg')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--font-body')).toBe('');
+    expect(document.getElementById('theme-font-link')).toBeNull();
+  });
 });

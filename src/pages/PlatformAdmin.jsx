@@ -24,6 +24,7 @@ import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
+import NavInferior from '../components/admin/platform/NavInferior';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -112,6 +113,9 @@ import '../styles/admin-topbar.css';
 import '../styles/admin-bottomnav.css';
 import '../styles/admin-cards.css';
 import '../styles/admin-shared.css';
+// Machine Soul (Phase 3B): reemplaza la capa visual del shell. Va ultimo
+// a proposito, para pisar la de admin-topbar/bottomnav sin tocar su markup.
+import '../styles/admin-shell.css';
 
 // El registry es data pura (sin JSX) para poder leerlo desde services y tests.
 // Los iconos se mapean aca, por id de modulo.
@@ -604,7 +608,7 @@ export default function PlatformAdmin() {
 
         {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}
 
-        <header className="ag-topbar">
+        <header className="ag-topbar ms-trace">
           <div className="ag-topbar-title" style={{ flex: 1, textAlign: 'left' }}>{tenant?.name}</div>
           <div className="ag-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
@@ -643,6 +647,18 @@ export default function PlatformAdmin() {
           display: 'flex', flexDirection: 'column', minHeight: 0,
           paddingBottom: 'var(--ag-bottom-nav-h, 76px)',
         }}>
+          {/* Encabezado de seccion (Phase 3B). Unico lugar del shell donde
+              habla Butler, y con escala contenida: una pantalla de trabajo no
+              es una landing. El nombre sale de `tabs`, la misma fuente que la
+              navegacion — no hay una segunda lista de rotulos. */}
+          <div className="ag-section-head">
+            <h1 className="ag-section-title">
+              {(tabs.find(t => t.id === tab) || {}).label || tenant?.name || 'Panel'}
+            </h1>
+            {openCount > 0 && tab !== 'orders' && (
+              <span className="ag-section-meta">{openCount} en curso</span>
+            )}
+          </div>
           {/* Dico vive en la pestania de entrada, que es donde cae el que
               abre el panel. `listo` evita el peor error posible: decirle
               "todavia no cargaste ningun producto" a alguien que tiene
@@ -652,6 +668,13 @@ export default function PlatformAdmin() {
               tocaba nadie y los 3 tenants tenian CERO suscripciones admin.
               Se suscribe ESTE dispositivo (la tablet del local). */}
           {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
+          {/* The Slot — `advisor.top`: debajo del encabezado y arriba del
+              contenido. El contrato de layout vive en `.ag-slot`
+              (admin-shell.css): capa de contenido, nunca sobre la navegacion
+              ni sobre controles persistentes, y un dialogo abierto lo cubre.
+              Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
+              Native 2D o Physical 3D sin mover el shell. */}
+          <div className="ag-slot">
           {tab === 'products' && (
             <DicoAvisos
               listo={!loadingProducts && recetas !== null}
@@ -681,6 +704,7 @@ export default function PlatformAdmin() {
               onIr={setTab}
             />
           )}
+          </div>
           {tab === 'products' && (
             <ProductsPanel
               products={products}
@@ -859,27 +883,10 @@ export default function PlatformAdmin() {
           )}
         </main>
 
-        <nav className="ag-bottom-nav" aria-label="Navegación principal">
-          {tabs.map(({ id, label, Icon }) => {
-            const isActive = tab === id;
-            const badge = id === 'orders' ? openCount : 0;
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`ag-nav-item ${isActive ? 'active' : ''}`}
-                data-section={id}
-                onClick={() => setTab(id)}
-                aria-current={isActive ? 'page' : undefined}
-                aria-label={`${label}${badge ? ` (${badge} en curso)` : ''}`}
-              >
-                {badge > 0 && <span className="ag-nav-badge">{badge > 99 ? '99+' : badge}</span>}
-                <Icon />
-                <span className="ag-nav-label">{label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {/* La nav sale a su propio modulo porque ahora tiene estado (el
+            desborde) y un contrato de accesibilidad propio. La lista de
+            secciones sigue siendo `tabs`: una sola fuente. */}
+        <NavInferior tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
       </div>
     </ConfirmSlideProvider>
   );

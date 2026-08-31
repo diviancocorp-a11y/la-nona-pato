@@ -1,0 +1,121 @@
+/* ────────────────────────────────────────────────────────────────────────
+ * Machine Soul — primitivas del shell administrativo (Phase 3B)
+ *
+ * Esta hoja NO pinta nada. Declara el material del que esta hecho el panel:
+ * la escala Zinc, el oro de accion, los semanticos y los controles de la
+ * textura Trace. `admin-tokens.css` mapea los `--ag-*` sobre esto.
+ *
+ * Autoridad: platform/DICO-BRAND-TYPOGRAPHY.md (30/ago) y el brief de
+ * Phase 3B. La escala neutra CALIDA que proponia DICO-DESIGN-SYSTEM-V0.1
+ * quedaba marcada como "propuesta, se valida por contraste en el piloto":
+ * Phase 3B fija Zinc/Carbon, que ademas es lo que el panel ya usaba de hecho.
+ *
+ * Limite: owner `admin`. Nace en `.ag-root` y en el root de overlays, nunca
+ * en `:root` — la regla de Phase 2B.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.ag-root,
+.ag-overlay-root {
+  /* ── Zinc / Carbon: estructura y material ─────────────────────────── */
+  --ms-zinc-50:  #FAFAFA;
+  --ms-zinc-100: #F4F4F5;
+  --ms-zinc-200: #E4E4E7;
+  --ms-zinc-300: #D4D4D8;
+  --ms-zinc-400: #A1A1AA;
+  --ms-zinc-500: #71717A;
+  --ms-zinc-600: #52525B;
+  --ms-zinc-700: #3F3F46;
+  --ms-zinc-800: #27272A;
+  --ms-zinc-900: #18181B;
+  --ms-zinc-950: #09090B;
+  --ms-white:    #FFFFFF;
+
+  /* ── Gold: accion, seleccion, foco y presencia ────────────────────────
+   * Siempre relleno con tinta oscura encima (10.86:1). Como TEXTO o BORDE
+   * sobre superficie clara no llega ni a 2:1, por eso existe la variante
+   * `-ink` para esos usos. */
+  --ms-gold:      #E8B947;
+  --ms-gold-ink:  #8A6100;   /* 5.54:1 sobre blanco — bordes y texto en claro */
+  --ms-gold-soft: rgba(232, 185, 71, 0.16);
+
+  /* ── Blue / Volt: actividad interna y tecnica. Nunca protagonista. ── */
+  --ms-volt:      #1565C0;
+  --ms-volt-dark: #60A5FA;
+
+  /* ── Semanticos, diferenciados del oro ────────────────────────────── */
+  --ms-ok:    #1B7A3D;
+  --ms-bad:   #B3261E;
+  --ms-warn:  #8A4B00;
+
+  /* ── Tipografia ───────────────────────────────────────────────────────
+   * La maquina habla en Overused Grotesk; el alma, en Butler.
+   * Los tres WOFF2 estan autoalojados en public/fonts/dico. Sin requests
+   * externos: ni Google Fonts ni CDNs. */
+  --ms-font-system: 'Overused Grotesk', ui-sans-serif, system-ui, -apple-system,
+                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --ms-font-soul:   'Butler', ui-serif, Georgia, 'Times New Roman', serif;
+  --ms-font-mono:   'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Pesos de la voz Machine (DICO-BRAND-TYPOGRAPHY). */
+  --ms-w-table: 350;
+  --ms-w-body:  400;
+  --ms-w-ctrl:  500;
+  --ms-w-nav:   600;
+  --ms-w-metric: 700;
+
+  /* ── Trace: el tratamiento material ───────────────────────────────────
+   * Una sola intensidad autorizada en Phase 3B. Se controla con tokens y
+   * no con clases sueltas, para que subirla o apagarla sea un cambio de
+   * una linea y quede medible.
+   *
+   *   --ms-trace-opacity  cuanto se ve
+   *   --ms-trace-scale    cada cuantos px se repite el patron
+   *   --ms-trace-ink      el color del microdetalle
+   *
+   * Reglas duras: nunca sobre Blue/Volt, nunca debajo de texto, nunca
+   * animada, y nunca en una superficie que no sea estructural (chasis,
+   * topbar, nav). Las superficies de CONTENIDO van limpias. */
+  --ms-trace-opacity: 0.05;   /* Trace A — la candidata por defecto */
+  --ms-trace-scale: 3px;
+  --ms-trace-ink: rgba(255, 255, 255, 0.55);
+}
+
+/* Variantes SOLO para los artefactos de revision. No hay selector visible en
+   producto: se activan con un atributo en <html> desde la plancha de
+   comparacion. */
+:root[data-ms-trace="clean"] .ag-root,
+:root[data-ms-trace="clean"] .ag-overlay-root { --ms-trace-opacity: 0; }
+:root[data-ms-trace="b"] .ag-root,
+:root[data-ms-trace="b"] .ag-overlay-root { --ms-trace-opacity: 0.09; }
+
+/* ── El patron ──────────────────────────────────────────────────────────
+ * Microdetalle DETERMINISTA: una trama diagonal de 3px generada por CSS.
+ * No es una imagen de ruido —no hay bytes que descargar, no hay archivo que
+ * versionar— y al ser deterministica no introduce inestabilidad en el gate
+ * de pixeles. */
+.ms-trace {
+  position: relative;
+  isolation: isolate;
+}
+.ms-trace::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--ms-trace-opacity);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--ms-trace-ink) 0,
+    var(--ms-trace-ink) 0.5px,
+    transparent 0.5px,
+    transparent var(--ms-trace-scale)
+  );
+}
+
+/* En claro el chasis sigue siendo Zinc oscuro, asi que la trama sigue siendo
+   clara. Sobre superficies claras se invierte y baja, para que no ensucie. */
+.ag-theme-light .ms-trace--light {
+  --ms-trace-ink: rgba(9, 9, 11, 0.6);
+  --ms-trace-opacity: calc(var(--ms-trace-opacity) * 0.6);
+}

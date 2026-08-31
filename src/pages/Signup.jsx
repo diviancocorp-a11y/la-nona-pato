@@ -1,52 +1,86 @@
 // src/pages/Signup.jsx
 // Alta self-service: el cliente crea su propio negocio en la plataforma.
-//
-// Vive en la RAIZ (divianco.app/registro). No tiene sentido en el subdominio
-// de un tenant, que ya pertenece a alguien.
-//
-// El slug se sugiere desde el nombre del negocio pero se puede editar; una
-// vez que el dueño lo toca, deja de auto-completarse para no pisarle lo que
-// escribio. La disponibilidad se consulta con debounce contra slug_available.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { slugify, validateSlug } from '../lib/slugify';
 import { slugDisponible, registrarNegocio } from '../services/signup';
 import { modosDisponibles, canalesSugeridos } from '../modules/registry';
 import { paisesDisponibles, monedaDe, zonaDe, PAIS_POR_DEFECTO } from '../modules/paises';
+import '../styles/signup.css';
 
 const VERTICALES = [
-  { id: 'gastro', emoji: '🍔', nombre: 'Gastronomía', detalle: 'Carta, pedidos, recetas' },
-  { id: 'barber', emoji: '✂️', nombre: 'Barbería', detalle: 'Turnos y servicios' },
-  { id: 'retail', emoji: '👕', nombre: 'Indumentaria', detalle: 'Talles, colores y stock' },
+  { id: 'gastro', nombre: 'Gastronomía', detalle: 'Carta, pedidos, recetas' },
+  { id: 'barber', nombre: 'Barbería', detalle: 'Turnos y servicios' },
+  { id: 'retail', nombre: 'Indumentaria', detalle: 'Talles, colores y stock' },
 ];
 
-// Los canales NO se preguntan en el alta a proposito. Son diez y esta pantalla
-// promete "un minuto": cada campo mas es gente que la abandona. Se derivan de
-// rubro + modo (canalesSugeridos) y se editan despues en configuracion, que es
-// donde el dueño ya sabe lo que necesita. Modo y pais si se preguntan porque
-// cambian que modulos existen y con que moneda trabaja todo el panel.
 const MODOS = modosDisponibles();
 const PAISES = paisesDisponibles();
 
-const C = {
-  bg: '#0f0e0d', card: 'rgba(255,255,255,0.05)', line: 'rgba(255,255,255,0.12)',
-  tx: '#f5f1ea', t2: 'rgba(245,241,234,0.6)', ac: '#e8b947',
-  ok: '#4ade80', err: '#f87171',
-};
+function VerticalIcon({ id }) {
+  if (id === 'gastro') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 3v8M4.5 3v5.5A2.5 2.5 0 0 0 7 11M9.5 3v5.5A2.5 2.5 0 0 1 7 11v10M16 3v18M16 3c2.3 0 4 2.4 4 5.5S18.3 14 16 14" />
+      </svg>
+    );
+  }
 
-const inputStyle = {
-  width: '100%', padding: '11px 13px', borderRadius: 10, fontSize: 15,
-  background: 'rgba(0,0,0,0.25)', border: `1px solid ${C.line}`,
-  color: C.tx, outline: 'none', boxSizing: 'border-box',
-};
+  if (id === 'barber') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="6" cy="7" r="2.5" />
+        <circle cx="6" cy="17" r="2.5" />
+        <path d="m8.2 8.2 11.3 7.3M8.2 15.8 19.5 8.5M10.8 12l-2.6-1.8" />
+      </svg>
+    );
+  }
 
-function Campo({ label, hint, children }) {
   return (
-    <label style={{ display: 'block', marginBottom: 16 }}>
-      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{label}</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m8.5 4 3.5 2 3.5-2 4 3-2 3v10h-11V10l-2-3 4-3Z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </svg>
+  );
+}
+
+function Campo({ label, hint, htmlFor, children }) {
+  return (
+    <div className="signup-field">
+      <label className="signup-label" htmlFor={htmlFor}>{label}</label>
       {children}
-      {hint && <span style={{ display: 'block', marginTop: 5, fontSize: 12.5, color: C.t2 }}>{hint}</span>}
-    </label>
+      {hint && <p className="signup-hint">{hint}</p>}
+    </div>
+  );
+}
+
+function BrandPanel() {
+  return (
+    <aside className="signup-brand" aria-label="Dico">
+      <div className="signup-brand__grid" aria-hidden="true" />
+      <div className="signup-wordmark">
+        <span>DICO</span>
+        <i aria-hidden="true" />
+      </div>
+      <div className="signup-brand__message">
+        <p className="signup-technical">Alta de negocio · Sistema Dico</p>
+        <h1><span>Creá tu</span> <span>negocio.</span></h1>
+        <p>Es gratis y toma un minuto.</p>
+      </div>
+      <ol className="signup-brand__steps" aria-label="Proceso de alta">
+        <li><span>01</span>Configurá</li>
+        <li><span>02</span>Confirmá</li>
+        <li><span>03</span>Empezá</li>
+      </ol>
+    </aside>
   );
 }
 
@@ -60,7 +94,7 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const [dispo, setDispo] = useState(null);   // null | 'checking' | true | false
+  const [dispo, setDispo] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
   const [listo, setListo] = useState(false);
@@ -69,14 +103,12 @@ export default function Signup() {
 
   useEffect(() => { document.title = 'Crear mi negocio — Dico'; }, []);
 
-  // Sugerencia de slug mientras el dueño no lo haya editado a mano.
   useEffect(() => {
     if (!slugTocado) setSlug(slugify(bizName));
   }, [bizName, slugTocado]);
 
   const validacionLocal = validateSlug(slug);
 
-  // Disponibilidad contra el server, con debounce para no consultar por tecla.
   useEffect(() => {
     if (!validacionLocal.ok) { setDispo(null); return; }
     setDispo('checking');
@@ -87,7 +119,6 @@ export default function Signup() {
     return () => clearTimeout(debounce.current);
   }, [slug, validacionLocal.ok]);
 
-  // Para avisar en el pais donde todavia no se factura, en vez de prometerlo.
   const paisElegido = PAISES.find((p) => p.id === country);
 
   const puedeEnviar =
@@ -114,187 +145,211 @@ export default function Signup() {
     setListo(true);
   }, [puedeEnviar, email, password, bizName, vertical, slug, modo, country]);
 
-  const wrap = {
-    minHeight: '100dvh', background: C.bg, color: C.tx,
-    fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-    padding: '40px 20px', display: 'flex', justifyContent: 'center',
-  };
-
   if (listo) {
     return (
-      <main style={{ ...wrap, alignItems: 'center' }}>
-        <div style={{ maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 44 }}>📬</div>
-          <h1 style={{ fontSize: 24, margin: '14px 0 10px' }}>Revisá tu email</h1>
-          <p style={{ color: C.t2, fontSize: 15, lineHeight: 1.55 }}>
-            Te mandamos un link a <strong style={{ color: C.tx }}>{email}</strong>.
-            Cuando lo confirmes, creamos <strong style={{ color: C.tx }}>{slug}.divianco.app</strong> y
-            entrás a cargar tu carta.
-          </p>
-          <p style={{ color: C.t2, fontSize: 13, marginTop: 18, lineHeight: 1.5 }}>
-            Si no llega en unos minutos, mirá en spam. La dirección queda
-            reservada para vos mientras tanto.
-          </p>
-        </div>
+      <main className="signup-page signup-page--success">
+        <BrandPanel />
+        <section className="signup-workspace signup-success-wrap">
+          <div className="signup-success" role="status">
+            <div className="signup-success__icon"><MailIcon /></div>
+            <p className="signup-eyebrow">Registro recibido</p>
+            <h2>Revisá tu email</h2>
+            <p>
+              Te mandamos un link a <strong>{email}</strong>. Cuando lo confirmes,
+              creamos <strong>{slug}.divianco.app</strong> y entrás a cargar tu carta.
+            </p>
+            <p className="signup-success__note">
+              Si no llega en unos minutos, mirá en spam. La dirección queda reservada
+              para vos mientras tanto.
+            </p>
+          </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main style={wrap}>
-      <form onSubmit={enviar} style={{ width: '100%', maxWidth: 440 }}>
-        <div style={{ marginBottom: 26 }}>
-          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>Dico</div>
-          <p style={{ color: C.t2, fontSize: 15, marginTop: 6 }}>
-            Creá tu negocio. Es gratis y toma un minuto.
-          </p>
-        </div>
+    <main className="signup-page">
+      <BrandPanel />
 
-        <Campo label="¿Cómo se llama tu negocio?">
-          <input
-            style={inputStyle} value={bizName} autoFocus
-            onChange={(e) => setBizName(e.target.value)}
-            placeholder="Pizzería Doña Rosa" maxLength={80}
-          />
-        </Campo>
+      <section className="signup-workspace">
+        <header className="signup-intro">
+          <p className="signup-eyebrow">Configuración inicial</p>
+          <h2>Empecemos por lo esencial</h2>
+          <p>Todo lo demás se puede ajustar después.</p>
+        </header>
 
-        <Campo label="¿A qué te dedicás?">
-          <div style={{ display: 'flex', gap: 8 }}>
-            {VERTICALES.map((v) => {
-              const activo = vertical === v.id;
-              return (
-                <button
-                  type="button" key={v.id} onClick={() => setVertical(v.id)}
-                  style={{
-                    flex: 1, padding: '12px 6px', borderRadius: 11, cursor: 'pointer',
-                    background: activo ? 'rgba(232,185,71,0.14)' : C.card,
-                    border: `1.5px solid ${activo ? C.ac : C.line}`,
-                    color: C.tx, textAlign: 'center', font: 'inherit',
-                  }}
+        <form className="signup-form" onSubmit={enviar}>
+          <section className="signup-card" aria-labelledby="signup-business-heading">
+            <header className="signup-card__heading">
+              <span>01</span>
+              <h3 id="signup-business-heading">Tu negocio</h3>
+            </header>
+
+            <Campo label="¿Cómo se llama tu negocio?" htmlFor="signup-business-name">
+              <input
+                id="signup-business-name"
+                className="signup-control"
+                value={bizName}
+                autoFocus
+                onChange={(e) => setBizName(e.target.value)}
+                placeholder="Pizzería Doña Rosa"
+                maxLength={80}
+              />
+            </Campo>
+
+            <fieldset className="signup-fieldset">
+              <legend className="signup-label">¿A qué te dedicás?</legend>
+              <div className="signup-options signup-options--verticals">
+                {VERTICALES.map((v) => {
+                  const activo = vertical === v.id;
+                  return (
+                    <button
+                      className={`signup-option${activo ? ' is-active' : ''}`}
+                      type="button"
+                      key={v.id}
+                      onClick={() => setVertical(v.id)}
+                      aria-pressed={activo}
+                    >
+                      <span className="signup-option__icon"><VerticalIcon id={v.id} /></span>
+                      <span className="signup-option__copy">
+                        <strong>{v.nombre}</strong>
+                        <small>{v.detalle}</small>
+                      </span>
+                      <span className="signup-option__state" aria-hidden="true" />
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <fieldset className="signup-fieldset">
+              <legend className="signup-label">¿Cómo atendés?</legend>
+              <div className="signup-options signup-options--modes">
+                {MODOS.map((m) => {
+                  const activo = modo === m.id;
+                  return (
+                    <button
+                      className={`signup-option signup-option--mode${activo ? ' is-active' : ''}`}
+                      type="button"
+                      key={m.id}
+                      onClick={() => setModo(m.id)}
+                      aria-pressed={activo}
+                    >
+                      <span className="signup-option__copy">
+                        <strong>{m.label}</strong>
+                        <small>{m.hint}</small>
+                      </span>
+                      <span className="signup-option__state" aria-hidden="true" />
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="signup-hint">Define si vas a manejar mesas, caja y gente en el local.</p>
+            </fieldset>
+
+            <Campo
+              label="¿En qué país?"
+              htmlFor="signup-country"
+              hint={paisElegido && !paisElegido.factura
+                ? `Podés operar y cobrar. La facturación electrónica todavía no está disponible en ${paisElegido.label}.`
+                : 'Define tu moneda, tu huso horario y cómo se factura.'}
+            >
+              <div className="signup-select-wrap">
+                <select
+                  id="signup-country"
+                  className="signup-control signup-select"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
                 >
-                  <div style={{ fontSize: 21 }}>{v.emoji}</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 650, marginTop: 4 }}>{v.nombre}</div>
-                  <div style={{ fontSize: 11, color: C.t2, marginTop: 2 }}>{v.detalle}</div>
-                </button>
-              );
-            })}
-          </div>
-        </Campo>
+                  {PAISES.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label} — {p.currency}</option>
+                  ))}
+                </select>
+              </div>
+            </Campo>
 
-        <Campo
-          label="¿Cómo atendés?"
-          hint="Define si vas a manejar mesas, caja y gente en el local."
-        >
-          <div style={{ display: 'flex', gap: 8 }}>
-            {MODOS.map((m) => {
-              const activo = modo === m.id;
-              return (
-                <button
-                  type="button" key={m.id} onClick={() => setModo(m.id)}
-                  style={{
-                    flex: 1, padding: '11px 8px', borderRadius: 11, cursor: 'pointer',
-                    background: activo ? 'rgba(232,185,71,0.14)' : C.card,
-                    border: `1.5px solid ${activo ? C.ac : C.line}`,
-                    color: C.tx, textAlign: 'left', font: 'inherit',
-                  }}
-                >
-                  <div style={{ fontSize: 12.5, fontWeight: 650 }}>{m.label}</div>
-                  <div style={{ fontSize: 11, color: C.t2, marginTop: 3, lineHeight: 1.35 }}>{m.hint}</div>
-                </button>
-              );
-            })}
-          </div>
-        </Campo>
+            <Campo label="La dirección de tu local" htmlFor="signup-slug">
+              <div className="signup-slug">
+                <input
+                  id="signup-slug"
+                  className="signup-control"
+                  value={slug}
+                  onChange={(e) => { setSlugTocado(true); setSlug(slugify(e.target.value)); }}
+                  placeholder="mi-negocio"
+                  maxLength={40}
+                  spellCheck={false}
+                />
+                <span>.divianco.app</span>
+              </div>
+              <div className="signup-validation" aria-live="polite">
+                {slug && !validacionLocal.ok && (
+                  <span className="is-error">{validacionLocal.reason}</span>
+                )}
+                {validacionLocal.ok && dispo === 'checking' && <span>Verificando…</span>}
+                {validacionLocal.ok && dispo === true && (
+                  <span className="is-success">✓ {slug}.divianco.app está libre</span>
+                )}
+                {validacionLocal.ok && dispo === false && (
+                  <span className="is-error">Esa dirección ya está ocupada</span>
+                )}
+                {validacionLocal.ok && dispo === null && (
+                  <span>No pudimos verificar la disponibilidad</span>
+                )}
+              </div>
+            </Campo>
+          </section>
 
-        <Campo
-          label="¿En qué país?"
-          hint={paisElegido && !paisElegido.factura
-            ? `Podés operar y cobrar. La facturación electrónica todavía no está disponible en ${paisElegido.label}.`
-            : 'Define tu moneda, tu huso horario y cómo se factura.'}
-        >
-          <select
-            style={{ ...inputStyle, appearance: 'none' }}
-            value={country} onChange={(e) => setCountry(e.target.value)}
+          <section className="signup-card" aria-labelledby="signup-access-heading">
+            <header className="signup-card__heading">
+              <span>02</span>
+              <h3 id="signup-access-heading">Tu acceso</h3>
+            </header>
+            <div className="signup-access-grid">
+              <Campo label="Tu email" htmlFor="signup-email">
+                <input
+                  id="signup-email"
+                  className="signup-control"
+                  type="email"
+                  value={email}
+                  autoComplete="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="vos@ejemplo.com"
+                />
+              </Campo>
+
+              <Campo label="Contraseña" htmlFor="signup-password" hint="Mínimo 8 caracteres.">
+                <input
+                  id="signup-password"
+                  className="signup-control"
+                  type="password"
+                  value={password}
+                  autoComplete="new-password"
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </Campo>
+            </div>
+          </section>
+
+          {error && <div className="signup-error" role="alert">{error}</div>}
+
+          <button
+            className="signup-submit"
+            type="submit"
+            disabled={!puedeEnviar}
+            aria-busy={enviando}
           >
-            {PAISES.map((p) => (
-              <option key={p.id} value={p.id} style={{ background: C.bg, color: C.tx }}>
-                {p.label} — {p.currency}
-              </option>
-            ))}
-          </select>
-        </Campo>
+            <span>{enviando ? 'Creando…' : 'Crear mi negocio'}</span>
+            <span aria-hidden="true">→</span>
+          </button>
 
-        <Campo label="La dirección de tu local">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }} value={slug}
-              onChange={(e) => { setSlugTocado(true); setSlug(slugify(e.target.value)); }}
-              placeholder="mi-negocio" maxLength={40} spellCheck={false}
-            />
-            <span style={{ color: C.t2, fontSize: 14, whiteSpace: 'nowrap' }}>.divianco.app</span>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12.5, minHeight: 18 }}>
-            {slug && !validacionLocal.ok && (
-              <span style={{ color: C.err }}>{validacionLocal.reason}</span>
-            )}
-            {validacionLocal.ok && dispo === 'checking' && (
-              <span style={{ color: C.t2 }}>Verificando…</span>
-            )}
-            {validacionLocal.ok && dispo === true && (
-              <span style={{ color: C.ok }}>✓ {slug}.divianco.app está libre</span>
-            )}
-            {validacionLocal.ok && dispo === false && (
-              <span style={{ color: C.err }}>Esa dirección ya está ocupada</span>
-            )}
-            {validacionLocal.ok && dispo === null && (
-              <span style={{ color: C.t2 }}>No pudimos verificar la disponibilidad</span>
-            )}
-          </div>
-        </Campo>
-
-        <Campo label="Tu email">
-          <input
-            style={inputStyle} type="email" value={email} autoComplete="email"
-            onChange={(e) => setEmail(e.target.value)} placeholder="vos@ejemplo.com"
-          />
-        </Campo>
-
-        <Campo label="Contraseña" hint="Mínimo 8 caracteres.">
-          <input
-            style={inputStyle} type="password" value={password} autoComplete="new-password"
-            onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-          />
-        </Campo>
-
-        {error && (
-          <div style={{
-            padding: '11px 13px', borderRadius: 10, marginBottom: 14, fontSize: 14,
-            background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)',
-            color: '#fca5a5',
-          }}>{error}</div>
-        )}
-
-        <button
-          type="submit" disabled={!puedeEnviar}
-          style={{
-            width: '100%', padding: '13px', borderRadius: 11, border: 'none',
-            fontSize: 15.5, fontWeight: 700, font: 'inherit',
-            background: puedeEnviar ? C.ac : 'rgba(255,255,255,0.1)',
-            color: puedeEnviar ? '#1a1408' : C.t2,
-            cursor: puedeEnviar ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {enviando ? 'Creando…' : 'Crear mi negocio'}
-        </button>
-
-        <p style={{ color: C.t2, fontSize: 12.5, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
-          Te vamos a pedir que confirmes el email antes de activar el local.
-        </p>
-
-        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 13.5, color: C.t2 }}>
-          ¿Ya tenés cuenta? <a href="/entrar" style={{ color: C.ac }}>Entrar</a>
-        </div>
-      </form>
+          <p className="signup-legal">
+            Te vamos a pedir que confirmes el email antes de activar el local.
+          </p>
+          <p className="signup-login">¿Ya tenés cuenta? <a href="/entrar">Entrar</a></p>
+        </form>
+      </section>
     </main>
   );
 }

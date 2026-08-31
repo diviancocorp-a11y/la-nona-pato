@@ -268,7 +268,7 @@
 }
 .ag-subpage-back:hover { background: var(--ag-bg-soft); }
 .ag-subpage-title {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   color: var(--ag-ink);
   letter-spacing: -0.01em;
@@ -323,7 +323,7 @@
   padding: 16px 18px 8px;
 }
 .ag-modal-header h3 {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   margin: 0; color: var(--ag-ink);
   letter-spacing: -0.01em;
@@ -596,7 +596,7 @@ body:has(.ag-page-over) .ag-bottom-nav {
   flex-shrink: 0;
 }
 .ag-page-over-title {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   margin: 0; color: var(--ag-ink);
   letter-spacing: -0.01em;
@@ -770,4 +770,74 @@ body:has(.ag-page-over) .ag-bottom-nav {
   letter-spacing: 0.08em;
   color: var(--ag-ink-3);
   padding: 4px 12px 8px;
+}
+
+/* ─── Dialogo (Phase 3A) ────────────────────────────────────────────
+ * La capa visual de `components/ui/Dialog.jsx`. Se monta por PORTAL en
+ * #dico-overlay-root, hijo directo de <body>: fuera del stacking context
+ * que crea `<main style="position:relative;z-index:2">` del panel.
+ *
+ * Por eso las capas son `--ag-z-backdrop` y `--ag-z-modal` y no un numero
+ * grande al voleo: fuera de `main` los z-index se comparan de verdad contra
+ * la topbar y la bottom nav.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.ag-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ag-z-backdrop);
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  /* El velo cubre el viewport completo: si no, la nav queda clickeable por
+     debajo, que es exactamente lo que pasaba antes. */
+}
+
+.ag-dialog-panel {
+  position: relative;
+  z-index: var(--ag-z-modal);
+  background: var(--ag-surface);
+  color: var(--ag-ink);
+  box-sizing: border-box;
+  max-height: 92vh;
+  overflow-y: auto;
+  outline: none;
+  box-shadow: var(--ag-sh-lg);
+}
+
+/* Hoja inferior: el patron que ya usaba el cobro. */
+.ag-dialog-backdrop:has(> .ag-dialog-panel--sheet) { align-items: flex-end; }
+.ag-dialog-panel--sheet {
+  width: 100%;
+  max-width: 460px;
+  border-radius: 16px 16px 0 0;
+  padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+  animation: ag-dialog-sheet-in 240ms var(--ag-ease);
+}
+
+/* Centrado: para confirmaciones cortas. */
+.ag-dialog-backdrop:has(> .ag-dialog-panel--center) { align-items: center; }
+.ag-dialog-panel--center {
+  width: calc(100% - 32px);
+  max-width: 420px;
+  border-radius: var(--ag-r-lg);
+  padding: 20px;
+  animation: ag-dialog-center-in 200ms var(--ag-ease);
+}
+
+@keyframes ag-dialog-sheet-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes ag-dialog-center-in {
+  from { transform: scale(0.98); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* El guard se escribe con la MISMA especificidad que la declaracion que tiene
+   que vencer. El de `.ag-bg-glow` no lo hacia y quedo inerte durante meses,
+   tapado por el reset global de index.css. */
+@media (prefers-reduced-motion: reduce) {
+  .ag-dialog-panel--sheet,
+  .ag-dialog-panel--center { animation: none; }
 }

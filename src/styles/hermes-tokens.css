@@ -1,45 +1,155 @@
 /* ────────────────────────────────────────────────────────
- * Hermes Gastro — Sistema visual (tokens + tipografía + componentes base)
- * Extiende los CSS variables existentes de la app sin pisarlos.
- * Las clases nuevas conviven con las viejas — uso opt-in vía className.
+ * DICO design foundation + Hermes compatibility layer.
+ *
+ * --ds-* is the canonical contract. Existing --hg-* names and .hg-* classes
+ * remain adapters during the incremental migration. Compatibility values are
+ * intentionally separate from brand targets so Phase 1 changes no pixels.
  * ──────────────────────────────────────────────────────── */
 
 :root {
-  /* Tokens editoriales — el viejo --ac, --bg, etc. los inyecta theme.js por tenant */
-  --hg-font-heading: 'Instrument Serif', 'DM Serif Display', Georgia, serif;
-  --hg-font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
-  --hg-font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  /* Raw color primitives: Machine Soul target */
+  --ds-color-neutral-0: #ffffff;
+  --ds-color-neutral-50: #faf5ee;
+  --ds-color-neutral-100: #f1ebe0;
+  --ds-color-neutral-200: #e8dfd0;
+  --ds-color-neutral-400: #a39685;
+  --ds-color-neutral-600: #6b5d4f;
+  --ds-color-neutral-800: #2d2924;
+  --ds-color-neutral-900: #1a1612;
+  --ds-color-neutral-950: #0f0e0d;
 
-  /* Escala de espaciado (sumo al stack existente) */
-  --hg-s1: 4px;
-  --hg-s2: 8px;
-  --hg-s3: 12px;
-  --hg-s4: 16px;
-  --hg-s5: 24px;
-  --hg-s6: 32px;
-  --hg-s7: 48px;
-  --hg-s8: 64px;
+  --ds-color-brand-gold-300: #f0c868;
+  --ds-color-brand-gold-500: #e0ac3c;
+  --ds-color-brand-gold-600: #c4922e;
+  --ds-color-brand-gold-700: #8a6520;
+  --ds-color-brand-gold-900: #3b2a0e;
 
-  /* Radios editoriales */
-  --hg-rs: 8px;
-  --hg-r: 14px;
-  --hg-rl: 22px;
+  --ds-color-intelligence-trace: #2d53f0;
+  --ds-color-intelligence-volt: #3d6bff;
+  --ds-color-intelligence-loader: #5e8cff;
+  --ds-color-intelligence-label: #93b4ff;
+  --ds-color-intelligence-halo: rgba(61, 107, 255, 0.2);
 
-  /* Sombras */
-  --hg-sh-sm: 0 1px 2px rgba(31, 24, 20, 0.04), 0 0 0 1px rgba(31, 24, 20, 0.04);
-  --hg-sh-md: 0 2px 4px rgba(31, 24, 20, 0.04), 0 8px 24px rgba(31, 24, 20, 0.06);
-  --hg-sh-lg: 0 4px 8px rgba(31, 24, 20, 0.04), 0 24px 48px rgba(31, 24, 20, 0.1);
+  --ds-color-status-success: #4fa87f;
+  --ds-color-status-warning: #f0803c;
+  --ds-color-status-error: #e2564b;
+  --ds-color-status-info: #3f8bd6;
 
-  /* Motion */
-  --hg-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --hg-t-fast: 120ms;
-  --hg-t-med: 220ms;
-  --hg-t-slow: 420ms;
+  /* Typography targets: approved, self-hosted Machine Soul pairing. */
+  --ds-font-ui: 'Overused Grotesk', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --ds-font-soul: 'Butler', 'Instrument Serif', Georgia, serif;
+  --ds-font-technical: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 
-  /* Estados semánticos (no cambian por tenant) */
-  --hg-ok: #4a6b3a;
-  --hg-warn: #a87a2a;
-  --hg-err: #9b3030;
+  /* Runtime font compatibility: keeps the current rendering in Phase 1. */
+  --ds-font-compat-ui: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --ds-font-compat-heading: 'Instrument Serif', 'DM Serif Display', Georgia, serif;
+  --ds-font-compat-technical: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Spacing primitives */
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-layout-12: 48px;
+  --ds-space-layout-16: 64px;
+
+  /* Radius and density primitives */
+  --ds-radius-1: 4px;
+  --ds-radius-2: 6px;
+  --ds-radius-3: 8px;
+  --ds-radius-4: 12px;
+  --ds-radius-pill: 999px;
+  --ds-control-height-compact: 34px;
+  --ds-control-height-default: 40px;
+  --ds-control-height-touch: 48px;
+
+  /* Type scale */
+  --ds-type-xs: 11px;
+  --ds-type-sm: 13px;
+  --ds-type-md: 15px;
+  --ds-type-lg: 18px;
+  --ds-type-xl: 24px;
+  --ds-type-metric: 28px;
+
+  /* Elevation and motion */
+  --ds-shadow-sm: 0 1px 2px rgba(31, 24, 20, 0.04), 0 0 0 1px rgba(31, 24, 20, 0.04);
+  --ds-shadow-md: 0 2px 4px rgba(31, 24, 20, 0.04), 0 8px 24px rgba(31, 24, 20, 0.06);
+  --ds-shadow-lg: 0 4px 8px rgba(31, 24, 20, 0.04), 0 24px 48px rgba(31, 24, 20, 0.1);
+  --ds-motion-ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ds-motion-fast: 120ms;
+  --ds-motion-standard: 220ms;
+  --ds-motion-character: 420ms;
+
+  /* Semantic contracts. Brand, intelligence and status never alias. */
+  --ds-color-action-primary-bg: var(--ds-color-brand-gold-500);
+  --ds-color-action-primary-text: var(--ds-color-neutral-950);
+  --ds-color-focus-ring: var(--ds-compat-tailwind-accent);
+  --ds-color-ai-processing: var(--ds-color-intelligence-volt);
+  --ds-color-feedback-success: var(--ds-color-status-success);
+  --ds-color-feedback-warning: var(--ds-color-status-warning);
+  --ds-color-feedback-error: var(--ds-color-status-error);
+  --ds-color-feedback-info: var(--ds-color-status-info);
+
+  /* Exact legacy values used by the Tailwind bridge. Do not use in new UI. */
+  --ds-compat-tailwind-font-sans: 'DM Sans', sans-serif;
+  --ds-compat-tailwind-font-serif: 'DM Serif Display', serif;
+  --ds-compat-tailwind-bg: #fbf7f2;
+  --ds-compat-tailwind-bg-2: #f3ede4;
+  --ds-compat-tailwind-bg-3: #ffffff;
+  --ds-compat-tailwind-text: #2d1b0e;
+  --ds-compat-tailwind-text-2: #6b5744;
+  --ds-compat-tailwind-text-3: #9c8b7a;
+  --ds-compat-tailwind-accent: #c45d3e;
+  --ds-compat-tailwind-accent-light: #fff0eb;
+  --ds-compat-tailwind-success: #3a7d44;
+  --ds-compat-tailwind-success-light: #e8f5e9;
+  --ds-compat-tailwind-warning: #d4a017;
+  --ds-compat-tailwind-warning-light: #fff8e1;
+  --ds-compat-tailwind-error: #c62828;
+  --ds-compat-tailwind-error-light: #ffebee;
+  --ds-compat-tailwind-info: #1565c0;
+  --ds-compat-tailwind-info-light: #e3f2fd;
+  --ds-compat-tailwind-radius-base: 16px;
+  --ds-compat-tailwind-radius-sm: 10px;
+  --ds-compat-tailwind-radius-lg: 24px;
+  --ds-compat-tailwind-shadow-card: 0 2px 12px rgba(45, 27, 14, 0.08);
+  --ds-compat-tailwind-shadow-elevated: 0 8px 24px rgba(45, 27, 14, 0.12);
+  --ds-compat-tailwind-shadow-accent: 0 4px 15px rgba(196, 93, 62, 0.3);
+
+  /* Exact Hermes values that have no canonical equivalent yet. */
+  --ds-compat-hg-radius-md: 14px;
+  --ds-compat-hg-radius-lg: 22px;
+  --ds-compat-hg-success: #4a6b3a;
+  --ds-compat-hg-warning: #a87a2a;
+  --ds-compat-hg-error: #9b3030;
+
+  /* Hermes aliases: temporary and pixel-identical. */
+  --hg-font-heading: var(--ds-font-compat-heading);
+  --hg-font-body: var(--ds-font-compat-ui);
+  --hg-font-mono: var(--ds-font-compat-technical);
+  --hg-s1: var(--ds-space-1);
+  --hg-s2: var(--ds-space-2);
+  --hg-s3: var(--ds-space-3);
+  --hg-s4: var(--ds-space-4);
+  --hg-s5: var(--ds-space-6);
+  --hg-s6: var(--ds-space-8);
+  --hg-s7: var(--ds-space-layout-12);
+  --hg-s8: var(--ds-space-layout-16);
+  --hg-rs: var(--ds-radius-3);
+  --hg-r: var(--ds-compat-hg-radius-md);
+  --hg-rl: var(--ds-compat-hg-radius-lg);
+  --hg-sh-sm: var(--ds-shadow-sm);
+  --hg-sh-md: var(--ds-shadow-md);
+  --hg-sh-lg: var(--ds-shadow-lg);
+  --hg-ease: var(--ds-motion-ease-standard);
+  --hg-t-fast: var(--ds-motion-fast);
+  --hg-t-med: var(--ds-motion-standard);
+  --hg-t-slow: var(--ds-motion-character);
+  --hg-ok: var(--ds-compat-hg-success);
+  --hg-warn: var(--ds-compat-hg-warning);
+  --hg-err: var(--ds-compat-hg-error);
 }
 
 /* ────────── Escala tipográfica ────────── */

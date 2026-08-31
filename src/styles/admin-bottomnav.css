@@ -32,7 +32,11 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 700;
-  padding: 10px 12px;
+  /* 44x44 minimo (Phase 3A). Antes: padding 10px -> 42px de alto, por debajo
+     del minimo tactil. */
+  padding: 12px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 999px;
   cursor: pointer;
   position: relative;
@@ -41,7 +45,13 @@
   background: transparent;
   font-family: inherit;
   white-space: nowrap;
-  flex-shrink: 0;
+  /* Antes era flex-shrink: 0 y por eso la fila podia pedir mas ancho del que
+     habia. Ahora los items ceden —el activo, que es el mas ancho, primero— y
+     `min-width: 44px` garantiza que nunca bajen del minimo tactil. Con 5
+     slots: 5x44 + 4x4 = 236 <= 334 disponibles a 360px. La fila entra por
+     construccion en cualquier ancho, sin depender de un calculo en JS. */
+  flex-shrink: 1;
+  overflow: hidden;
 }
 .ag-nav-item .ag-nav-icon {
   width: 22px; height: 22px; display: block;
@@ -226,4 +236,72 @@
   .ag-nav-item.active .ag-nav-label::after {
     animation: none;
   }
+}
+
+
+/* ─── Desborde de navegacion (Phase 3A) ─────────────────────────────
+ * A 390x844 los ocho modulos de gastro pedian 515px dentro de una pildora de
+ * 364: Caja, Salon y Equipo quedaban fuera del viewport, sin scroll y sin
+ * ninguna otra via de acceso. Ahora las primeras cuatro quedan visibles y el
+ * resto vive en la hoja "Mas".
+ * ─────────────────────────────────────────────────────────────────── */
+
+/* La barra ya no puede desbordar en silencio: si algun dia vuelve a pasar, se
+   ve como scroll y no como contenido perdido. */
+.ag-bottom-nav { overflow-x: auto; scrollbar-width: none; }
+.ag-bottom-nav::-webkit-scrollbar { display: none; }
+
+.ag-nav-item--mas .ag-nav-icon { opacity: 0.9; }
+
+.ag-nav-mas-titulo { margin: 0 0 12px; }
+
+.ag-nav-mas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ag-nav-mas-item {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--ag-r-md);
+  background: var(--ag-bg-soft);
+  color: var(--ag-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ag-t-fast) var(--ag-ease);
+}
+.ag-nav-mas-item:hover { background: var(--ag-line); }
+.ag-nav-mas-item .ag-nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+.ag-nav-mas-item.active {
+  background: var(--ag-c-terra);
+  color: #1A1A1A;
+}
+
+.ag-nav-mas-badge { position: static; margin-left: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-nav-mas-item { transition: none; }
+}
+
+/* A 360px el item activo con su label (114.9px) hacia que la fila pidiera 21px
+   mas de los disponibles. Nada quedaba inalcanzable —la barra scrollea— pero
+   un scroll dentro de la pildora no es el patron: se acota el label. */
+/* El label del activo es lo unico elastico: si el ancho no alcanza, se corta
+   con elipsis en vez de empujar a los demas fuera del strip visible. */
+.ag-nav-item.active .ag-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }

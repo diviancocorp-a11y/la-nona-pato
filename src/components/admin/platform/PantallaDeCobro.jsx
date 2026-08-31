@@ -25,7 +25,8 @@
  * cuenta puede quedar saldada mientras la gente sigue sentada en la mesa. El
  * pedido se completa cuando alguien lo dice, no cuando entra el ultimo peso.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
+import Dialog from '../../ui/Dialog';
 import {
   fetchMediosDePago, saldoDelPedido, fetchPagosDePedido, cobrar,
 } from '../../../services/platformCaja';
@@ -47,6 +48,7 @@ export default function PantallaDeCobro({
   onCobrado,        // se llama despues de cada cobro: refresca la caja de afuera
   onCompletar,      // cerrar la cuenta (pasa el pedido a completado)
 }) {
+  const tituloId = useId();
   const [medios, setMedios] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [saldo, setSaldo] = useState(null);
@@ -116,30 +118,22 @@ export default function PantallaDeCobro({
   };
 
   return (
-    <div
-      className="cp-root"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Cobrar el pedido ${pedido.code || ''}`}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
-        alignItems: 'flex-end', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.45)',
-      }}
-      onClick={onCerrar}
+    <Dialog
+      open
+      onClose={onCerrar}
+      // aria-label y no aria-labelledby: el contrato de QA Lite localiza este
+      // dialogo por `[role="dialog"][aria-label^="Cobrar el pedido"]`
+      // (e2e/qa-lite/surfaces.ts). Cambiarlo por el titulo visible romperia el
+      // gate sin ganar nada: el nombre accesible es el mismo texto.
+      label={`Cobrar el pedido ${pedido.code || ''}`}
+      describedBy={tituloId}
+      variante="sheet"
+      className="ag-cobro"
     >
-      <section
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto',
-          background: 'var(--ag-surface, #fffdf7)', color: 'var(--ag-ink, #1a1a1a)',
-          borderRadius: '16px 16px 0 0', padding: '18px 18px 24px',
-          display: 'grid', gap: 14, boxSizing: 'border-box',
-        }}
-      >
+      <div style={{ display: 'grid', gap: 14 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
+            <div id={tituloId} style={{ fontSize: 16, fontWeight: 700 }}>
               Cobrar {pedido.code ? `#${pedido.code}` : ''}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--ag-ink-3, #666)' }}>
@@ -247,7 +241,7 @@ export default function PantallaDeCobro({
                         borderRadius: 11, font: 'inherit', fontSize: 14,
                         fontWeight: metodo === m.id ? 700 : 500, cursor: 'pointer',
                         border: metodo === m.id
-                          ? '2px solid var(--ag-accent, #e8b947)'
+                          ? '2px solid var(--ag-accent-border, #9a6b00)'
                           : '1px solid var(--ag-line, rgba(0,0,0,0.15))',
                         background: metodo === m.id
                           ? 'var(--ag-accent-soft, rgba(232,185,71,0.16))'
@@ -334,7 +328,7 @@ export default function PantallaDeCobro({
             Cerrar la cuenta
           </button>
         )}
-      </section>
-    </div>
+      </div>
+    </Dialog>
   );
 }
