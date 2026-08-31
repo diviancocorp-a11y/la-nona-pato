@@ -23,8 +23,8 @@ existe un gate o una aprobación ya persistida en el repositorio.
 | Phase 5 — Primitives | **PARTIAL / NOT FORMALLY COMPLETE** | Phase 3A ya aporta `Dialog`, `OverlayPortal` y `useFocusTrap`, pero no existe extracción validada desde Golden Screen y una segunda pantalla. | línea `7ef8ec6` | Contratos unitarios de Phase 3A; gate formal de Phase 5 ausente. | Evitar crear una librería UI paralela. | Extraer sólo lo demostrado por Golden Screen. |
 | Phase 6 — Admin rollout | **NOT STARTED** | No hay batches A–D del plan unificado. | — | No ejecutado. | Pantallas funcionales siguen fuera del lote actual. | Esperar Golden Screen y primitives. |
 | Phase 7 — POS / Catalog | **NOT STARTED** | `cp-root` y temas `ambar/noche/carbon` siguen siendo autoridad del catálogo; ownership DICO/white-label no fue decidido. | — | No ejecutado. | No mezclar storefront y admin. | Resolver ownership antes de migrar. |
-| Phase 8 — Dico Native 2D | **IN PROGRESS** | Pose nativa, cara modular y presencia separada de avisos integradas. B1 agrega `DicoPresence` como autoridad única: Native sólo existe en `native_idle` y `native_notice`. `9741b96` fue auditado como equivalente conceptual de `0304f28`: CSS y test son blobs idénticos; se conserva el WebP funcional más nuevo de `0304f28` (`aaa84f5`, 23.956 bytes). | `0304f28`, recovery `67e95ce`, B1 `be5d6b5` | B1: 5 archivos / 53 tests dirigidos y suite completa 76 / 1.036 PASS. | B2/B3 y validación visual posterior siguen pendientes; no se tocó cara, typewriter ni posición de burbuja. | Esperar aprobación explícita de B1 antes de avanzar. |
-| Phase 9 — Slot / Physical | **IN PROGRESS** | Frontera física, asset Physical, retorno completo y reserva de espacio integrados. En B1, `DicoSlot` pasa a controlado y Physical queda excluido de Native durante opening/open/closing. | `a3b07bc`, `de5568a`, `7f40419`, `7b17e97`, B1 `be5d6b5` | Exclusión Native/Physical, fin real de closing y Reduced Motion cubiertos por tests; suite completa verde. | Falta validación visual de proporción, clipping y refinamiento posterior del Slot. | No iniciar B2/B3 sin el GO del checkpoint B1. |
+| Phase 8 — Dico Native 2D | **IN PROGRESS — B1/B2/B3/B4 CLOSED** | Pose nativa, cara modular y presencia separada de avisos integradas. B1 agrega `DicoPresence` como autoridad única. B2 confirma que `DicoSlot` es controlado. B3 ubica la burbuja en flujo arriba de Native; B4 conserva el typewriter y reserva su geometría completa desde el primer frame con una sola fuente accesible. `9741b96` fue auditado como equivalente conceptual de `0304f28`; se conserva una sola implementación. | `0304f28`, recovery `67e95ce`, B1 `be5d6b5`, B3 `f429722`, B4 `f33d8eb` | 6 archivos / 61 tests dirigidos; suite 77 / 1.044 PASS. QA same-ref: DOM 8/8, screenshots 8/8, `blockingDiffPixels: 0`, scroll 40/40; geometría estable en 320/375/768/1440. | B5 (cara canónica) y fases visuales posteriores siguen pendientes. | Detenerse hasta GO explícito para B5. |
+| Phase 9 — Slot / Physical | **IN PROGRESS — B2 CLOSED** | Frontera física, asset Physical, retorno completo y reserva de espacio integrados. `DicoSlot` recibe su estado de `DicoPresence`; no controla notice ni existencia Native. Physical queda excluido de Native durante opening/open/closing y el notice no se restaura al volver. | `a3b07bc`, `de5568a`, `7f40419`, `7b17e97`, B1 `be5d6b5`, auditoría B2 en `f429722` | Exclusión Native/Physical, fin real de closing, no-restauración y Reduced Motion cubiertos; suite completa verde. | Falta validación visual específica de Physical abierto, proporción y materiales; no pertenecía a B2–B4. | Conservar control único y esperar el lote Physical correspondiente. |
 | Phase 10 — Cleanup | **DEFERRED** | El plan conserva explícitamente aliases, overlays, CSS/assets y tokens legacy hasta inventariar consumidores. | — | No aplica todavía. | Borrar ahora rompería continuidad o mezclaría scopes. | Ejecutar sólo después del rollout. |
 
 ## Evidencia del checkpoint Stage A
@@ -42,5 +42,15 @@ existe un gate o una aprobación ya persistida en el repositorio.
 - El checkpoint no cambia DB, migraciones, RLS, RPC, auth, Edge Functions,
   lógica comercial, dependencias ni producción.
 
-Los resultados finales de gates se registran en el HANDOFF. B1 `DicoPresence`
-quedó cerrado en `be5d6b5`; este documento no autoriza avanzar a B2/B3.
+## Estado formal de Stage B
+
+| Bloque | Estado | Evidencia |
+|---|---|---|
+| B1 — `DicoPresence` | **CLOSED** | `be5d6b5`; máquina única Native/Notice/Physical. |
+| B2 — `DicoSlot` controlado | **CLOSED** | Auditoría estática y tests en `f429722`; no requirió código productivo nuevo. |
+| B3 — aviso encima de Native | **CLOSED** | `f429722`; DOM/layout, cola, hit target y transiciones cubiertos. |
+| B4 — typewriter estable | **CLOSED** | `f33d8eb`; fake timers, Reduced Motion, accesibilidad y gate real en cuatro viewports. |
+| B5 — cara canónica | **NOT STARTED** | Bloqueado hasta un GO explícito. |
+
+Los resultados completos y las rutas de artifacts están en `platform/HANDOFF.md`.
+Este documento no autoriza avanzar automáticamente a B5.

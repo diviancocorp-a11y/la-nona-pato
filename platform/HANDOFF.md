@@ -8,6 +8,81 @@
 
 ---
 
+## 31/ago/2026 — Stage B2/B3/B4 cerrado: mensaje Native estable (sesión Codex)
+
+B2, B3 y B4 quedaron cerrados sobre el B1 aprobado. Se detuvo el trabajo antes
+de B5: no se tocó `CaraDeTinta`, expresiones, assets/materiales Physical,
+registry, roles, Golden Screen, módulos Admin, DB/RLS/auth ni dependencias. No
+hubo push, preview, deploy ni cambio de producción.
+
+### Hecho
+
+- Antes de tocar código se creó
+  `C:\Users\ricar\Downloads\DICO_B1_APPROVED_903f765.bundle`: historia
+  completa, rama `feat/dico-panorama-v1`, HEAD `903f765`, SHA-256
+  `8486f572847c76949ffe822c391bb6542d10b4c99af1b057178a8f750b38a692`.
+- B2 se auditó y cerró sin código nuevo: `DicoSlot` recibe `estado` desde
+  `DicoPresence`, no controla avisos, no decide si Native existe y no conserva
+  una segunda máquina de presencia.
+- `f429722 fix(dico): place native message above character` mueve el mensaje
+  antes de Native en DOM y flujo, centra la cola, reserva volumen y deja el hit
+  target de Native en 44x44 sin agrandar el personaje visual.
+- `f33d8eb fix(dico): stabilize native typewriter geometry` conserva el
+  typewriter existente y superpone por CSS Grid una copia completa invisible
+  (`aria-hidden`) que fija la geometría desde el primer frame. La copia tipeada
+  también es decorativa; `.dico-burbuja-lectura` sigue siendo la única fuente
+  accesible completa. Reduced Motion nace completo en el primer render.
+- QA Lite incorpora un gate Native específico en 320, 375, 768 y 1440 px,
+  seis capturas nuevas y neutralización declarada de `dico-sacada`. El
+  manifiesto deriva sus selectores de la misma autoridad del contrato de
+  movimiento para que no vuelvan a divergir.
+
+### Verificado
+
+- Tests dirigidos finales: **6 archivos / 61 tests PASS**. Suite completa:
+  **77 archivos / 1.044 tests PASS** con threads y un worker.
+- QA Lite unitario: **27/27 PASS**. Typecheck, integridad de 326 archivos,
+  install-state, schema y `git diff --check`: PASS.
+- Build identificado del edificio: `f33d8ebf`, React Router `7.18.3`, artefacto
+  auditado y sin sourcemaps: PASS.
+- QA Lite same-ref `f33d8eb` ↔ `f33d8eb`: 8/8 contratos DOM iguales, 8/8
+  screenshots iguales, `blockingDiffPixels: 0`, red externa 0. Hubo 80 píxeles
+  raw clasificados como AA/redondeo no bloqueante (65/15).
+- Scroll trace: **4 archivos / 40 checkpoints idénticos**.
+- Gate geométrico real: burbuja, Native y `scrollHeight` idénticos entre inicio,
+  mitad y final del typewriter en 320/375/768/1440; ancho de documento igual al
+  viewport, hit target 44x44, una fuente accesible y Physical ausente.
+- Evidencia final:
+  `.qa-lite/artifacts/2026-08-31T23-36-52-426Z/`. Las seis capturas están en
+  `candidate/dico-native-message/` y fueron inspeccionadas: burbuja arriba,
+  cola hacia Dico, sin clipping, overflow ni cruce de topbar/bottom nav.
+- Producción no se modificó. La consulta final sigue mostrando como último
+  deploy `READY` a `d86c8a9` (`fix(security): update react router to 7.18.3`).
+
+### Pendiente inmediato
+
+1. Ricky debe revisar `f429722` y `f33d8eb` junto con las capturas del artifact.
+2. Sólo con un GO nuevo iniciar B5 (una cara canónica). No reinterpretar ni
+   rehacer B1–B4: sus contratos y evidencia ya están persistidos.
+3. Phase 3B continúa necesitando su cierre integrado A3 específico; este lote
+   no lo declara cerrado porque su objetivo fue exclusivamente Native B2–B4.
+
+### Bloqueado por Ricky
+
+- B5 / nueva cara requiere autorización explícita. La pausa es deliberada.
+- La rama no se pusheó: la instrucción de este bloque prohíbe push/deploy. El
+  bundle previo protege el punto aprobado B1 y los checkpoints B3/B4 quedan
+  locales en la rama actual.
+
+### Trabajo local vivo
+
+- Rama: `feat/dico-panorama-v1`.
+- Checkpoints técnicos: `f429722` y `f33d8eb`.
+- No hay código a medias. Esta sección y `DICO-IMPLEMENTATION-STATUS.md` son el
+  cierre documental posterior; deben quedar en un commit separado.
+
+---
+
 ## 31/ago/2026 — Stage B1: presencia centralizada y cerrada (sesión Codex)
 
 B1 quedó terminado en `be5d6b5` y se detuvo ahí por instrucción. No se empezó
