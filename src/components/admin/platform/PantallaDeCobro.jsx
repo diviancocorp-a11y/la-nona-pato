@@ -247,7 +247,7 @@ export default function PantallaDeCobro({
                         borderRadius: 11, font: 'inherit', fontSize: 14,
                         fontWeight: metodo === m.id ? 700 : 500, cursor: 'pointer',
                         border: metodo === m.id
-                          ? '2px solid var(--ag-accent, #e8b947)'
+                          ? '2px solid var(--ag-accent-border, #9a6b00)'
                           : '1px solid var(--ag-line, rgba(0,0,0,0.15))',
                         background: metodo === m.id
                           ? 'var(--ag-accent-soft, rgba(232,185,71,0.16))'
