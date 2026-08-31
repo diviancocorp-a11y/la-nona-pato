@@ -8,6 +8,74 @@
 
 ---
 
+## 31/ago/2026 — Stage A: recovery integrado y checkpoint verde (sesión Codex)
+
+Stage A quedó cerrado hasta el checkpoint de integración pedido. No se avanzó
+a `DicoPresence`, no hubo cambios de DB/RLS/auth, no hubo push, deploy ni
+producción. El usuario pidió revisar este checkpoint antes de continuar.
+
+### Hecho
+
+- Verificado `DICO_RECOVERY_PRESENCE_SLOT.bundle`: 8.658.041 bytes, SHA-256
+  `735fefa1d12face5caa41adc0d40896698ccf31d0c14c3e5318eee6692329931`,
+  HEAD `7b17e97e7d35638109f634b81892135b2a146036` y parent `9e77b0a`.
+- Integrada como segundo parent la cadena completa `67e95ce` → `a3b07bc` →
+  `de5568a` → `9741b96` → `7f40419` → `7b17e97`. El merge recuperable es
+  `40c1d550243be4a26dec2818ce5134a7cfc1160e`, con mensaje exacto
+  `chore(dico): integrate machine soul recovery with current platform`.
+- `9741b96` se comparó con `0304f28` por patch y blob. CSS y test eran
+  idénticos; se conservó una sola implementación y el `brazos.webp` más nuevo
+  de `0304f28`. Sólo se rescató la documentación útil del recovery.
+- Incorporados `DicoSlot`, el límite físico, la secuencia de retorno y el flujo
+  nativo de avisos. React Router sigue en `7.18.3`.
+- Creado `platform/DICO-IMPLEMENTATION-STATUS.md` con evidencia real de las
+  fases 0–10. `DicoPresence` sigue ausente por diseño.
+- QA Lite se adaptó al contrato real del disparador de avisos y neutraliza a
+  Dico tanto en admin como en POS; no se relajaron umbrales ni se ocultaron
+  diferencias de producto.
+
+### Verificado
+
+- Gates estructurales: install-state, integridad (322 archivos), schema,
+  freshness hasta 0062, columns (321 archivos), typecheck y lint en verde;
+  lint conserva 293 warnings preexistentes y 0 errores.
+- Suite completa con pool `threads`: **75 archivos / 1.028 tests PASS**.
+- Suite dirigida Dico: **5 archivos / 88 tests PASS**. QA Lite unitario:
+  **27/27 PASS**.
+- QA Lite same-ref en `.qa-lite/artifacts/2026-08-31T18-20-26-441Z`:
+  DOM igual, píxeles iguales para el gate, 46 píxeles raw clasificados como
+  antialias/redondeo, `blockingDiffPixels: 0`, sin tráfico externo; scroll:
+  4 trazas / 40 checkpoints / 0 diferencias.
+- Build plataforma ejecutado sobre `40c1d550`: identidad `40c1d550` consistente
+  en `version.json`, bundle y release Sentry; sin sourcemaps en el output.
+- Worktree limpio al ejecutar el build. No se verificó producción porque esta
+  rama no se desplegó, conforme a la orden explícita.
+
+### Pendiente inmediato
+
+1. Ricky debe revisar el checkpoint `40c1d550` y aprobar la integración.
+2. Sólo después de esa aprobación, continuar el Plan Maestro desde el bloque
+   siguiente. No crear ni iniciar `DicoPresence` antes de ese GO.
+3. Mantener los gates por bloque y crear un checkpoint recuperable antes de
+   cualquier avance visual posterior.
+
+### Bloqueado por Ricky
+
+- El avance posterior a este checkpoint necesita su validación explícita.
+- Los commits quedan locales porque Ricky indicó **sin push, sin deploy y sin
+  producción**. Esta restricción prevalece sobre el cierre habitual de sesión.
+
+### Trabajo local vivo
+
+- Rama: `feat/dico-panorama-v1`.
+- Checkpoint técnico a revisar: `40c1d550` (merge de la línea funcional con el
+  recovery `7b17e97`).
+- No hay trabajo de código a medias ni archivos sin seguimiento.
+- Esta actualización de handoff es sólo documentación posterior al checkpoint;
+  no modifica el producto ni invalida sus gates.
+
+---
+
 ## 31/ago/2026 — Stage A: build identity y Machine Soul integrados; recovery bloqueado (sesión Codex)
 
 La auditoría A–H fue aprobada y Stage A quedó autorizada desde `0304f28`.
