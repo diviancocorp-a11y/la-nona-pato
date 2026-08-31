@@ -12,7 +12,12 @@ export default defineConfig({
   testDir: './e2e/qa-lite',
   testMatch: motionInventoryOnly
     ? ['motion-inventory.spec.ts']
-    : ['dom-parity.spec.ts', 'visual-parity.spec.ts', 'login-admin-race.spec.ts'],
+    : [
+      'dom-parity.spec.ts',
+      'visual-parity.spec.ts',
+      'login-admin-race.spec.ts',
+      'dico-native-message.spec.ts',
+    ],
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

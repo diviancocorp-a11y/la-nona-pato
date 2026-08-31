@@ -60,7 +60,7 @@
 
 .dico-burbuja-contenido {
   position: relative;
-  display: block;
+  display: grid;
   width: 100%;
   margin: 0;
   padding: 15px 18px 14px;
@@ -79,7 +79,22 @@
   margin-left: 0;
 }
 
-.dico-burbuja-texto { font-weight: 550; }
+.dico-burbuja-reserva,
+.dico-burbuja-texto {
+  grid-area: 1 / 1;
+  min-width: 0;
+  font-weight: 550;
+}
+
+/* La reserva participa del layout pero nunca de la pintura ni del arbol a11y.
+   Incluye el volumen del cursor para que tampoco cambie el ultimo renglon. */
+.dico-burbuja-reserva { visibility: hidden; }
+
+.dico-burbuja-cursor-reserva {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+}
 
 /* Cursor de consola vieja. */
 .dico-burbuja-cursor {

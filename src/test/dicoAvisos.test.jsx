@@ -55,7 +55,8 @@ describe('DicoAvisos en el panel real', () => {
     expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
-    expect(screen.getAllByText(/está sin precio/)).toHaveLength(2);
+    expect(screen.getAllByText(/está sin precio/)).toHaveLength(3);
+    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Poner precio' }));
     expect(onIr).toHaveBeenCalledWith('products');
   });
@@ -69,7 +70,8 @@ describe('DicoAvisos en el panel real', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
-    expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(2);
+    expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
+    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
   });
 
   it('permite omitir un aviso que ya resuelve otra escena', () => {
@@ -88,7 +90,8 @@ describe('DicoAvisos en el panel real', () => {
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
-    expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(2);
+    expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
+    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
   });
 
   it('mantiene a Dico visible aunque no haya avisos', () => {

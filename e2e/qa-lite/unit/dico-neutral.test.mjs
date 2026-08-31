@@ -21,6 +21,11 @@ function validStack() {
 
 test('inventario Dico previo contiene la pila completa', () => {
   assert.equal(validateDicoMotionStack(validStack()), true)
+  const sacada = DICO_NEUTRAL_STRATEGY.nodes.find((entry) => entry.selector === '.dico-pupila-micro')
+  assert.deepEqual(
+    { count: sacada.expectedCount, name: sacada.animationName, duration: sacada.duration },
+    { count: 2, name: 'dico-sacada', duration: 9700 },
+  )
 })
 
 test('cantidad Dico incorrecta falla', () => {

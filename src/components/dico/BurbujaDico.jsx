@@ -81,15 +81,15 @@ export default function BurbujaDico({
   onCerrar,
   cola = 'izquierda',
 }) {
-  const [letras, setLetras] = useState(0);
+  const [letras, setLetras] = useState(() => (menosMovimiento() ? texto.length : 0));
   const [caja, setCaja] = useState({ w: 0, h: 0 });
   const completo = letras >= texto.length;
   const timer = useRef(null);
   const contenido = useRef(null);
 
-  // El marco se dibuja sobre el tamanio real del contenido, asi que hay que
-  // medirlo — y volver a medirlo mientras el texto se escribe, porque el globo
-  // crece de una linea a tres.
+  // El marco se dibuja sobre el tamanio real del contenido. La copia completa
+  // invisible reserva esa geometria desde el primer frame; ResizeObserver solo
+  // cubre cambios reales de ancho o contenido, no cada letra del typewriter.
   useLayoutEffect(() => {
     const el = contenido.current;
     if (!el) return undefined;
@@ -140,7 +140,12 @@ export default function BurbujaDico({
           ref={contenido}
           onClick={saltear}
           tabIndex={completo ? -1 : 0}
+          aria-label={completo ? undefined : 'Completar mensaje de Dico'}
         >
+          <span className="dico-burbuja-reserva" aria-hidden="true">
+            {texto}
+            <i className="dico-burbuja-cursor-reserva" />
+          </span>
           <span className="dico-burbuja-texto" aria-hidden="true">
             {texto.slice(0, letras)}
             {!completo && <i className="dico-burbuja-cursor" />}

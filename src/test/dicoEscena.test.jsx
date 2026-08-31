@@ -94,7 +94,9 @@ describe('DicoEscena', () => {
     }));
 
     expect(screen.getByRole('img', { name: 'Dico señala el botón' })).toBeInTheDocument();
-    expect(screen.getByText('Empecemos por tu primer producto.')).toBeInTheDocument();
+    const mensajeAccesible = document.querySelectorAll('.dico-burbuja-lectura');
+    expect(mensajeAccesible).toHaveLength(1);
+    expect(mensajeAccesible[0]).toHaveTextContent('Empecemos por tu primer producto.');
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar producto' }));
     expect(onAccion).toHaveBeenCalledOnce();
   });

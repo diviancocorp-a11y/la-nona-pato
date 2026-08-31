@@ -5,6 +5,7 @@ export const DICO_NEUTRAL_STRATEGY = Object.freeze({
     { selector: '.dico-boya', expectedCount: 1, animationName: 'dico-boya', duration: 5800, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
     { selector: '.dico-bamboleo', expectedCount: 1, animationName: 'dico-bamboleo', duration: 8200, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
     { selector: '.dico-ojo', expectedCount: 2, animationName: 'dico-parpadeo', duration: 8800, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
+    { selector: '.dico-pupila-micro', expectedCount: 2, animationName: 'dico-sacada', duration: 9700, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
     { selector: '.dico--entrada .dico-escena', canonicalSelector: '.dico-escena', expectedCount: 1, animationName: 'dico-entrada-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', transform: 'none', opacity: '1', transformStyle: 'flat' } },
     { selector: '.dico--entrada .dico-cara', canonicalSelector: '.dico-cara', expectedCount: 1, animationName: 'dico-cara-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', opacity: '1' } },
     { selector: '.dico--entrada .dico-cuerpo-render', canonicalSelector: '.dico-cuerpo-render', expectedCount: 3, animationName: 'dico-luz-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', filter: 'none' } },

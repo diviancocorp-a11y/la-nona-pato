@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { platform, release } from 'node:os';
 import { join } from 'node:path';
 import { REPO_ROOT, FIXED_NOW, publicStatus } from '../../platform/qa-lite/lib.mjs';
+import { DICO_NEUTRAL_STRATEGY } from '../../e2e/qa-lite/dico-neutral-contract.mjs';
 import { PIXELMATCH_OPTIONS } from './compare-artifacts.mjs';
 
 function packageVersion(path) {
@@ -60,15 +61,7 @@ export function writeManifest({ artifactDir, base, candidate, status, migrations
       noExternalTraffic: network.every((item) => item.blocked.length === 0),
       motionCanonicalization: {
         strategy: 'static-neutral-dico',
-        selectors: [
-          '.dico-piso',
-          '.dico-boya',
-          '.dico-bamboleo',
-          '.dico-ojo',
-          '.dico--entrada .dico-escena',
-          '.dico--entrada .dico-cara',
-          '.dico--entrada .dico-cuerpo-render',
-        ],
+        selectors: DICO_NEUTRAL_STRATEGY.nodes.map(({ selector }) => selector),
       },
     },
   };
