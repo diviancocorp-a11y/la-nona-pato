@@ -152,30 +152,82 @@
   flex-shrink: 0;
 }
 
-/* Integracion real en el inicio del panel. El personaje y el globo forman una
-   sola frase visual; en telefono el globo cede ancho, no genera scroll. */
+/* Integracion en el shell: Presence y Message son capas distintas.
+   Native queda siempre montado; la burbuja aparece solo a pedido. */
 .dico-avisos {
-  padding: 14px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 2px 16px 8px;
 }
 
-.dico-avisos-contenido {
+.dico-avisos-presencia {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
+
+.dico-avisos-trigger,
+.dico-avisos-idle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.dico-avisos-trigger {
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.dico-avisos-trigger:focus-visible {
+  outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+  outline-offset: 3px;
+}
+
+.dico-avisos-badge {
+  position: absolute;
+  right: -3px;
+  top: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--ag-c-danger, #c0392b);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--ag-bg, #111318);
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dico-avisos-mensaje {
   display: flex;
   align-items: flex-start;
-  width: min(100%, 470px);
+  width: min(100%, 430px);
+  margin-top: 2px;
+  padding-left: 8px;
 }
 
-.dico-avisos-personaje {
-  flex: 0 0 auto;
-  margin-top: 7px;
+.dico-avisos-mensaje .dico-burbuja {
+  margin-left: 0;
 }
 
 @media (max-width: 520px) {
   .dico-avisos { padding-inline: 10px; }
-  .dico-avisos-contenido { width: 100%; }
+  .dico-avisos-mensaje { width: 100%; padding-left: 0; }
   .dico-avisos .dico-burbuja {
     flex: 1 1 auto;
     min-width: 0;
-    margin-left: 5px;
   }
   .dico-avisos .dico-burbuja-pie { flex-wrap: wrap; gap: 5px; }
 }

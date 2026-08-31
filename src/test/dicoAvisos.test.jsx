@@ -41,6 +41,8 @@ describe('DicoAvisos en el panel real', () => {
     }));
 
     expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
+    expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/está sin precio/)).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Poner precio' }));
     expect(onIr).toHaveBeenCalledWith('products');
@@ -52,6 +54,7 @@ describe('DicoAvisos en el panel real', () => {
     }));
 
     expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(2);
@@ -61,7 +64,8 @@ describe('DicoAvisos en el panel real', () => {
     const { container } = render(React.createElement(DicoAvisos, {
       ...sano, productos: [], recetas: receta([]), omitir: ['catalogo-vacio'],
     }));
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
   });
 
   it('usa la espera con puntos cuando sólo hay una sugerencia', () => {
@@ -71,12 +75,24 @@ describe('DicoAvisos en el panel real', () => {
 
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(2);
   });
 
-  it('no ocupa espacio cuando el negocio no tiene nada para mirar', () => {
+  it('mantiene a Dico visible aunque no haya avisos', () => {
     const { container } = render(React.createElement(DicoAvisos, sano));
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
+  });
+
+  it('cerrar la burbuja no hace desaparecer a Dico', () => {
+    const { container } = render(React.createElement(DicoAvisos, {
+      ...sano, productos: [prod({ price: 0 })],
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cerrar lo que dice dico/i }));
+    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
   });
 
   it('hace la entrada una sola vez por dispositivo', () => {

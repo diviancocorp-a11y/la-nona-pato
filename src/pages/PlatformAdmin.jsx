@@ -675,8 +675,7 @@ export default function PlatformAdmin() {
               Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
               Native 2D o Physical 3D sin mover el shell. */}
           <div className="ag-slot">
-          {tab === 'products' && (
-            <DicoAvisos
+          <DicoAvisos
               listo={!loadingProducts && recetas !== null}
               vertical={tenant?.vertical}
               productos={products}
@@ -687,7 +686,6 @@ export default function PlatformAdmin() {
               omitir={products.length === 0 ? ['catalogo-vacio'] : []}
               onIr={setTab}
             />
-          )}
           {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
               puede mejorar. Y solo para quien puede mirar los numeros del
               negocio — a un mozo no le sirve saber que hay stock parado. */}

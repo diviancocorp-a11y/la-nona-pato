@@ -8,6 +8,39 @@
 
 ---
 
+## 31/ago/2026 — Recuperacion de continuidad Dico Presence / Slot
+
+Se reconstruyo desde el bundle `DICO_PHASE3B_9e77b0a.bundle` el primer
+checkpoint posterior al corte de Work. La rama local de recuperacion parte
+exactamente de `9e77b0a`.
+
+### Hecho
+
+- `DicoAvisos` separa Presence de Message: Dico Native queda montado aunque no
+  haya avisos o se cierre la burbuja.
+- Native baja de 82 px a 36 px, sin fondo propio.
+- Los avisos ya no hablan automaticamente: el usuario abre/cierra la burbuja
+  desde Dico y un badge discreto indica cantidad.
+- Cerrar la burbuja no oculta a Dico.
+- `PlatformAdmin` monta Native en todas las pestanas, no solo Productos.
+- Se actualizaron estilos responsive/focus y tests de contrato del componente.
+
+### Pendiente inmediato
+
+1. Implementar la pieza visual/interactiva de The Slot por encima de Native.
+2. The Slot debe gobernar exclusivamente Physical 3D; no reutilizar el toggle
+   de avisos de Native.
+3. Integrar el asset Physical aprobado y validar emergence/repliegue antes de
+   cerrar el comportamiento.
+4. Ejecutar suite y browser review en el worktree real de Windows: este entorno
+   de recuperacion no pudo completar `npm ci`, por lo que solo se verifico
+   `git diff --check` y la consistencia estatica del diff.
+
+### Regla de continuidad
+
+No volver a acoplar personaje y burbuja. Native permanece; Message es
+condicional; Physical pertenece a The Slot.
+
 ## 30/ago/2026 — Phase 2B aprobada; Phase 3 Admin Shell lista para empezar (sesión Codex)
 
 Ricky aprobó visualmente el canary `/registro`: Butler sostiene la voz Soul y
