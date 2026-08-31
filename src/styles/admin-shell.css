@@ -251,23 +251,21 @@
   padding: 3px 0 7px;
 }
 
-/* El mensaje pertenece a Native, no al Slot. Va en flujo debajo de la
-   presencia para que nunca atraviese a Physical ni quede recortado por el
-   limite del advisor. Abrir un aviso es una accion explicita del usuario:
-   mover el contenido hacia abajo en ese momento es preferible a taparlo. */
+/* El mensaje pertenece a Native, no al Slot. Va en flujo encima de la
+   presencia y reserva su volumen; la cola centrada apunta al personaje.
+   Abrir un aviso mueve el contenido de forma deliberada. */
 .ag-dico-stack .dico-avisos-mensaje {
   position: relative;
   top: auto;
   left: auto;
   width: min(430px, calc(100vw - 44px));
-  margin-top: 5px;
-  padding-left: 0;
+  margin: 0 0 5px;
   transform: none;
 }
 
 @media (max-width: 520px) {
   .ag-dico-stack .dico-avisos-mensaje {
-    width: min(350px, calc(100vw - 28px));
+    width: min(350px, calc(100vw - 44px));
   }
 }
 

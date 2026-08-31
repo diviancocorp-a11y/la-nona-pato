@@ -107,6 +107,19 @@ describe('DicoAvisos en el panel real', () => {
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
   });
 
+  it('renderiza el mensaje antes de Native y con cola centrada', () => {
+    const { container } = renderAvisos({
+      ...sano, productos: [prod({ price: 0 })],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+
+    const avisos = container.querySelector('.dico-avisos');
+    expect(avisos.firstElementChild).toHaveClass('dico-avisos-mensaje');
+    expect(avisos.lastElementChild).toHaveClass('dico-avisos-presencia');
+    expect(container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
+    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+  });
+
   it('hace la entrada una sola vez por dispositivo', () => {
     const props = { ...sano, productos: [prod({ price: 0 })] };
     const primera = renderAvisos(props);

@@ -152,19 +152,19 @@
   flex-shrink: 0;
 }
 
-/* Integracion en el shell: Presence y Message son capas distintas.
-   Native queda siempre montado; la burbuja aparece solo a pedido. */
+/* Integracion en el shell: Message reserva espacio encima de Presence.
+   Native queda montado mientras el aviso esta abierto. */
 .dico-avisos {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   padding: 2px 16px 8px;
 }
 
 .dico-avisos-presencia {
   display: flex;
   align-items: center;
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .dico-avisos-trigger,
@@ -172,8 +172,8 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: transparent;
   border: 0;
@@ -212,10 +212,10 @@
 
 .dico-avisos-mensaje {
   display: flex;
+  justify-content: center;
   align-items: flex-start;
   width: min(100%, 430px);
-  margin-top: 2px;
-  padding-left: 8px;
+  margin-bottom: 5px;
 }
 
 .dico-avisos-mensaje .dico-burbuja {
@@ -224,7 +224,7 @@
 
 @media (max-width: 520px) {
   .dico-avisos { padding-inline: 10px; }
-  .dico-avisos-mensaje { width: 100%; padding-left: 0; }
+  .dico-avisos-mensaje { width: 100%; }
   .dico-avisos .dico-burbuja {
     flex: 1 1 auto;
     min-width: 0;

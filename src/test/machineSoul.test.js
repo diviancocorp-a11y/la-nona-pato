@@ -18,6 +18,7 @@ const fonts = leer('src/styles/dico-fonts.css');
 const ms = leer('src/styles/machine-soul.css');
 const shell = leer('src/styles/admin-shell.css');
 const tokens = leer('src/styles/admin-tokens.css');
+const burbuja = leer('src/components/dico/burbuja.css');
 
 /**
  * Las hojas que componen el SHELL: topbar, navegacion, hoja "Mas", dialogo,
@@ -260,6 +261,22 @@ describe('el contrato de Phase 3A sigue en pie', () => {
     expect(bloque).not.toContain('position: absolute');
     expect(shell).toContain('.ag-slot:has(.dico-avisos--abierto)');
     expect(shell).toMatch(/\.ag-slot:has\(\.dico-avisos--abierto\) \{[^}]*max-height: 70vh/);
+  });
+
+  it('DicoSlot es controlado y no gobierna Native ni avisos', () => {
+    const slot = leer('src/components/dico/DicoSlot.jsx');
+    expect(slot).not.toMatch(/useState|useReducer/);
+    expect(slot).not.toMatch(/DicoAvisos|dico-avisos|data-dico-core/);
+    expect(slot).toContain("estado === 'physical_opening'");
+    expect(slot).toContain("estado === 'physical_open'");
+    expect(slot).toContain("estado === 'physical_closing'");
+  });
+
+  it('el trigger Native reserva un hit target de 44 por 44', () => {
+    const i = burbuja.indexOf('.dico-avisos-trigger,');
+    const bloque = burbuja.slice(i, burbuja.indexOf('}', i));
+    expect(bloque).toContain('width: 44px');
+    expect(bloque).toContain('height: 44px');
   });
 
   it('el shell respeta reduced motion', () => {

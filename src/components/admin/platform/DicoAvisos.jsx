@@ -76,6 +76,22 @@ export default function DicoAvisos({
 
   return (
     <div className={`dico-avisos${abierto ? ' dico-avisos--abierto' : ''}`}>
+      {abierto && actual && (
+        <div className="dico-avisos-mensaje">
+          <BurbujaDico
+            key={`${firma}:${indice}`}
+            texto={`${actual.titulo}. ${actual.detalle}`}
+            nivel={actual.nivel}
+            cola="centro"
+            accion={actual.ir?.texto}
+            onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
+            restantes={avisos.length - indice - 1}
+            onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
+            onCerrar={onCerrar}
+          />
+        </div>
+      )}
+
       <div className="dico-avisos-presencia">
         {tieneAvisos ? (
           <button
@@ -94,21 +110,6 @@ export default function DicoAvisos({
           <span className="dico-avisos-idle">{personaje}</span>
         )}
       </div>
-
-      {abierto && actual && (
-        <div className="dico-avisos-mensaje">
-          <BurbujaDico
-            key={`${firma}:${indice}`}
-            texto={`${actual.titulo}. ${actual.detalle}`}
-            nivel={actual.nivel}
-            accion={actual.ir?.texto}
-            onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
-            restantes={avisos.length - indice - 1}
-            onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
-            onCerrar={onCerrar}
-          />
-        </div>
-      )}
     </div>
   );
 }

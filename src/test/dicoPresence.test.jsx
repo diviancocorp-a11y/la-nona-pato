@@ -109,6 +109,18 @@ describe('DicoPresence', () => {
     expect(container.querySelector('.dico-avisos')).not.toBeInTheDocument();
   });
 
+  it('no restaura el notice anterior cuando Physical termina de cerrar', () => {
+    const { container } = render(React.createElement(DicoPresence, datos));
+    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    abrirHastaPhysical(container);
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
+    esperarMovimiento(physicalDe(container));
+
+    expect(estadoDe(container)).toBe('native_idle');
+    expect(container.querySelector('.dico-avisos--abierto')).not.toBeInTheDocument();
+    expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
+  });
+
   it('Reduced Motion recorre la misma maquina sin esperar animaciones', async () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     const cambios = vi.fn();
