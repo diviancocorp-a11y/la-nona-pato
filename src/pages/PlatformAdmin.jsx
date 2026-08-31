@@ -608,7 +608,7 @@ export default function PlatformAdmin() {
 
         {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}
 
-        <header className="ag-topbar">
+        <header className="ag-topbar ms-trace">
           <div className="ag-topbar-title" style={{ flex: 1, textAlign: 'left' }}>{tenant?.name}</div>
           <div className="ag-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button

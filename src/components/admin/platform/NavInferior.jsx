@@ -67,7 +67,7 @@ export default function NavInferior({ tabs, tab, onTab, openCount = 0 }) {
 
   return (
     <>
-      <nav className="ag-bottom-nav" aria-label="Navegación principal">
+      <nav className="ag-bottom-nav ms-trace" aria-label="Navegación principal">
         {primarias.map(({ id, label, Icon }) => {
           const activo = tab === id;
           const badge = badgeDe(id);
