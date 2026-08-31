@@ -30,7 +30,7 @@ async function captureContract(
   selector: string,
 ) {
   await freezeContinuousDecorativeMotion(page, {
-    requireDicoMotion: name.startsWith('admin--'),
+    requireDicoMotion: name.startsWith('admin--') || name.startsWith('pos--'),
     surface: name,
   })
   if (name.startsWith('admin--')) await recordAdminScrollCheckpoint(page, 'before-dom-contract')

@@ -2,7 +2,7 @@
  * DicoCara — el personaje dentro de la app. Capa 1 del PLAN-DICO.
  *
  * CAPAS: MONEDA, BRAZOS Y TINTA
- * La moneda conserva el render 3D. Los brazos reutilizan el render original
+ * La moneda conserva el render 3D. Los brazos usan un sprite alfa limpio
  * como dos capas articuladas y la cara sigue siendo un SVG modular.
  * Esa division es la decision de fondo y no es solo estetica: dos sprites
  * reusables reemplazan renders por estado, una expresion nueva cuesta CSS y

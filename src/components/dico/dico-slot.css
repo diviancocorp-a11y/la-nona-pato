@@ -1,0 +1,200 @@
+/* The Slot — frontera fisica, no tarjeta ni boton SaaS. */
+.dico-slot {
+  --slot-zinc-0: #0c0e11;
+  --slot-zinc-1: #171a1f;
+  --slot-zinc-2: #282d34;
+  --slot-blue: var(--ds-ai, #3e8bd6);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 128px;
+  min-height: 32px;
+  isolation: isolate;
+  transition: padding-top 240ms cubic-bezier(.2, .72, .25, 1);
+}
+
+.dico-slot-stage {
+  position: absolute;
+  left: 50%;
+  bottom: 23px;
+  width: 184px;
+  height: 184px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+  perspective: 720px;
+}
+
+.dico-physical {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  animation: dico-physical-emerge 780ms cubic-bezier(.2, .72, .18, 1) both;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .34));
+}
+
+.dico-physical-cuerpo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  animation: dico-physical-body-reveal 780ms cubic-bezier(.2, .72, .18, 1) both;
+}
+
+/* El render Physical tiene el centro limpio. La cara modular entra como tinta
+   viva sobre el volumen, sin convertir el render en una hoja de sprites. */
+.dico-physical-cara {
+  position: absolute;
+  left: 25.5%;
+  top: 29%;
+  width: 49%;
+  height: 49%;
+  overflow: visible;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .08));
+  animation: dico-physical-face-reveal 780ms linear both;
+}
+
+.dico-slot-control {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 46%),
+    linear-gradient(180deg, var(--slot-zinc-2), var(--slot-zinc-1));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.1),
+    inset 0 -1px 0 rgba(0,0,0,.7),
+    0 8px 20px rgba(0,0,0,.16);
+  cursor: pointer;
+}
+
+.dico-slot-control::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  border: 1px solid rgba(0, 0, 0, .32);
+  pointer-events: none;
+}
+
+.dico-slot-ranura {
+  position: relative;
+  width: 76px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--slot-zinc-0);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, .9),
+    0 1px 0 rgba(255,255,255,.05);
+}
+
+.dico-slot-luz {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 54%;
+  height: 1px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--slot-blue);
+  opacity: .46;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--slot-blue) 60%, transparent);
+  transition: width 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+}
+
+.dico-slot--visible .dico-slot-luz {
+  width: 82%;
+  opacity: .95;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--slot-blue) 78%, transparent);
+}
+
+.dico-slot-control:hover .dico-slot-luz { opacity: .8; }
+
+.dico-slot-control:focus-visible {
+  outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+  outline-offset: 3px;
+}
+
+@keyframes dico-physical-emerge {
+  0% {
+    opacity: 0;
+    transform: translateY(76px) scale(.76) rotateY(84deg);
+  }
+  48% { opacity: 1; }
+  62% {
+    transform: translateY(1px) scale(1) rotateY(0deg);
+  }
+  82% { transform: translateY(-2px) scale(1) rotateY(0deg); }
+  100% { transform: translateY(0) scale(1) rotateY(0deg); }
+}
+
+/* Primero se lee moneda/objeto. Los brazos llegan cuando el giro ya resolvio
+   la orientacion; no aparecen antes que el personaje tenga frente. */
+@keyframes dico-physical-body-reveal {
+  0%, 52% { clip-path: circle(31% at 50% 52%); }
+  72%, 100% { clip-path: inset(0); }
+}
+
+/* El rostro pertenece al frente: no debe verse durante el perfil. */
+@keyframes dico-physical-face-reveal {
+  0%, 55% { opacity: 0; }
+  68%, 100% { opacity: 1; }
+}
+
+/* El regreso invierte la causalidad: rostro -> brazos -> perfil -> Slot. */
+.dico-slot--cerrando .dico-physical {
+  animation: dico-physical-return 700ms cubic-bezier(.55, .05, .72, .3) both;
+}
+
+.dico-slot--cerrando .dico-physical-cuerpo {
+  animation: dico-physical-body-return 700ms ease both;
+}
+
+.dico-slot--cerrando .dico-physical-cara {
+  animation: dico-physical-face-return 700ms linear both;
+}
+
+@keyframes dico-physical-face-return {
+  0% { opacity: 1; }
+  18%, 100% { opacity: 0; }
+}
+
+@keyframes dico-physical-body-return {
+  0%, 24% { clip-path: inset(0); }
+  48%, 100% { clip-path: circle(31% at 50% 52%); }
+}
+
+@keyframes dico-physical-return {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateY(0deg);
+  }
+  42% {
+    opacity: 1;
+    transform: translateY(1px) scale(.98) rotateY(84deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(76px) scale(.76) rotateY(84deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-physical,
+  .dico-physical-cuerpo,
+  .dico-physical-cara { animation: none; }
+  .dico-slot,
+  .dico-slot-luz { transition: none; }
+}

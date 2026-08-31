@@ -21,7 +21,7 @@ async function shot(page: import('@playwright/test').Page, name: string) {
   const root = outputRoot()
   await mkdir(root, { recursive: true })
   await freezeContinuousDecorativeMotion(page, {
-    requireDicoMotion: name.startsWith('admin--'),
+    requireDicoMotion: name.startsWith('admin--') || name.startsWith('pos--'),
     surface: name,
   })
   if (name.startsWith('admin--')) await recordAdminScrollCheckpoint(page, 'before-screenshot')

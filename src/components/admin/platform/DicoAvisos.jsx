@@ -1,25 +1,15 @@
 /**
- * DicoAvisos — lo que Dico tiene para decir hoy. Capa 2 del PLAN-DICO.
+ * DicoAvisos — presencia Native persistente + avisos bajo demanda.
  *
- * Presentacion pura: toda la logica vive en `modules/dico/reglas.js`, que son
- * funciones puras y testeables sin React ni base.
- *
- * El personaje entro el 18/ago: `DicoCara` en SVG (capa 1 del PLAN-DICO). La
- * expresion sale del nivel del aviso mas grave — si hay algo roto Dico esta
- * preocupado, si solo hay sugerencias esta esperando. No es decoracion: es la
- * misma informacion que el color, para el que no distingue el naranja del
- * verde.
- *
- * Un aviso por vez: cuatro globos juntos vuelven a Dico una lista decorada.
- * Se puede avanzar y cerrar. Cerrar significa "ya lo vi": si cambia la firma
- * de los avisos, Dico vuelve con lo nuevo.
+ * Dico ya no desaparece cuando se cierra la burbuja. El personaje vive como
+ * presencia estable del sistema y el mensaje se abre solo cuando el usuario
+ * decide mirarlo. Presence y Message son estados distintos.
  */
 import { useEffect, useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
 import DicoCara from '../../dico/DicoCara';
 import BurbujaDico from '../../dico/BurbujaDico';
 
-// Que cara pone segun lo mas grave que tenga para decir.
 const CARA_POR_NIVEL = {
   alerta: 'preocupado',
   aviso: 'pregunta',
@@ -39,10 +29,8 @@ function esPrimeraEntrada() {
 export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
   const idsOmitidos = new Set(omitir);
   const avisos = avisosDe(datos).filter(aviso => !idsOmitidos.has(aviso.id));
-  // La firma de lo que se esta diciendo. Si cambia, el cartel vuelve aunque
-  // lo hayas cerrado: cerrar significa "ya lo vi", no "no me hables nunca".
   const firma = avisos.map(a => a.id).join('|');
-  const [cerrado, setCerrado] = useState('');
+  const [abierto, setAbierto] = useState(false);
   const [pagina, setPagina] = useState({ firma: '', indice: 0 });
   const [entrada] = useState(esPrimeraEntrada);
 
@@ -50,37 +38,68 @@ export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
     ? Math.min(pagina.indice, Math.max(avisos.length - 1, 0))
     : 0;
   const actual = avisos[indice];
+  const tieneAvisos = avisos.length > 0;
+  const estado = actual
+    ? (CARA_POR_NIVEL[actual.nivel] || 'idle')
+    : (datos.listo === false ? 'esperando' : 'idle');
 
   useEffect(() => {
-    if (!entrada || avisos.length === 0) return;
+    if (!entrada) return;
     try { localStorage.setItem(CLAVE_PRIMERA_ENTRADA, '1'); } catch { /* sin storage */ }
-  }, [entrada, avisos.length]);
+  }, [entrada]);
 
-  if (avisos.length === 0 || cerrado === firma) return null;
+  useEffect(() => {
+    setPagina({ firma, indice: 0 });
+    setAbierto(false);
+  }, [firma]);
+
+  const personaje = (
+    <DicoCara
+      size={36}
+      estado={estado}
+      lookX={abierto ? 0.55 : 0}
+      entrada={entrada}
+      title={tieneAvisos
+        ? `Dico: ${avisos.length} ${avisos.length === 1 ? 'aviso' : 'avisos'}`
+        : 'Dico'}
+    />
+  );
 
   return (
-    <div className="dico-avisos">
-      <div className="dico-avisos-contenido">
-        <div className="dico-avisos-personaje">
-          <DicoCara
-            size={82}
-            estado={CARA_POR_NIVEL[actual.nivel] || 'idle'}
-            lookX={0.55}
-            entrada={entrada}
-            title={`Dico: ${avisos.length} ${avisos.length === 1 ? 'cosa para mirar' : 'cosas para mirar'}`}
+    <div className={`dico-avisos${abierto ? ' dico-avisos--abierto' : ''}`}>
+      <div className="dico-avisos-presencia">
+        {tieneAvisos ? (
+          <button
+            type="button"
+            className="dico-avisos-trigger"
+            onClick={() => setAbierto(valor => !valor)}
+            aria-expanded={abierto}
+            aria-label={abierto
+              ? 'Cerrar avisos de Dico'
+              : `Abrir ${avisos.length === 1 ? '1 aviso' : `${avisos.length} avisos`} de Dico`}
+          >
+            {personaje}
+            <span className="dico-avisos-badge" aria-hidden="true">{avisos.length}</span>
+          </button>
+        ) : (
+          <span className="dico-avisos-idle">{personaje}</span>
+        )}
+      </div>
+
+      {abierto && actual && (
+        <div className="dico-avisos-mensaje">
+          <BurbujaDico
+            key={`${firma}:${indice}`}
+            texto={`${actual.titulo}. ${actual.detalle}`}
+            nivel={actual.nivel}
+            accion={actual.ir?.texto}
+            onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
+            restantes={avisos.length - indice - 1}
+            onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
+            onCerrar={() => setAbierto(false)}
           />
         </div>
-        <BurbujaDico
-          key={`${firma}:${indice}`}
-          texto={`${actual.titulo}. ${actual.detalle}`}
-          nivel={actual.nivel}
-          accion={actual.ir?.texto}
-          onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
-          restantes={avisos.length - indice - 1}
-          onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
-          onCerrar={() => setCerrado(firma)}
-        />
-      </div>
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
+import DicoSlot from '../components/dico/DicoSlot';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
@@ -668,14 +669,13 @@ export default function PlatformAdmin() {
               tocaba nadie y los 3 tenants tenian CERO suscripciones admin.
               Se suscribe ESTE dispositivo (la tablet del local). */}
           {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
-          {/* The Slot — `advisor.top`: debajo del encabezado y arriba del
-              contenido. El contrato de layout vive en `.ag-slot`
-              (admin-shell.css): capa de contenido, nunca sobre la navegacion
-              ni sobre controles persistentes, y un dialogo abierto lo cubre.
-              Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
-              Native 2D o Physical 3D sin mover el shell. */}
+          {/* Presence boundary — `advisor.top`: Slot arriba, Native debajo.
+              El Slot controla solo Physical; Native controla solo avisos.
+              El contrato de layout vive en `.ag-slot` y nunca flota sobre
+              navegacion, controles persistentes ni dialogos. */}
           <div className="ag-slot">
-          {tab === 'products' && (
+          <div className="ag-dico-stack">
+            <DicoSlot />
             <DicoAvisos
               listo={!loadingProducts && recetas !== null}
               vertical={tenant?.vertical}
@@ -687,7 +687,7 @@ export default function PlatformAdmin() {
               omitir={products.length === 0 ? ['catalogo-vacio'] : []}
               onIr={setTab}
             />
-          )}
+          </div>
           {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
               puede mejorar. Y solo para quien puede mirar los numeros del
               negocio — a un mozo no le sirve saber que hay stock parado. */}

@@ -739,6 +739,8 @@ export async function openAdmin(page: Page, theme: 'light' | 'dark', viewport = 
   await recordAdminScrollCheckpoint(page, 'after-goto')
   await loginAdmin(page)
   await expect(page.locator('.ag-root')).toHaveClass(new RegExp(`ag-theme-${theme}`))
+  await expect(page.locator('.ag-root button.dico-avisos-trigger')).toBeVisible()
+  await expect(page.getByText('Te quedaron 10 horas sin vender', { exact: true })).toBeVisible()
   await stabilizePage(page)
   await recordAdminScrollCheckpoint(page, 'after-open-admin')
   return '.ag-root'
@@ -753,12 +755,19 @@ export async function settleAdmin(page: Page) {
   const surface = `admin--${theme}--${viewport?.width || 0}x${viewport?.height || 0}`
   await inventoryDicoMotionStack(page, surface)
   const opportunity = page.getByText('Te quedaron 10 horas sin vender', { exact: true })
+  const noticeTrigger = root.locator('button.dico-avisos-trigger')
   const bubbleControl = root.locator('button.dico-burbuja-contenido')
   const bubbleVisibleText = root.locator('.dico-burbuja-texto')
   const bubbleFullText = root.locator('.dico-burbuja-lectura')
 
   await expect(opportunity).toBeVisible()
   await recordAdminScrollCheckpoint(page, 'after-opportunity')
+  await expect(noticeTrigger).toHaveCount(1)
+  await expect(noticeTrigger).toBeVisible()
+  await expect(noticeTrigger).toHaveAttribute('aria-expanded', 'false')
+  await noticeTrigger.click()
+  await expect(noticeTrigger).toHaveAttribute('aria-expanded', 'true')
+  await recordAdminScrollCheckpoint(page, 'after-notice-open')
   await expect(bubbleControl).toHaveCount(1)
   await expect(bubbleControl).toBeVisible()
   await expect(bubbleFullText).toHaveCount(1)
@@ -776,7 +785,7 @@ export async function settleAdmin(page: Page) {
 
   await stabilizePage(page)
   await waitForFiniteAnimations(root, surface)
-  await expectStableLayout(page, [root, opportunity, bubbleControl, bubbleVisibleText])
+  await expectStableLayout(page, [root, opportunity, noticeTrigger, bubbleControl, bubbleVisibleText])
   await recordAdminScrollCheckpoint(page, 'after-settle-admin')
 }
 

@@ -195,9 +195,8 @@
 .ag-root .ag-metric { font-weight: var(--ms-w-metric); }
 
 /* ── The Slot ───────────────────────────────────────────────────────────
- * Contrato de layout reservado para el asesor contextual (hoy DicoAvisos;
- * mañana Dico Native 2D o Physical 3D). NO se incorpora el personaje en esta
- * rama: se reserva el hueco y sus reglas.
+ * Contrato de layout de la frontera Native / Physical. El Slot ya controla
+ * Physical; Native vive debajo y los avisos son una capa de mensaje aparte.
  *
  *   Posicion  `advisor.top`: debajo del encabezado, arriba del contenido.
  *   Capa      contenido normal (--ag-z-content). Nunca por encima de sticky.
@@ -232,4 +231,57 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-root .ag-topbar .ag-theme-toggle,
   .ag-root .ag-topbar .ag-btn-mini { transition: none; }
+}
+
+/* Dico Presence stack: Slot arriba, Native debajo. Oportunidades y contenido
+   siguen fuera de esta micro-composicion para no convertir Dico en un header. */
+.ag-dico-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  min-width: 128px;
+  margin: 2px auto 0;
+  padding-top: 4px;
+}
+
+.ag-dico-stack .dico-avisos {
+  align-items: center;
+  padding: 3px 0 7px;
+}
+
+/* El mensaje pertenece a Native, no al Slot. Va en flujo debajo de la
+   presencia para que nunca atraviese a Physical ni quede recortado por el
+   limite del advisor. Abrir un aviso es una accion explicita del usuario:
+   mover el contenido hacia abajo en ese momento es preferible a taparlo. */
+.ag-dico-stack .dico-avisos-mensaje {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: min(430px, calc(100vw - 44px));
+  margin-top: 5px;
+  padding-left: 0;
+  transform: none;
+}
+
+@media (max-width: 520px) {
+  .ag-dico-stack .dico-avisos-mensaje {
+    width: min(350px, calc(100vw - 28px));
+  }
+}
+
+/* Un aviso abierto puede superar el limite conservador de 40vh, y todavia
+   mas si Physical esta presente. Como abrir el mensaje fue una accion explicita
+   del usuario, el advisor se deja crecer para mostrar la burbuja completa sin
+   tapar ni cortar ninguna de las dos presencias. */
+.ag-slot:has(.dico-avisos--abierto) {
+  max-height: 70vh;
+}
+
+/* Reserva el volumen mientras Physical siga montado. Durante `cerrando` el
+   personaje tarda ~700 ms en volver al Slot; colapsar el padding al inicio de
+   esa fase haria saltar el contenido debajo antes de que Dico termine de bajar. */
+.ag-dico-stack:has(.dico-slot--visible) {
+  padding-top: 164px;
 }

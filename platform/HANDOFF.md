@@ -413,7 +413,62 @@ No se empezó `/registro` y no se modificó `src/**` desde el worktree QA.
   `codex/dico-machine-soul-phase1`, limpio en `621c492`.
 
 ---
+## 31/ago/2026 — Recuperacion de continuidad Dico Presence / Slot
 
+### Checkpoint Native arms — clean sprite
+
+- `DicoCara` ya no recorta brazos desde `moneda.webp` con poligonos.
+- Nuevo `poses/brazos.webp`: 800x800 RGBA, dos componentes de brazos/guantes
+  limpios sobre alfa; se deriva de los renders alineados existentes sin
+  introducir un tercer cuerpo visual.
+- Cada brazo se separa por mitad con `clip-path: inset(...)` y conserva su
+  transform-origin de hombro. Esto elimina las cuñas doradas que aparecian al
+  rotar el sprite fuente junto con fragmentos de la moneda.
+- Se portaron los offsets/angulos ya validados en
+  `feature/dico-native-pose-system` para `esperando`, `contento`, `preocupado`
+  y `pregunta`.
+- Test contractual: `.dico-brazo` debe resolver un asset cuyo `src` contiene
+  `brazos`. `moneda.webp` queda archivado como fuente, no runtime.
+- Layout del retorno corregido: `.ag-dico-stack` reserva los 164 px mientras
+  exista `.dico-slot--visible`, incluyendo la fase `cerrando`; el contenido no
+  salta hacia arriba antes de que termine la animacion inversa.
+
+
+Se reconstruyo desde el bundle `DICO_PHASE3B_9e77b0a.bundle` el primer
+checkpoint posterior al corte de Work. La rama local de recuperacion parte
+exactamente de `9e77b0a`.
+
+### Hecho
+
+- `DicoAvisos` separa Presence de Message: Dico Native queda montado aunque no
+  haya avisos o se cierre la burbuja.
+- Native baja de 82 px a 36 px, sin fondo propio.
+- Los avisos ya no hablan automaticamente: el usuario abre/cierra la burbuja
+  desde Dico y un badge discreto indica cantidad.
+- Cerrar la burbuja no oculta a Dico.
+- `PlatformAdmin` monta Native en todas las pestanas, no solo Productos.
+- Se actualizaron estilos responsive/focus y tests de contrato del componente.
+
+### Estado inmediato
+
+1. The Slot gobierna exclusivamente Physical 3D con el asset de produccion
+   `dico-physical-body.webp` derivado del PNG 1254x1254 aprobado y cara SVG
+   modular encima.
+2. El control visual es una ranura Zinc contenida con actividad Blue; Gold llega
+   con el personaje. Native queda debajo y su toggle sigue abriendo solo avisos.
+3. Physical implementa ida y regreso: perfil/objeto -> frente -> brazos ->
+   rostro; al cerrar invierte la secuencia antes de desmontarse. Reduced Motion
+   lo retira sin desplazamiento.
+4. Siguiente gate: browser real. Validar proporciones de cara, escala Physical,
+   clipping del Slot en desktop/mobile y apertura de burbuja con Physical cerrado.
+5. Ejecutar suite en el worktree real de Windows. Este entorno no puede bajar
+   las dependencias faltantes del registry npm (`EAI_AGAIN`), por lo que el gate
+   automatico completo sigue pendiente.
+
+### Regla de continuidad
+
+No volver a acoplar personaje y burbuja. Native permanece; Message es
+condicional; Physical pertenece a The Slot.
 ## 30/ago/2026 — Phase 2B aprobada; Phase 3 Admin Shell lista para empezar (sesión Codex)
 
 Ricky aprobó visualmente el canary `/registro`: Butler sostiene la voz Soul y
