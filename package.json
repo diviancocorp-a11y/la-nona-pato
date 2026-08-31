@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run check:integrity && npm run check:schema && vite build",
+    "build:platform": "node scripts/build-platform.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -16,13 +17,14 @@
     "create-client": "node scripts/create-client.mjs",
     "check:integrity": "node scripts/check-integrity-all.mjs",
     "check:columns": "node scripts/check-supabase-columns.mjs --all",
+    "check:install-state": "node scripts/check-install-state.mjs",
     "prepare": "husky",
     "check:schema": "node scripts/check-schema-sync.mjs",
     "check:freshness": "node scripts/check-schema-freshness.mjs",
     "schema:sync": "node scripts/schema-sync.mjs",
     "vitrina": "vite --config tools/vitrina/vite.config.mjs",
     "deploy": "npm run deploy:web && npm run deploy:functions",
-    "deploy:web": "npx --yes vercel --prod --scope diviancocorp-a11ys-projects --yes",
+    "deploy:web": "node scripts/deploy-web.mjs",
     "deploy:functions": "node platform/scripts/deploy-functions.mjs --all",
     "check:functions": "node platform/scripts/check-functions.mjs"
   },
