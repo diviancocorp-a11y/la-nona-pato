@@ -251,20 +251,33 @@
   padding: 3px 0 7px;
 }
 
+/* El mensaje pertenece a Native, no al Slot. Va en flujo debajo de la
+   presencia para que nunca atraviese a Physical ni quede recortado por el
+   limite del advisor. Abrir un aviso es una accion explicita del usuario:
+   mover el contenido hacia abajo en ese momento es preferible a taparlo. */
 .ag-dico-stack .dico-avisos-mensaje {
-  position: absolute;
-  top: 64px;
-  left: 50%;
+  position: relative;
+  top: auto;
+  left: auto;
   width: min(430px, calc(100vw - 44px));
-  transform: translateX(-50%);
+  margin-top: 5px;
+  padding-left: 0;
+  transform: none;
   z-index: 4;
 }
 
 @media (max-width: 520px) {
   .ag-dico-stack .dico-avisos-mensaje {
-    top: 62px;
     width: min(350px, calc(100vw - 28px));
   }
+}
+
+/* Un aviso abierto puede superar el limite conservador de 40vh, y todavia
+   mas si Physical esta presente. Como abrir el mensaje fue una accion explicita
+   del usuario, el advisor se deja crecer para mostrar la burbuja completa sin
+   tapar ni cortar ninguna de las dos presencias. */
+.ag-slot:has(.dico-avisos--abierto) {
+  max-height: 70vh;
 }
 
 /* Reserva el volumen mientras Physical siga montado. Durante `cerrando` el

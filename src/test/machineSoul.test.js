@@ -253,6 +253,15 @@ describe('el contrato de Phase 3A sigue en pie', () => {
     expect(bloque).toContain('max-height');
   });
 
+  it('los avisos Native viven en flujo y el Slot crece al abrirlos', () => {
+    const i = shell.indexOf('.ag-dico-stack .dico-avisos-mensaje {');
+    const bloque = shell.slice(i, shell.indexOf('}', i));
+    expect(bloque).toContain('position: relative');
+    expect(bloque).not.toContain('position: absolute');
+    expect(shell).toContain('.ag-slot:has(.dico-avisos--abierto)');
+    expect(shell).toMatch(/\.ag-slot:has\(\.dico-avisos--abierto\) \{[^}]*max-height: 70vh/);
+  });
+
   it('el shell respeta reduced motion', () => {
     expect(shell).toContain('@media (prefers-reduced-motion: reduce)');
   });
