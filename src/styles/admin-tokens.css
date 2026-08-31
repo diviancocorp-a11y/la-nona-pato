@@ -5,7 +5,12 @@
  * ──────────────────────────────────────────────────────── */
 
 body[data-ui-owner="admin"],
-.ag-root {
+.ag-root,
+/* El root de overlays (OverlayPortal) es hijo de <body> y queda FUERA de
+   `.ag-root`. Sin esta linea un dialogo en portal no recibiria ningun token
+   —seria el mismo bug de fondo congelado, con otra forma—. El tema oscuro
+   llega por la clase `ag-theme-dark`, que OverlayPortal copia del panel. */
+#dico-overlay-root {
   /* Tipografía admin */
   --ag-font: 'DM Sans', system-ui, -apple-system, sans-serif;
 
@@ -83,12 +88,47 @@ body[data-ui-owner="admin"],
   --ag-t-med: 220ms;
   --ag-t-slow: 400ms;
 
-  /* Z-index */
+  /* ── Capas (Phase 3A) ───────────────────────────────────────
+   * Jerarquia explicita y semantica. Los numeros NO cambiaron respecto
+   * de lo que ya renderizaba: se les puso nombre y se documento quien
+   * puede usar cada uno. Lo que se agrega son las capas que faltaban
+   * —backdrop y modal— para que un dialogo pueda vivir por encima del
+   * shell sin escalar a 9999.
+   *
+   * Quien usa cada capa:
+   *   bg        fondo decorativo del admin (.ag-bg-layer). Nunca contenido.
+   *   content   el <main> del panel. Ojo: crea stacking context, y por eso
+   *             un overlay que viva ADENTRO nunca puede superar a sticky.
+   *             Los overlays van por portal (ver OverlayPortal).
+   *   sticky    topbar y bottom nav.
+   *   popover   dropdowns y menus anclados (profile menu, filtros).
+   *   dico      el asistente contextual, por encima de los popovers.
+   *   backdrop  el velo de un dialogo. Cubre el viewport entero.
+   *   modal     el panel del dialogo. Unico lugar por encima del shell.
+   *   takeover  pantallas full-screen legacy (.ag-page-over, BrandModal),
+   *             que ocultan topbar y nav en vez de superponerse.
+   *   toast     feedback efimero. Por encima del modal a proposito.
+   *   tooltip   lo mas alto. Nunca contiene interaccion.
+   *
+   * Regla: si algo necesita estar por encima del shell, va por portal y
+   * usa una de estas capas. No se inventan numeros locales. */
   --ag-z-bg: 0;
   --ag-z-content: 2;
-  --ag-z-topbar: 5;
+  --ag-z-sticky: 5;
+  --ag-z-popover: 30;
+  --ag-z-dico: 60;
+  --ag-z-backdrop: 800;
+  --ag-z-modal: 810;
+  --ag-z-takeover: 950;
+  --ag-z-toast: 1000;
+  --ag-z-tooltip: 1100;
+
+  /* Alias de compatibilidad. Los consumen hojas que todavia no se
+     migraron; apuntan a las capas de arriba para que no haya dos
+     verdades. No usar en codigo nuevo. */
+  --ag-z-topbar: var(--ag-z-sticky);
+  --ag-z-nav: var(--ag-z-sticky);
   --ag-z-status: 6;
-  --ag-z-nav: 5;
   --ag-z-overlay: 100;
 }
 
@@ -135,6 +175,13 @@ body[data-ui-owner="admin"],
   font-family: var(--ag-font);
   color: var(--ag-ink);
   background: var(--ag-bg);
+  -webkit-font-smoothing: antialiased;
+}
+/* El root de overlays hereda tipografia y tinta pero NO fondo: es un
+   contenedor transparente de cero altura; cada overlay se pinta solo. */
+#dico-overlay-root {
+  font-family: var(--ag-font);
+  color: var(--ag-ink);
   -webkit-font-smoothing: antialiased;
 }
 
