@@ -8,6 +8,76 @@
 
 ---
 
+## 31/ago/2026 — Stage A: build identity y Machine Soul integrados; recovery bloqueado (sesión Codex)
+
+La auditoría A–H fue aprobada y Stage A quedó autorizada desde `0304f28`.
+Se avanzó sólo hasta el último punto verificable sin el bundle recovery. No se
+empezó `DicoPresence`, no hubo push ni deploy.
+
+### Hecho
+
+- Creada `feat/dico-panorama-v1` exactamente desde `0304f28`.
+- Integrado build identity en dos commits recuperables: `4ba926d` (equivalente
+  a `09cc447`) y `4338df8` (equivalente a `475b4d2`).
+- Integrada la línea Machine Soul completa hasta `9e77b0a` mediante merge
+  `cf8f47c`. `platform/HANDOFF.md` se resolvió por contenido, conservando las
+  dos historias; no se usó `ours`/`theirs` masivo.
+- `package.json` y `package-lock.json` preservan React Router `7.18.3`, los
+  scripts de build identity y los scripts/dependencias pinneadas de QA Lite.
+- Phase 1 queda bajo la autoridad de
+  `platform/qa-lite/PHASE-1-VALIDATION.md`: **CLOSED / ORIGINAL GATE PASSED**.
+  Su baseline sólo queda supersedido para cambios visuales intencionales
+  posteriores; no se debe volver a documentar como no verificado.
+
+### Verificado
+
+- Producción sigue `READY` en `d86c8a9`; esta rama no fue desplegada.
+- `npm ci --include=dev`: árbol reinstalado desde lockfile; 7 vulnerabilidades
+  preexistentes informadas, sin ejecutar `npm audit fix`.
+- `check:install-state`: 459 paquetes revisados, árbol consistente.
+- El hook llegó en verde por integrity global, columns, freshness hasta 0062,
+  schema sync y typecheck.
+- El smoke del hook con pool `forks` reprodujo la falla conocida de Windows:
+  0 tests y timeout de workers. Se repitió manualmente con `--pool=threads`:
+  **2 archivos / 87 tests PASS**.
+- Build Vite `CLIENT=la-nona-pato`: PASS.
+- `git diff --check`: PASS.
+
+### Pendiente inmediato
+
+1. Materializar `DICO_RECOVERY_PRESENCE_SLOT.bundle` en el filesystem.
+2. Verificar tamaño 8.658.041 bytes, SHA-256
+   `735fefa1d12face5caa41adc0d40896698ccf31d0c14c3e5318eee6692329931`,
+   HEAD `7b17e97e7d35638109f634b81892135b2a146036`, parent `9e77b0a` y los
+   seis commits esperados.
+3. Comparar patch y blob de `9741b96` con `0304f28`; conservar una sola
+   implementación de `brazos.webp` y rescatar documentación útil sin duplicar.
+4. Integrar recovery en orden semántico, crear
+   `platform/DICO-IMPLEMENTATION-STATUS.md` y recién entonces emitir el
+   checkpoint `chore(dico): integrate machine soul recovery with current platform`.
+5. Ejecutar suite completa con `--pool=threads`, tests Dico dirigidos, QA Lite,
+   build plataforma y gates restantes. No avanzar a Panorama antes del verde.
+
+### Bloqueado por Ricky
+
+- El mensaje de aprobación incluyó nombre, tamaño, SHA e historia del bundle,
+  pero no sus bytes: no aparece en Downloads, Documents, Proyectos, AppData,
+  `.codex`, recursos MCP ni GitHub. Hace falta adjuntarlo directamente o
+  copiarlo a una ruta local accesible y comunicar esa ruta.
+- `DICO_PLAN_MAESTRO_UNIFICADO_CODEX_v2.md` tampoco quedó materializado. Las
+  correcciones operativas sí están explícitas en el mensaje y ya se respetan;
+  el archivo es necesario para dejar la fuente canónica persistida.
+
+### Trabajo local vivo
+
+- Rama: `feat/dico-panorama-v1`.
+- Último checkpoint técnico antes de este handoff: `cf8f47c`.
+- No hay cambios de DB, RLS, auth, edge functions ni producción.
+- No rehacer build identity ni volver a mergear `9e77b0a`; ambos bloques ya
+  están integrados. Retomar directamente desde la verificación del bundle.
+
+---
+
 ## 29/ago/2026 — Auditoría técnica: CI, Sentry y drift de `signup_tenant` (sesión Claude)
 
 Auditoría de 5 fases contrastada contra la base de producción, Vercel y GitHub.
