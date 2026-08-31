@@ -69,7 +69,7 @@ describe('contraste — el calculo', () => {
 describe('contraste — los valores contractuales de los tokens', () => {
   // Los mismos literales que declara src/styles/admin-tokens.css.
   const CLARO = { surface: '#FFFDF7', ink: '#262626', ink2: '#6B7280', ink3: '#9CA3AF', ok: '#1E7A38', bad: '#B3261E', warn: '#8A4B00', accent: '#E8B947', accentBorder: '#9A6B00' };
-  const OSCURO = { surface: '#262626', ink: '#E5E5E5', ink2: '#A3A3A3', ink3: '#737373', ok: '#4CAF6A', bad: '#E5534B', warn: '#C9761A', accent: '#E8B947', accentBorder: '#E8B947' };
+  const OSCURO = { surface: '#262626', ink: '#E5E5E5', ink2: '#A3A3A3', ink3: '#909090', ok: '#4CAF6A', bad: '#E5534B', warn: '#C9761A', accent: '#E8B947', accentBorder: '#E8B947' };
 
   it('texto normal sobre la superficie llega a 4.5:1 en los dos temas', () => {
     expect(contraste(hex(CLARO.ink), hex(CLARO.surface))).toBeGreaterThanOrEqual(4.5);
@@ -79,6 +79,17 @@ describe('contraste — los valores contractuales de los tokens', () => {
   it('el texto secundario llega a 4.5:1', () => {
     expect(contraste(hex(CLARO.ink2), hex(CLARO.surface))).toBeGreaterThanOrEqual(4.5);
     expect(contraste(hex(OSCURO.ink2), hex(OSCURO.surface))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('el texto terciario en oscuro llega a 4.5:1 sobre la superficie', () => {
+    // Medido en el POS: con #737373 daba 3.19:1 incluso con el fondo ya
+    // corregido. El claro sigue en 2.5:1 y queda anotado como deuda: es un
+    // problema de todo el panel, no del POS, y se trata con Machine Soul.
+    expect(contraste(hex(OSCURO.ink3), hex(OSCURO.surface))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(hex(OSCURO.ink3), hex('#171717'))).toBeGreaterThanOrEqual(4.5);
+    // El escalon con el secundario se conserva.
+    expect(contraste(hex(OSCURO.ink2), hex(OSCURO.surface)))
+      .toBeGreaterThan(contraste(hex(OSCURO.ink3), hex(OSCURO.surface)));
   });
 
   it('los solidos de estado llegan a 3:1 como borde/icono sobre la superficie', () => {
