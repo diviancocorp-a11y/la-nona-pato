@@ -212,10 +212,16 @@
   z-index: var(--ag-z-content);
   min-height: var(--ag-slot-min-h);
   max-height: var(--ag-slot-max-h);
-  margin: 0 18px 12px;
+  margin: 0 18px;
   overflow: hidden;
 }
-.ag-slot:empty { display: none; }
+/* A proposito NO hay `.ag-slot:empty { display: none }`. Ese toggle hace que
+   la altura del slot salte entre 0 y su contenido mientras el asesor carga, y
+   el same-ref lo detecto: `scrollHeight` variaba entre 1000 y 1059 en el
+   checkpoint `after-open-admin`, en direcciones opuestas segun la corrida.
+   Un slot vacio sin la regla contribuye exactamente 0 igual, pero de forma
+   estable. El espacio inferior lo pone el contenido, no el hueco. */
+.ag-slot > * { margin-bottom: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ag-root .ag-topbar .ag-theme-toggle,
