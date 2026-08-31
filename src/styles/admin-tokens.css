@@ -91,6 +91,10 @@ body[data-ui-owner="admin"],
   --ag-ok:           var(--ms-ok);
   --ag-bad:          var(--ms-bad);
   --ag-warn:         var(--ms-warn);
+  /* La tinta que va ENCIMA del solido de error cambia con el tema: el rojo
+     claro pide texto blanco (6.54:1) y el rojo del oscuro pide tinta
+     (7.19:1). Un solo valor fijo falla en uno de los dos. */
+  --ag-bad-ink:      #FFFFFF;
   /* Tintes de estado: fondo suave con el solido de arriba como texto. */
   --ag-ok-bg:        #E6F4EA;
   --ag-bad-bg:       #FCE8E6;
@@ -183,6 +187,7 @@ body[data-ui-owner="admin"],
   --ag-ok:           #4ADE80;   /* 10.17:1 sobre Zinc 900 */
   --ag-bad:          #F87171;   /*  6.40:1 */
   --ag-warn:         #FBBF24;   /* 10.61:1 */
+  --ag-bad-ink:      var(--ms-zinc-950);   /* 7.19:1 sobre el rojo del oscuro */
   --ag-ok-bg:        rgba(76, 175, 106, 0.18);
   --ag-bad-bg:       rgba(229, 83, 75, 0.18);
   --ag-warn-bg:      rgba(201, 118, 26, 0.20);

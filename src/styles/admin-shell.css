@@ -114,7 +114,10 @@
 }
 .ag-root .ag-nav-badge {
   background: var(--ag-bad);
-  color: var(--ms-zinc-950);
+  /* Medido en navegador: Zinc 950 sobre el rojo claro daba 3.04:1, contra el
+     4.5 que pide un numero legible. Y blanco sobre el rojo del tema oscuro da
+     2.77. Por eso la tinta la decide el tema: 6.54 en claro, 7.19 en oscuro. */
+  color: var(--ag-bad-ink);
   font-family: var(--ag-font);
   font-weight: var(--ms-w-metric);
 }
