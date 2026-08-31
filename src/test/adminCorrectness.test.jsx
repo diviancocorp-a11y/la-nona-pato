@@ -68,8 +68,9 @@ describe('contraste — el calculo', () => {
 
 describe('contraste — los valores contractuales de los tokens', () => {
   // Los mismos literales que declara src/styles/admin-tokens.css.
-  const CLARO = { surface: '#FFFDF7', ink: '#262626', ink2: '#6B7280', ink3: '#9CA3AF', ok: '#1E7A38', bad: '#B3261E', warn: '#8A4B00', accent: '#E8B947', accentBorder: '#9A6B00' };
-  const OSCURO = { surface: '#262626', ink: '#E5E5E5', ink2: '#A3A3A3', ink3: '#909090', ok: '#4CAF6A', bad: '#E5534B', warn: '#C9761A', accent: '#E8B947', accentBorder: '#E8B947' };
+  // Phase 3B: la escala pasa a Zinc/Carbon. Los minimos no cambian.
+  const CLARO = { bg: '#FAFAFA', surface: '#FFFFFF', ink: '#09090B', ink2: '#52525B', ink3: '#71717A', ok: '#1B7A3D', bad: '#B3261E', warn: '#8A4B00', accent: '#E8B947', accentBorder: '#8A6100' };
+  const OSCURO = { bg: '#09090B', surface: '#18181B', ink: '#F4F4F5', ink2: '#D4D4D8', ink3: '#A1A1AA', ok: '#4ADE80', bad: '#F87171', warn: '#FBBF24', accent: '#E8B947', accentBorder: '#E8B947' };
 
   it('texto normal sobre la superficie llega a 4.5:1 en los dos temas', () => {
     expect(contraste(hex(CLARO.ink), hex(CLARO.surface))).toBeGreaterThanOrEqual(4.5);
@@ -83,10 +84,9 @@ describe('contraste — los valores contractuales de los tokens', () => {
 
   it('el texto terciario en oscuro llega a 4.5:1 sobre la superficie', () => {
     // Medido en el POS: con #737373 daba 3.19:1 incluso con el fondo ya
-    // corregido. El claro sigue en 2.5:1 y queda anotado como deuda: es un
-    // problema de todo el panel, no del POS, y se trata con Machine Soul.
+    // corregido. Phase 3B lo lleva a Zinc 400.
     expect(contraste(hex(OSCURO.ink3), hex(OSCURO.surface))).toBeGreaterThanOrEqual(4.5);
-    expect(contraste(hex(OSCURO.ink3), hex('#171717'))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(hex(OSCURO.ink3), hex(OSCURO.bg))).toBeGreaterThanOrEqual(4.5);
     // El escalon con el secundario se conserva.
     expect(contraste(hex(OSCURO.ink2), hex(OSCURO.surface)))
       .toBeGreaterThan(contraste(hex(OSCURO.ink3), hex(OSCURO.surface)));
@@ -106,6 +106,24 @@ describe('contraste — los valores contractuales de los tokens', () => {
     expect(contraste(hex('#1A1A1A'), hex(CLARO.accent))).toBeGreaterThanOrEqual(4.5);
     // Y no al reves: amarillo como texto sobre blanco no llega, por eso no se usa asi.
     expect(contraste(hex(CLARO.accent), hex('#FFFFFF'))).toBeLessThan(4.5);
+  });
+
+  it('el texto terciario en CLARO llega a 4.5:1 — la deuda que cerro Phase 3B', () => {
+    // Con #9CA3AF daba 2.5:1 sobre la superficie clara. Phase 3A lo dejo
+    // anotado a proposito para no parchearlo sobre el lenguaje viejo.
+    expect(contraste(hex(CLARO.ink3), hex(CLARO.surface))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(hex(CLARO.ink3), hex(CLARO.bg))).toBeGreaterThanOrEqual(4.5);
+    // Y la jerarquia sobrevive: los tres escalones siguen separados.
+    const r = [CLARO.ink, CLARO.ink2, CLARO.ink3].map((c) => contraste(hex(c), hex(CLARO.surface)));
+    expect(r[0]).toBeGreaterThan(r[1]);
+    expect(r[1]).toBeGreaterThan(r[2]);
+  });
+
+  it('los bordes activos llegan a 3:1 — la otra deuda de Phase 3A', () => {
+    // EditorDeMesa y MapaDeMesas usaban --ag-accent (1.8:1 en claro) como
+    // borde de estado. Ahora usan --ag-accent-border.
+    expect(contraste(hex(CLARO.accentBorder), hex(CLARO.surface))).toBeGreaterThanOrEqual(3);
+    expect(contraste(hex(OSCURO.accentBorder), hex(OSCURO.surface))).toBeGreaterThanOrEqual(3);
   });
 
   it('claro y oscuro no se confunden: la superficie cambia entre temas', () => {

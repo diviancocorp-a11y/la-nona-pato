@@ -268,7 +268,7 @@
 }
 .ag-subpage-back:hover { background: var(--ag-bg-soft); }
 .ag-subpage-title {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   color: var(--ag-ink);
   letter-spacing: -0.01em;
@@ -323,7 +323,7 @@
   padding: 16px 18px 8px;
 }
 .ag-modal-header h3 {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   margin: 0; color: var(--ag-ink);
   letter-spacing: -0.01em;
@@ -596,7 +596,7 @@ body:has(.ag-page-over) .ag-bottom-nav {
   flex-shrink: 0;
 }
 .ag-page-over-title {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ag-font);
   font-weight: 800; font-size: 18px;
   margin: 0; color: var(--ag-ink);
   letter-spacing: -0.01em;

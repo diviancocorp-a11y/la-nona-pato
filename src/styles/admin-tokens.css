@@ -1,3 +1,8 @@
+/* Las primitivas Machine Soul (escala Zinc, oro, semanticos, Trace) viajan
+   con los tokens para que ninguna pagina pueda cargarlos en el orden
+   equivocado. */
+@import "./machine-soul.css";
+
 /* ────────────────────────────────────────────────────────
  * Hermes Admin — Design tokens v1 (validado en mockups v9-v12)
  * Sistema independiente del catálogo público (hermes-tokens.css).
@@ -15,14 +20,26 @@ body[data-ui-owner="admin"],
    especificidad (1,0,0) y le ganaria al `.ag-theme-dark` (0,1,0), dejando el
    overlay siempre en claro. Se midio: pasaba. */
 .ag-overlay-root {
-  /* Tipografía admin */
-  --ag-font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  /* ── Tipografia (Phase 3B) ────────────────────────────────────────────
+   * La maquina habla en Overused Grotesk. Antes era DM Sans, que no es una
+   * fuente de la marca: es lo que habia quedado del scaffold.
+   * Butler queda para los momentos editoriales, con su propio token: no se
+   * fuerza dentro de datos densos, tablas ni controles. */
+  --ag-font: var(--ms-font-system);
+  --ag-font-display: var(--ms-font-soul);
+  --ag-font-mono: var(--ms-font-mono);
 
-  /* Tinta — palette neutro (foreground / muted-foreground / border) */
-  --ag-ink: #262626;
-  --ag-ink-2: #6B7280;
-  --ag-ink-3: #9CA3AF;
-  --ag-line: #E5E7EB;
+  /* ── Tinta (Phase 3B: escala Zinc) ────────────────────────────────────
+   * ink-3 pasa de #9CA3AF a Zinc 500. El valor viejo daba 2.5:1 sobre la
+   * superficie clara y era la deuda que Phase 3A dejo anotada: no se
+   * parcheo sobre el lenguaje viejo, se resuelve con el token nuevo.
+   *   ink   19.90:1   ink-2  7.73:1   ink-3  4.83:1   (sobre White)
+   * Los tres escalones siguen siendo distinguibles y los tres pasan 4.5. */
+  --ag-ink: var(--ms-zinc-950);
+  --ag-ink-2: var(--ms-zinc-600);
+  --ag-ink-3: var(--ms-zinc-500);
+  --ag-line: var(--ms-zinc-200);
+  --ag-line-strong: var(--ms-zinc-300);
 
   /* Paleta por sección — sólido + soft */
   --ag-c-sales:   #2A9D6E;  --ag-c-sales-soft:   #DFF1E8;
@@ -33,15 +50,19 @@ body[data-ui-owner="admin"],
   --ag-c-recipes: #D4894A;  --ag-c-recipes-soft: #F8E2CE;
   --ag-c-done:    #9B958F;  --ag-c-done-soft:    rgba(155, 149, 143, 0.18);
 
-  /* Color de marca admin — ámbar (primary #F59E0B) */
-  --ag-c-terra:   #F59E0B;
-  --ag-c-yellow:  #E8C547;
-  --ag-c-green:   #6CA77F;
+  /* Marca: el oro es accion, seleccion, foco y presencia. Nada mas. */
+  --ag-c-terra:   var(--ms-gold);
+  --ag-c-yellow:  var(--ms-gold);
+  --ag-c-green:   var(--ms-ok);
 
   /* Backgrounds light — page = muted (#F9FAFB), card = #FFFFFF */
-  --ag-bg:       #F9FAFB;
-  --ag-bg-card:  #FFFFFF;
-  --ag-bg-soft:  rgba(38, 38, 38, 0.04);
+  --ag-bg:       var(--ms-zinc-50);
+  --ag-bg-card:  var(--ms-white);
+  --ag-bg-soft:  rgba(9, 9, 11, 0.04);
+  /* Chasis: la estructura (topbar, nav) lee como material, no como tarjeta. */
+  --ag-chassis:      var(--ms-zinc-950);
+  --ag-chassis-ink:  var(--ms-zinc-100);
+  --ag-chassis-ink-2: var(--ms-zinc-400);
 
   /* ── Superficies y estados de las pantallas operativas (Phase 3A) ──
    * Estos tokens los consumian `components/admin/platform/**` desde hace
@@ -55,19 +76,21 @@ body[data-ui-owner="admin"],
    *
    * `--ag-surface` conserva el crema del claro para no cambiar esa vista;
    * lo que se agrega es el valor oscuro que faltaba. */
-  --ag-surface:      #FFFDF7;
-  --ag-surface-2:    rgba(38, 38, 38, 0.05);
-  --ag-accent:       #E8B947;
-  --ag-accent-soft:  rgba(232, 185, 71, 0.18);
+  --ag-surface:      var(--ms-white);
+  --ag-surface-2:    rgba(9, 9, 11, 0.05);
+  --ag-accent:       var(--ms-gold);
+  --ag-accent-soft:  var(--ms-gold-soft);
   /* El acento RELLENO conserva su funcion (fondo de accion con tinta oscura),
      pero como BORDE de seleccion sobre la superficie clara da 1.8:1, por
      debajo del 3:1 que pide un estado de control. Por eso hay dos: el relleno
      no cambia y el borde se oscurece. */
-  --ag-accent-border: #9A6B00;
+  /* 5.54:1 sobre blanco. Cierra la segunda deuda de Phase 3A: los bordes
+     activos de EditorDeMesa y MapaDeMesas pasan a este token. */
+  --ag-accent-border: var(--ms-gold-ink);
   /* Solidos de accion: se pintan como FONDO con texto claro encima. */
-  --ag-ok:           #1E7A38;
-  --ag-bad:          #B3261E;
-  --ag-warn:         #8A4B00;
+  --ag-ok:           var(--ms-ok);
+  --ag-bad:          var(--ms-bad);
+  --ag-warn:         var(--ms-warn);
   /* Tintes de estado: fondo suave con el solido de arriba como texto. */
   --ag-ok-bg:        #E6F4EA;
   --ag-bad-bg:       #FCE8E6;
@@ -138,35 +161,41 @@ body[data-ui-owner="admin"],
 
 /* ── Dark theme override ─────────────────────────────── */
 .ag-theme-dark {
-  --ag-bg:      #171717;
-  --ag-bg-card: #262626;
-  --ag-bg-soft: rgba(255, 255, 255, 0.04);
+  --ag-bg:      var(--ms-zinc-950);
+  --ag-bg-card: var(--ms-zinc-900);
+  --ag-bg-soft: rgba(255, 255, 255, 0.05);
+  /* En oscuro el chasis es el mismo Zinc 950 del fondo: la estructura no se
+     ilumina, se distingue por borde. Nunca una superficie clara accidental. */
+  --ag-chassis:      var(--ms-zinc-950);
+  --ag-chassis-ink:  var(--ms-zinc-100);
+  --ag-chassis-ink-2: var(--ms-zinc-400);
 
   /* Superficies y estados en oscuro (Phase 3A). Es el valor que faltaba:
      sin el, el fondo se quedaba en el crema del claro. */
-  --ag-surface:      #262626;
+  --ag-surface:      var(--ms-zinc-900);
   --ag-surface-2:    rgba(255, 255, 255, 0.07);
-  --ag-accent:       #E8B947;
+  --ag-accent:       var(--ms-gold);
   --ag-accent-soft:  rgba(232, 185, 71, 0.22);
   /* En oscuro el mismo oro ya da 8.5:1 contra la superficie. */
-  --ag-accent-border: #E8B947;
+  --ag-accent-border: var(--ms-gold);   /* 9.67:1 sobre Zinc 900 */
   /* En oscuro los solidos se aclaran: siguen siendo fondo con texto oscuro
      encima, que es como los usa el codigo. */
-  --ag-ok:           #4CAF6A;
-  --ag-bad:          #E5534B;
-  --ag-warn:         #C9761A;
+  --ag-ok:           #4ADE80;   /* 10.17:1 sobre Zinc 900 */
+  --ag-bad:          #F87171;   /*  6.40:1 */
+  --ag-warn:         #FBBF24;   /* 10.61:1 */
   --ag-ok-bg:        rgba(76, 175, 106, 0.18);
   --ag-bad-bg:       rgba(229, 83, 75, 0.18);
   --ag-warn-bg:      rgba(201, 118, 26, 0.20);
-  --ag-ink:    #E5E5E5;
-  --ag-ink-2:  #A3A3A3;
+  --ag-ink:    var(--ms-zinc-100);
+  --ag-ink-2:  var(--ms-zinc-300);
   /* #737373 daba 3.19:1 sobre la superficie oscura (#262626), por debajo del
      4.5 de texto normal. Se medio en el POS: el nombre del cliente y la ayuda
      de "poné menos" quedaban por debajo del minimo aun con el fondo ya
      corregido. #909090 da 4.74 sobre la superficie y 5.62 sobre el fondo de
      pagina, y conserva el escalon respecto de --ag-ink-2 (5.70). */
-  --ag-ink-3:  #909090;
-  --ag-line:   #404040;
+  --ag-ink-3:  var(--ms-zinc-400);   /* 6.91:1 sobre Zinc 900 */
+  --ag-line:   var(--ms-zinc-800);
+  --ag-line-strong: var(--ms-zinc-700);
 
   /* Soft variants en dark: tintes oscuros del color de estado
      para que el texto claro tenga contraste. Reemplazan los soft
