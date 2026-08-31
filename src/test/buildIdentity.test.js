@@ -17,7 +17,10 @@ import {
   resolveBuildIdentity, isValidSha, normalizeSha, shortId, isReleaseBuild,
   sentryRelease, BuildIdentityError, DEV_PREFIX,
 } from '../../scripts/build-identity.mjs';
-import { auditOutput, resolveHead, assertCleanWorktree, assertHeadPublished } from '../../scripts/release-lib.mjs';
+import {
+  auditOutput, resolveHead, assertCleanWorktree, assertHeadPublished,
+  resolveSpawnInvocation, detalleDeFallo,
+} from '../../scripts/release-lib.mjs';
 import { deployWeb } from '../../scripts/deploy-web.mjs';
 
 const SHA = 'd86c8a9015a03853db84d31fb6fbaaae46f7f8e8';
@@ -266,5 +269,37 @@ describe('wrapper de deploy', () => {
     const run = fakeRun([['status --porcelain', { stdout: ' M algo.js\n' }]]);
     await expect(deployWeb({ run, cwd, buildOnly: true, log: () => {} })).rejects.toThrow(/sin commitear/);
     expect(run.llamadas.filter((c) => c.includes('vercel@'))).toEqual([]);
+  });
+});
+
+describe('ejecucion de comandos en Windows', () => {
+  // Node bloquea `spawnSync` de un `.cmd` desde la mitigacion de CVE-2024-27980:
+  // devuelve EINVAL con status null. Sin este ruteo por ComSpec, build:platform
+  // fallaba con "exit null" y sin decir por que.
+  it('rutea un .cmd por ComSpec en Windows', () => {
+    const r = resolveSpawnInvocation('npm.cmd', ['run', 'build'], {
+      platform: 'win32', env: { ComSpec: 'C:\\Windows\\cmd.exe' },
+    });
+    expect(r.command).toBe('C:\\Windows\\cmd.exe');
+    expect(r.args).toEqual(['/d', '/c', 'npm.cmd', 'run', 'build']);
+  });
+
+  it('deja intactos los comandos nativos y las otras plataformas', () => {
+    expect(resolveSpawnInvocation('git', ['status'], { platform: 'win32' }))
+      .toEqual({ command: 'git', args: ['status'] });
+    expect(resolveSpawnInvocation('npm.cmd', ['ci'], { platform: 'linux' }))
+      .toEqual({ command: 'npm.cmd', args: ['ci'] });
+  });
+
+  it('rechaza metacaracteres en los argumentos del wrapper .cmd', () => {
+    expect(() => resolveSpawnInvocation('npm.cmd', ['run', 'x && del /q *'], {
+      platform: 'win32', env: { ComSpec: 'cmd.exe' },
+    })).toThrow(/inseguro/i);
+  });
+
+  it('detalleDeFallo explica un spawn que ni arranco', () => {
+    const d = detalleDeFallo({ status: null, stdout: '', stderr: '', error: Object.assign(new Error('spawnSync npm.cmd EINVAL'), { code: 'EINVAL' }) });
+    expect(d).toContain('EINVAL');
+    expect(d).not.toBe('sin detalle');
   });
 });

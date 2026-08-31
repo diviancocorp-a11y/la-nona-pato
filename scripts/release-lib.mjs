@@ -41,11 +41,33 @@ export class ReleaseError extends Error {
   }
 }
 
-/** Ejecutor por defecto. Devuelve { status, stdout, stderr }. */
+// Windows: desde la mitigacion de CVE-2024-27980 (Node 18.20.2 / 20.12.2 / 22+)
+// `spawnSync` se niega a ejecutar un `.cmd` directamente y devuelve EINVAL con
+// `status: null`. Hay que pasar por ComSpec. Mismo tratamiento —y misma
+// validacion de metacaracteres— que `platform/qa-lite/lib.mjs`, que ya lo
+// resolvia para el harness.
+const WINDOWS_CMD_META = /[\r\n&|<>^%!]/;
+
+export function resolveSpawnInvocation(command, args, { platform = process.platform, env = process.env } = {}) {
+  if (platform !== 'win32' || !command.toLowerCase().endsWith('.cmd')) {
+    return { command, args };
+  }
+  for (const token of [command, ...args]) {
+    if (WINDOWS_CMD_META.test(String(token))) {
+      throw new ReleaseError(`Argumento inseguro para el wrapper .cmd de Windows: ${JSON.stringify(token)}`);
+    }
+  }
+  const comspec = env.ComSpec || env.COMSPEC || 'cmd.exe';
+  return { command: comspec, args: ['/d', '/c', command, ...args] };
+}
+
+/** Ejecutor por defecto. Devuelve { status, stdout, stderr, error }. */
 export function defaultRun(command, args, options = {}) {
-  const r = spawnSync(command, args, {
+  const env = { ...process.env, ...options.env };
+  const inv = resolveSpawnInvocation(command, args, { env });
+  const r = spawnSync(inv.command, inv.args, {
     cwd: options.cwd || process.cwd(),
-    env: { ...process.env, ...options.env },
+    env,
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 32 * 1024 * 1024,
@@ -59,6 +81,15 @@ export function defaultRun(command, args, options = {}) {
   };
 }
 
+/** Un detalle legible para los mensajes de error, incluido el fallo de spawn. */
+export function detalleDeFallo(r) {
+  const partes = [];
+  if (r.error) partes.push(`${r.error.code || 'error'}: ${r.error.message.split('\n')[0]}`);
+  const err = (r.stderr || '').trim();
+  if (err) partes.push(err.split('\n').slice(-3).join(' '));
+  return partes.join(' — ') || 'sin detalle';
+}
+
 /**
  * El SHA del HEAD, validado.
  *
@@ -70,7 +101,7 @@ export function defaultRun(command, args, options = {}) {
 export function resolveHead({ run = defaultRun, cwd = process.cwd() } = {}) {
   const r = run('git', ['rev-parse', 'HEAD'], { cwd });
   if (r.status !== 0) {
-    throw new ReleaseError(`git rev-parse HEAD fallo: ${(r.stderr || '').trim() || 'sin detalle'}`);
+    throw new ReleaseError(`git rev-parse HEAD fallo: ${detalleDeFallo(r)}`);
   }
   const sha = normalizeSha(r.stdout);
   if (!SHA_RE.test(sha)) {
@@ -83,7 +114,7 @@ export function resolveHead({ run = defaultRun, cwd = process.cwd() } = {}) {
 export function assertCleanWorktree({ run = defaultRun, cwd = process.cwd() } = {}) {
   const r = run('git', ['status', '--porcelain'], { cwd });
   if (r.status !== 0) {
-    throw new ReleaseError(`git status fallo: ${(r.stderr || '').trim() || 'sin detalle'}`);
+    throw new ReleaseError(`git status fallo: ${detalleDeFallo(r)}`);
   }
   const sucio = r.stdout.split(/\r?\n/).filter((l) => l.trim()).length;
   if (sucio > 0) {
@@ -99,7 +130,7 @@ export function assertCleanWorktree({ run = defaultRun, cwd = process.cwd() } = 
 export function assertHeadPublished(sha, { run = defaultRun, cwd = process.cwd() } = {}) {
   const r = run('git', ['branch', '-r', '--contains', sha], { cwd });
   if (r.status !== 0) {
-    throw new ReleaseError(`No se pudo comprobar si ${shortId(sha)} esta en origin: ${(r.stderr || '').trim()}`);
+    throw new ReleaseError(`No se pudo comprobar si ${shortId(sha)} esta en origin: ${detalleDeFallo(r)}`);
   }
   const ramas = r.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (ramas.length === 0) {

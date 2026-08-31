@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
   PLATFORM_CLIENT, ReleaseError, assertCleanWorktree, auditOutput, defaultRun,
-  releaseEnv, resolveHead, sentryRelease, shortId,
+  detalleDeFallo, releaseEnv, resolveHead, sentryRelease, shortId,
 } from './release-lib.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,7 +48,7 @@ export async function buildPlatform({
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const r = run(npm, ['run', 'build'], { cwd, env: releaseEnv(sha), stdio: 'inherit' });
   if (r.status !== 0) {
-    throw new ReleaseError(`El build fallo (exit ${r.status}). ${(r.stderr || '').trim()}`);
+    throw new ReleaseError(`El build fallo (exit ${r.status}). ${detalleDeFallo(r)}`);
   }
 
   log('→ Auditando el artefacto...');
