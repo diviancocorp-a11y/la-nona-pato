@@ -27,11 +27,13 @@ exactamente de `9e77b0a`.
 
 ### Pendiente inmediato
 
-1. Implementar la pieza visual/interactiva de The Slot por encima de Native.
-2. The Slot debe gobernar exclusivamente Physical 3D; no reutilizar el toggle
-   de avisos de Native.
-3. Integrar el asset Physical aprobado y validar emergence/repliegue antes de
-   cerrar el comportamiento.
+1. The Slot ya tiene control propio y gobierna exclusivamente Physical 3D.
+   Usa el asset de produccion `dico-physical-body.webp` derivado del PNG
+   1254x1254 aprobado, con cara SVG modular encima.
+2. El control visual es una ranura Zinc contenida con actividad Blue; Gold llega
+   con el personaje. Native queda debajo y su toggle sigue abriendo solo avisos.
+3. Falta validar visualmente en browser real proporciones de la cara Physical,
+   escala del personaje, emergence y espacio reservado al abrirse.
 4. Ejecutar suite y browser review en el worktree real de Windows: este entorno
    de recuperacion no pudo completar `npm ci`, por lo que solo se verifico
    `git diff --check` y la consistencia estatica del diff.

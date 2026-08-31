@@ -22,6 +22,7 @@ import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoAvisos from '../components/admin/platform/DicoAvisos';
+import DicoSlot from '../components/dico/DicoSlot';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
@@ -675,7 +676,9 @@ export default function PlatformAdmin() {
               Hoy lo ocupa el asesor de avisos; mañana puede alojar Dico
               Native 2D o Physical 3D sin mover el shell. */}
           <div className="ag-slot">
-          <DicoAvisos
+          <div className="ag-dico-stack">
+            <DicoSlot />
+            <DicoAvisos
               listo={!loadingProducts && recetas !== null}
               vertical={tenant?.vertical}
               productos={products}
@@ -686,6 +689,7 @@ export default function PlatformAdmin() {
               omitir={products.length === 0 ? ['catalogo-vacio'] : []}
               onIr={setTab}
             />
+          </div>
           {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
               puede mejorar. Y solo para quien puede mirar los numeros del
               negocio — a un mozo no le sirve saber que hay stock parado. */}

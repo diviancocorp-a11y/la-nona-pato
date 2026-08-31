@@ -233,3 +233,41 @@
   .ag-root .ag-topbar .ag-theme-toggle,
   .ag-root .ag-topbar .ag-btn-mini { transition: none; }
 }
+
+/* Dico Presence stack: Slot arriba, Native debajo. Oportunidades y contenido
+   siguen fuera de esta micro-composicion para no convertir Dico en un header. */
+.ag-dico-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  min-width: 128px;
+  margin: 2px auto 0;
+  padding-top: 4px;
+}
+
+.ag-dico-stack .dico-avisos {
+  align-items: center;
+  padding: 3px 0 7px;
+}
+
+.ag-dico-stack .dico-avisos-mensaje {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  width: min(430px, calc(100vw - 44px));
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+@media (max-width: 520px) {
+  .ag-dico-stack .dico-avisos-mensaje {
+    top: 62px;
+    width: min(350px, calc(100vw - 28px));
+  }
+}
+
+.ag-dico-stack:has(.dico-slot--abierto) {
+  padding-top: 164px;
+}

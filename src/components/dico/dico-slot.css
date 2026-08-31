@@ -1,0 +1,143 @@
+/* The Slot — frontera fisica, no tarjeta ni boton SaaS. */
+.dico-slot {
+  --slot-zinc-0: #0c0e11;
+  --slot-zinc-1: #171a1f;
+  --slot-zinc-2: #282d34;
+  --slot-blue: var(--ds-ai, #3e8bd6);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 128px;
+  min-height: 32px;
+  isolation: isolate;
+  transition: padding-top 240ms cubic-bezier(.2, .72, .25, 1);
+}
+
+.dico-slot-stage {
+  position: absolute;
+  left: 50%;
+  bottom: 23px;
+  width: 184px;
+  height: 184px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+
+.dico-physical {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  animation: dico-physical-emerge 780ms cubic-bezier(.2, .72, .18, 1) both;
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .34));
+}
+
+.dico-physical-cuerpo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* El render Physical tiene el centro limpio. La cara modular entra como tinta
+   viva sobre el volumen, sin convertir el render en una hoja de sprites. */
+.dico-physical-cara {
+  position: absolute;
+  left: 25.5%;
+  top: 29%;
+  width: 49%;
+  height: 49%;
+  overflow: visible;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .08));
+}
+
+.dico-slot-control {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 46%),
+    linear-gradient(180deg, var(--slot-zinc-2), var(--slot-zinc-1));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.1),
+    inset 0 -1px 0 rgba(0,0,0,.7),
+    0 8px 20px rgba(0,0,0,.16);
+  cursor: pointer;
+}
+
+.dico-slot-control::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  border: 1px solid rgba(0, 0, 0, .32);
+  pointer-events: none;
+}
+
+.dico-slot-ranura {
+  position: relative;
+  width: 76px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--slot-zinc-0);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, .9),
+    0 1px 0 rgba(255,255,255,.05);
+}
+
+.dico-slot-luz {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 54%;
+  height: 1px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--slot-blue);
+  opacity: .46;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--slot-blue) 60%, transparent);
+  transition: width 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+}
+
+.dico-slot--abierto .dico-slot-luz {
+  width: 82%;
+  opacity: .95;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--slot-blue) 78%, transparent);
+}
+
+.dico-slot-control:hover .dico-slot-luz { opacity: .8; }
+
+.dico-slot-control:focus-visible {
+  outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+  outline-offset: 3px;
+}
+
+@keyframes dico-physical-emerge {
+  0% {
+    opacity: 0;
+    transform: translateY(72px) scale(.72) rotateY(72deg);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(1px) scale(1) rotateY(0deg);
+  }
+  78% { transform: translateY(-2px) scale(1) rotateY(0deg); }
+  100% { transform: translateY(0) scale(1) rotateY(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-physical { animation: none; }
+  .dico-slot,
+  .dico-slot-luz { transition: none; }
+}
