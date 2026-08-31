@@ -21,8 +21,7 @@ import AdminBackdrop from '../components/admin/shared/AdminBackdrop';
 import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
-import DicoAvisos from '../components/admin/platform/DicoAvisos';
-import DicoSlot from '../components/dico/DicoSlot';
+import DicoPresence from '../components/dico/DicoPresence';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
@@ -670,13 +669,12 @@ export default function PlatformAdmin() {
               Se suscribe ESTE dispositivo (la tablet del local). */}
           {tab === 'products' && <AdminPushBanner onShowToast={msg} />}
           {/* Presence boundary — `advisor.top`: Slot arriba, Native debajo.
-              El Slot controla solo Physical; Native controla solo avisos.
+              DicoPresence es la unica autoridad de Native/Notice/Physical.
               El contrato de layout vive en `.ag-slot` y nunca flota sobre
               navegacion, controles persistentes ni dialogos. */}
           <div className="ag-slot">
           <div className="ag-dico-stack">
-            <DicoSlot />
-            <DicoAvisos
+            <DicoPresence
               listo={!loadingProducts && recetas !== null}
               vertical={tenant?.vertical}
               productos={products}

@@ -4,62 +4,55 @@
  * El Slot no abre ni cierra los avisos. Su unica responsabilidad es traer a
  * Dico Physical al plano de la interfaz y devolverlo a la maquina.
  */
-import { useState } from 'react';
 import CaraDeTinta from './CaraDeTinta';
 import './dico.css';
 import physicalBody from './poses/dico-physical-body.webp';
 import './dico-slot.css';
 
-function reduceMotionActivo() {
-  try {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
-}
-
-export default function DicoSlot() {
-  const [fase, setFase] = useState('cerrado');
-  const visible = fase !== 'cerrado';
-  const abierto = fase === 'abierto';
-  const cerrando = fase === 'cerrando';
+export default function DicoSlot({
+  estado,
+  onAbrir,
+  onAperturaCompleta,
+  onCerrar,
+  onCierreCompleto,
+}) {
+  const abriendo = estado === 'physical_opening';
+  const abierto = estado === 'physical_open';
+  const cerrando = estado === 'physical_closing';
+  const visible = abriendo || abierto || cerrando;
 
   function alternar() {
-    if (cerrando) return;
+    if (abriendo || cerrando) return;
     if (!visible) {
-      setFase('abierto');
+      onAbrir?.();
       return;
     }
-
-    if (reduceMotionActivo()) {
-      setFase('cerrado');
-      return;
-    }
-
-    setFase('cerrando');
+    onCerrar?.();
   }
 
-  function terminarRetorno(event) {
-    if (event.currentTarget !== event.target || fase !== 'cerrando') return;
-    setFase('cerrado');
+  function terminarMovimiento(event) {
+    if (event.currentTarget !== event.target) return;
+    if (abriendo) onAperturaCompleta?.();
+    if (cerrando) onCierreCompleto?.();
   }
 
   const clases = [
     'dico-slot',
     visible ? 'dico-slot--visible' : '',
+    abriendo ? 'dico-slot--abriendo' : '',
     abierto ? 'dico-slot--abierto' : '',
     cerrando ? 'dico-slot--cerrando' : '',
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={clases}>
+    <div className={clases} data-dico-presence-state={estado}>
       <div className="dico-slot-stage" aria-live="polite">
         {visible && (
           <div
             className="dico-physical"
             role="img"
             aria-label="Dico Physical"
-            onAnimationEnd={terminarRetorno}
+            onAnimationEnd={terminarMovimiento}
           >
             <img
               className="dico-physical-cuerpo"
@@ -80,13 +73,15 @@ export default function DicoSlot() {
         type="button"
         className="dico-slot-control"
         onClick={alternar}
-        disabled={cerrando}
-        aria-expanded={abierto}
-        aria-label={cerrando
-          ? 'Guardando Dico Physical'
-          : abierto
-            ? 'Guardar Dico Physical'
-            : 'Abrir Dico Physical'}
+        disabled={abriendo || cerrando}
+        aria-expanded={visible}
+        aria-label={abriendo
+          ? 'Abriendo Dico Physical'
+          : cerrando
+            ? 'Guardando Dico Physical'
+            : abierto
+              ? 'Guardar Dico Physical'
+              : 'Abrir Dico Physical'}
       >
         <span className="dico-slot-ranura" aria-hidden="true">
           <span className="dico-slot-luz" />

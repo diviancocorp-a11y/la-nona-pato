@@ -5,7 +5,7 @@
  * presencia estable del sistema y el mensaje se abre solo cuando el usuario
  * decide mirarlo. Presence y Message son estados distintos.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
 import DicoCara from '../../dico/DicoCara';
 import BurbujaDico from '../../dico/BurbujaDico';
@@ -26,13 +26,20 @@ function esPrimeraEntrada() {
   }
 }
 
-export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
+export default function DicoAvisos({
+  abierto = false,
+  onAbrir,
+  onCerrar,
+  onIr,
+  omitir = [],
+  ...datos
+}) {
   const idsOmitidos = new Set(omitir);
   const avisos = avisosDe(datos).filter(aviso => !idsOmitidos.has(aviso.id));
   const firma = avisos.map(a => a.id).join('|');
-  const [abierto, setAbierto] = useState(false);
   const [pagina, setPagina] = useState({ firma: '', indice: 0 });
   const [entrada] = useState(esPrimeraEntrada);
+  const firmaAnterior = useRef(firma);
 
   const indice = pagina.firma === firma
     ? Math.min(pagina.indice, Math.max(avisos.length - 1, 0))
@@ -49,9 +56,11 @@ export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
   }, [entrada]);
 
   useEffect(() => {
+    if (firmaAnterior.current === firma) return;
+    firmaAnterior.current = firma;
     setPagina({ firma, indice: 0 });
-    setAbierto(false);
-  }, [firma]);
+    onCerrar?.();
+  }, [firma, onCerrar]);
 
   const personaje = (
     <DicoCara
@@ -72,7 +81,7 @@ export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
           <button
             type="button"
             className="dico-avisos-trigger"
-            onClick={() => setAbierto(valor => !valor)}
+            onClick={abierto ? onCerrar : onAbrir}
             aria-expanded={abierto}
             aria-label={abierto
               ? 'Cerrar avisos de Dico'
@@ -96,7 +105,7 @@ export default function DicoAvisos({ onIr, omitir = [], ...datos }) {
             onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
             restantes={avisos.length - indice - 1}
             onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
-            onCerrar={() => setAbierto(false)}
+            onCerrar={onCerrar}
           />
         </div>
       )}

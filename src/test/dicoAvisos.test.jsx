@@ -33,12 +33,24 @@ beforeAll(() => {
 
 beforeEach(() => localStorage.clear());
 
+function AvisosControlados(props) {
+  const [abierto, setAbierto] = React.useState(false);
+  return React.createElement(DicoAvisos, {
+    ...props,
+    abierto,
+    onAbrir: () => setAbierto(true),
+    onCerrar: () => setAbierto(false),
+  });
+}
+
+const renderAvisos = props => render(React.createElement(AvisosControlados, props));
+
 describe('DicoAvisos en el panel real', () => {
   it('presenta una alerta con Dico preocupado y ejecuta su salida', () => {
     const onIr = vi.fn();
-    const { container } = render(React.createElement(DicoAvisos, {
+    const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })], onIr,
-    }));
+    });
 
     expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
@@ -49,9 +61,9 @@ describe('DicoAvisos en el panel real', () => {
   });
 
   it('avanza entre avisos y cambia la expresion de Dico', () => {
-    const { container } = render(React.createElement(DicoAvisos, {
+    const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })], recetas: receta([]),
-    }));
+    });
 
     expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
@@ -61,17 +73,17 @@ describe('DicoAvisos en el panel real', () => {
   });
 
   it('permite omitir un aviso que ya resuelve otra escena', () => {
-    const { container } = render(React.createElement(DicoAvisos, {
+    const { container } = renderAvisos({
       ...sano, productos: [], recetas: receta([]), omitir: ['catalogo-vacio'],
-    }));
+    });
     expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
   });
 
   it('usa la espera con puntos cuando sólo hay una sugerencia', () => {
-    const { container } = render(React.createElement(DicoAvisos, {
+    const { container } = renderAvisos({
       ...sano, recetas: receta([]),
-    }));
+    });
 
     expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
@@ -80,15 +92,15 @@ describe('DicoAvisos en el panel real', () => {
   });
 
   it('mantiene a Dico visible aunque no haya avisos', () => {
-    const { container } = render(React.createElement(DicoAvisos, sano));
+    const { container } = renderAvisos(sano);
     expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
   });
 
   it('cerrar la burbuja no hace desaparecer a Dico', () => {
-    const { container } = render(React.createElement(DicoAvisos, {
+    const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })],
-    }));
+    });
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /cerrar lo que dice dico/i }));
     expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
@@ -97,11 +109,11 @@ describe('DicoAvisos en el panel real', () => {
 
   it('hace la entrada una sola vez por dispositivo', () => {
     const props = { ...sano, productos: [prod({ price: 0 })] };
-    const primera = render(React.createElement(DicoAvisos, props));
+    const primera = renderAvisos(props);
     expect(primera.container.querySelector('.dico--entrada')).toBeInTheDocument();
     primera.unmount();
 
-    const segunda = render(React.createElement(DicoAvisos, props));
+    const segunda = renderAvisos(props);
     expect(segunda.container.querySelector('.dico--entrada')).not.toBeInTheDocument();
   });
 });
