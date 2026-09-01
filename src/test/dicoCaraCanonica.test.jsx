@@ -4,42 +4,59 @@
  * Dico tiene UNA sola anatomia facial adentro de la app: `CaraDeTinta`. Native
  * la monta sobre la moneda y Physical la monta sobre el cuerpo 3D limpio. Los
  * renders narrativos viejos —los que traen ojos, bigote y boca cocidos al
- * pixel— siguen existiendo como archivo, pero no pueden volver a entrar.
+ * pixel— siguen existiendo como archivo de vitrina y no se tocan: lo que no
+ * pueden hacer es volver a entrar a una superficie productiva.
  *
  * POR QUE ESTOS TESTS Y NO UN REFACTOR
  * Al auditar B5 la arquitectura YA cumplia: una sola fuente facial, los dos
  * cuerpos limpios, los globs con nombre exacto y el build emitiendo solo tres
- * assets. Lo que faltaba no era codigo sino garantia: nada impedia que un
- * `import DicoEscena` desde un panel, o un glob ensanchado a `poses/*.webp`,
- * devolvieran la cara vieja a la interfaz sin que ningun gate chillara.
+ * assets sin cara. Lo que faltaba no era codigo sino garantia.
  *
- * Los contratos son ESTRUCTURALES a proposito. No comparan archivos enteros
- * como strings —eso se rompe con cualquier reformateo y no prueba nada— sino
- * que leen el grafo de imports, expanden los globs de verdad y comparan la
- * geometria que las dos modalidades terminan pintando en el DOM.
+ * QUE SIGNIFICA "SUPERFICIE PRODUCTIVA"
+ * No "un archivo cuya ruta no empieza con src/test". Eso seria una lista de
+ * exclusiones que envejece mal. Aca se camina el GRAFO DE IMPORTS real desde
+ * `src/main.jsx`, el mismo punto de entrada que usa `index.html`: productivo es
+ * lo que el bundle puede alcanzar. Los tests, `tools/vitrina` y la
+ * documentacion quedan afuera solos, sin nombrarlos, porque nadie los importa
+ * desde la app.
+ *
+ * QUE SIGNIFICA "PARIDAD"
+ * No que Native y Physical tengan el mismo tamanio, offset, escala o encuadre:
+ * los cuerpos son distintos y sus transformaciones tambien. Significa que la
+ * GEOMETRIA FACIAL sale de `CaraDeTinta`. Por eso la firma que se compara son
+ * atributos internos del viewBox —paths y radios—, que no dependen de a que
+ * tamanio se pinte cada modalidad, y por eso se compara contra el componente
+ * renderizado SOLO y no una modalidad contra la otra: si las dos se bifurcaran
+ * a la vez, compararlas entre si no lo notaria.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
+import CaraDeTinta from '../components/dico/CaraDeTinta';
 import DicoCara from '../components/dico/DicoCara';
 import DicoSlot from '../components/dico/DicoSlot';
 
+const RAIZ = resolve(__dirname, '..', '..');
+const ENTRADA = 'src/main.jsx';   // el mismo de index.html
 const POSES = 'src/components/dico/poses';
 
-/**
- * Clasificacion de `poses/`. Cada archivo entra en exactamente una lista, y un
- * archivo nuevo rompe el primer test hasta que alguien lo clasifique: es el
- * unico momento en que se decide si una imagen puede o no tocar la app.
- */
+const norm = p => p.replace(/\\/g, '/');
+const rel = p => norm(p).slice(norm(RAIZ).length + 1);
+
+/* ─────────────────── Clasificacion de los assets de poses/ ─────────────────
+ * Cada archivo entra en exactamente una lista. Uno nuevo rompe el primer test
+ * hasta que alguien lo clasifique: es el unico momento en que se decide si una
+ * imagen puede o no tocar la app. */
+
 const CUERPOS_RUNTIME = [
   'moneda-sin-brazos.webp',   // Native: disco liso, sin rasgos
   'brazos.webp',              // Native: brazos y guantes sobre alfa
   'dico-physical-body.webp',  // Physical: moneda con galera, centro limpio
 ];
 
-/** Fuentes archivadas SIN cara. Pueden entrar sin dano; hoy no las usa nadie. */
+/** Fuentes archivadas SIN cara. Podrian entrar sin dano; hoy no las usa nadie. */
 const ARCHIVO_SIN_CARA = [
   'moneda.webp',
   'moneda-retro-galera.webp',
@@ -48,8 +65,8 @@ const ARCHIVO_SIN_CARA = [
 
 /**
  * Los siete renders narrativos con la ANATOMIA VIEJA cocida al pixel: ojos,
- * cejas, nariz, bigote y boca. Se conservan para marketing, Retro Moments y
- * material de produccion. Ninguno puede aparecer en una superficie in-app.
+ * cejas, nariz, bigote y boca. Se conservan para vitrina, marketing y Retro
+ * Moments. Ninguno puede ser alcanzable desde el punto de entrada de la app.
  */
 const ARCHIVO_CARA_LEGACY = [
   'escena-celebra.webp',
@@ -61,81 +78,156 @@ const ARCHIVO_CARA_LEGACY = [
   'escena-senala.webp',
 ];
 
-/**
- * Modulos que pueden tocar la cara legacy sin que sea un defecto: el propio
- * componente heredado y lo que no viaja en el bundle de la app (tests y la
- * vitrina, que compila con su propio vite.config).
- */
-const PUEDEN_USAR_LEGACY = [
-  'src/components/dico/DicoEscena.jsx',
+/* ───────────────────────── El grafo de imports ───────────────────────────── */
+
+const ALIAS = [
+  { prefijo: '@hermes/core/', destino: 'src/' },
+  { prefijo: '@business', destino: 'clients/hermes-cochi/business.js', exacto: true },
 ];
 
-function recorrer(dir, acumulado = []) {
-  for (const nombre of readdirSync(dir)) {
-    const ruta = join(dir, nombre);
-    if (statSync(ruta).isDirectory()) recorrer(ruta, acumulado);
-    else if (/\.(jsx?|css)$/.test(nombre)) acumulado.push(ruta.replace(/\\/g, '/'));
+const EXTENSIONES = ['', '.js', '.jsx', '.ts', '.tsx', '/index.js', '/index.jsx'];
+
+function resolverEspecificador(especificador, desde) {
+  for (const a of ALIAS) {
+    if (a.exacto && especificador === a.prefijo) return join(RAIZ, a.destino);
+    if (!a.exacto && especificador.startsWith(a.prefijo)) {
+      return join(RAIZ, a.destino, especificador.slice(a.prefijo.length));
+    }
   }
-  return acumulado;
+  // Bare specifier: node_modules. No es superficie nuestra.
+  if (!especificador.startsWith('.') && !especificador.startsWith('/')) return null;
+  const base = especificador.startsWith('/')
+    ? join(RAIZ, especificador.slice(1))
+    : resolve(dirname(desde), especificador);
+  for (const ext of EXTENSIONES) {
+    const intento = base + ext;
+    if (existsSync(intento) && statSync(intento).isFile()) return intento;
+  }
+  return null;
 }
 
-/** Archivos de `src/` que SI viajan al bundle: todo menos la carpeta de tests. */
-function fuentesDeLaApp() {
-  return recorrer('src').filter(f => !f.startsWith('src/test/'));
-}
-
-/** Expande `{a,b}` y `*` de un patron de glob a una expresion regular. */
+/**
+ * Expande `{a,b}` y `*` de un glob a una expresion regular.
+ *
+ * El escapado va PRIMERO y la expansion despues. Al reves —que es como estaba
+ * escrito al principio— los parentesis y la barra que genera la propia
+ * expansion se escapan tambien, el regex no matchea nunca nada y cualquier
+ * contrato que pregunte "este glob alcanza un asset legacy?" responde que no
+ * por vacio. Lo detecto el contrato de los tres cuerpos, que pregunta al reves:
+ * "que alcanza?".
+ */
 function globARegex(patron) {
-  const llaves = patron.replace(/\{([^}]*)\}/g, (_, opciones) => `(${opciones.split(',').join('|')})`);
-  const escapado = llaves.replace(/[.+^$()|[\]\\]/g, m => `\\${m}`);
-  return new RegExp(`^${escapado.replace(/\*/g, '[^/]*')}$`);
+  const escapado = patron.replace(/[.+^$()|[\]\\]/g, m => `\\${m}`);
+  return new RegExp(`^${escapado
+    .replace(/\{([^}]*)\}/g, (_, o) => `(${o.split(',').join('|')})`)
+    // Una sola pasada: usar un centinela intermedio para `**` ya metio
+    // NULL bytes en este archivo una vez, que es el bug #3 del CLAUDE.md.
+    .replace(/\*\*|\*/g, m => (m === '**' ? '.*' : '[^/]*'))}$`);
 }
 
-/** Firma geometrica de la cara tal como queda pintada en el DOM. */
-function firmaFacial(raiz) {
+/** Todo lo que el bundle puede alcanzar desde `src/main.jsx`. */
+function grafoProductivo() {
+  const vistos = new Set();
+  const globs = [];
+  const pendientes = [join(RAIZ, ENTRADA)];
+
+  while (pendientes.length) {
+    const archivo = pendientes.pop();
+    const clave = rel(archivo);
+    if (vistos.has(clave)) continue;
+    if (!existsSync(archivo) || !statSync(archivo).isFile()) continue;
+    vistos.add(clave);
+
+    // Los binarios son hojas: se registran, no se parsean.
+    if (!/\.(jsx?|tsx?|css)$/.test(archivo)) continue;
+    const texto = readFileSync(archivo, 'utf8');
+
+    const especificadores = [];
+    // import x from 'y'  ·  export * from 'y'  ·  import 'y'
+    for (const m of texto.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*['"]([^'"]+)['"]/g)) especificadores.push(m[1]);
+    for (const m of texto.matchAll(/(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g)) especificadores.push(m[1]);
+    // import('y') dinamico
+    for (const m of texto.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)) especificadores.push(m[1]);
+    // CSS: @import y url()
+    for (const m of texto.matchAll(/@import\s+["']([^"']+)["']/g)) especificadores.push(m[1]);
+    for (const m of texto.matchAll(/url\(\s*['"]?(\.[^'")]+)['"]?\s*\)/g)) especificadores.push(m[1]);
+
+    for (const e of especificadores) {
+      const destino = resolverEspecificador(e.split('?')[0], archivo);
+      if (destino) pendientes.push(destino);
+    }
+
+    // import.meta.glob: se expande contra el disco, igual que hace Vite.
+    for (const m of texto.matchAll(/import\.meta\.glob\(\s*['"]([^'"]+)['"]/g)) {
+      const patron = m[1];
+      globs.push({ archivo: clave, patron });
+      const dirBase = dirname(archivo);
+      const carpeta = join(dirBase, dirname(patron));
+      if (!existsSync(carpeta)) continue;
+      const regex = globARegex(patron.replace(/^\.\//, ''));
+      for (const nombre of readdirSync(carpeta)) {
+        const candidato = norm(join(dirname(patron), nombre)).replace(/^\.\//, '');
+        if (regex.test(candidato)) pendientes.push(join(carpeta, nombre));
+      }
+    }
+  }
+
+  return { alcanzables: vistos, globs };
+}
+
+const PRODUCTIVO = grafoProductivo();
+
+/** Firma de la anatomia: atributos INTERNOS del viewBox, independientes de escala. */
+function firmaAnatomia(raiz) {
   const cara = raiz.querySelector('.dico-tinta-cara');
   if (!cara) return null;
   return [...cara.querySelectorAll('*')].map(el => [
     el.tagName,
     el.getAttribute('class') || '',
     el.getAttribute('d') || '',
-    el.getAttribute('cx') || '',
-    el.getAttribute('cy') || '',
-    el.getAttribute('rx') || '',
-    el.getAttribute('ry') || '',
-    el.getAttribute('r') || '',
+    el.getAttribute('cx') || '', el.getAttribute('cy') || '',
+    el.getAttribute('rx') || '', el.getAttribute('ry') || '', el.getAttribute('r') || '',
     el.getAttribute('fill') || '',
   ].join('|'));
 }
 
-describe('cara canonica de Dico', () => {
-  it('clasifica todos los assets de poses/ y no deja ninguno sin decidir', () => {
-    const enDisco = readdirSync(POSES).filter(n => n !== 'README.md').sort();
-    const clasificados = [...CUERPOS_RUNTIME, ...ARCHIVO_SIN_CARA, ...ARCHIVO_CARA_LEGACY].sort();
+/* ──────────────────────────────── Contratos ──────────────────────────────── */
 
-    // Si esto falla es porque alguien agrego una imagen: hay que decir si tiene
-    // cara vieja o no ANTES de que un glob pueda alcanzarla.
-    expect(enDisco).toEqual(clasificados);
+describe('B5 — el grafo productivo no alcanza la cara legacy', () => {
+  it('parte de un grafo real y no de una lista de exclusiones', () => {
+    // Si el walker se rompiera y devolviera casi nada, todos los contratos de
+    // abajo pasarian por vacio. Este es el canario.
+    expect(PRODUCTIVO.alcanzables.size).toBeGreaterThan(100);
+    expect(PRODUCTIVO.alcanzables).toContain('src/components/dico/CaraDeTinta.jsx');
+    expect(PRODUCTIVO.alcanzables).toContain('src/components/dico/DicoCara.jsx');
+    expect(PRODUCTIVO.alcanzables).toContain('src/components/dico/DicoSlot.jsx');
   });
 
-  it('mantiene los globs de runtime con nombre exacto y fuera de la cara legacy', () => {
-    const globs = [];
-    for (const archivo of fuentesDeLaApp()) {
-      const texto = readFileSync(archivo, 'utf8');
-      for (const m of texto.matchAll(/import\.meta\.glob\(\s*['"]([^'"]+)['"]/g)) {
-        globs.push({ archivo, patron: m[1] });
-      }
+  it('no alcanza DicoEscena ni sus renders narrativos', () => {
+    // El componente legacy y sus assets viven en el repo a proposito. El
+    // contrato no es que no existan: es que el bundle no llegue a ellos.
+    expect(PRODUCTIVO.alcanzables).not.toContain('src/components/dico/DicoEscena.jsx');
+    for (const legacy of ARCHIVO_CARA_LEGACY) {
+      expect(PRODUCTIVO.alcanzables, legacy).not.toContain(`${POSES}/${legacy}`);
     }
+  });
 
-    expect(globs.length).toBeGreaterThan(0);
+  it('alcanza exactamente los tres cuerpos sin cara', () => {
+    const dePoses = [...PRODUCTIVO.alcanzables]
+      .filter(f => f.startsWith(`${POSES}/`) && !f.endsWith('.md'))
+      .map(f => f.slice(POSES.length + 1))
+      .sort();
+    expect(dePoses).toEqual([...CUERPOS_RUNTIME].sort());
+  });
 
-    for (const { archivo, patron } of globs) {
+  it('mantiene los globs productivos con nombre exacto', () => {
+    expect(PRODUCTIVO.globs.length).toBeGreaterThan(0);
+    for (const { archivo, patron } of PRODUCTIVO.globs) {
       const nombre = patron.split('/').pop();
       // El comodin puede vivir en la EXTENSION (`.{png,webp,avif}` protege de un
       // cambio de formato) pero nunca en el nombre: `poses/*.webp` arrastraria
       // los siete renders narrativos al bundle sin que se note.
       expect(nombre.split('.')[0], `${archivo}: ${patron}`).not.toContain('*');
-
       const regex = globARegex(patron.replace(/^\.\//, ''));
       for (const legacy of ARCHIVO_CARA_LEGACY) {
         expect(regex.test(`poses/${legacy}`), `${patron} alcanza ${legacy}`).toBe(false);
@@ -143,103 +235,90 @@ describe('cara canonica de Dico', () => {
     }
   });
 
-  it('no deja que una superficie de la app importe la cara legacy', () => {
-    const culpables = [];
-    for (const archivo of fuentesDeLaApp()) {
-      if (PUEDEN_USAR_LEGACY.includes(archivo)) continue;
-      const texto = readFileSync(archivo, 'utf8');
-      if (/from\s+['"][^'"]*DicoEscena['"]/.test(texto)) culpables.push(`${archivo}: importa DicoEscena`);
-      for (const legacy of ARCHIVO_CARA_LEGACY) {
-        if (texto.includes(legacy)) culpables.push(`${archivo}: referencia ${legacy}`);
-      }
-    }
-    expect(culpables).toEqual([]);
+  it('clasifica todos los assets de poses/ y no deja ninguno sin decidir', () => {
+    const enDisco = readdirSync(join(RAIZ, POSES)).filter(n => n !== 'README.md').sort();
+    expect(enDisco).toEqual([...CUERPOS_RUNTIME, ...ARCHIVO_SIN_CARA, ...ARCHIVO_CARA_LEGACY].sort());
   });
+});
 
-  it('define la geometria facial en un solo modulo', () => {
+describe('B5 — una sola fuente facial', () => {
+  it('define la geometria facial en un solo modulo productivo', () => {
     // `dico-esclera` es el blanco del ojo: existe una vez por implementacion de
-    // cara. Dos archivos con esa clase significan dos anatomias.
-    const definen = fuentesDeLaApp().filter(archivo => {
-      if (archivo.endsWith('.css')) return false; // el CSS transforma, no dibuja
-      return readFileSync(archivo, 'utf8').includes('dico-esclera');
-    });
+    // cara. Dos modulos con esa clase significan dos anatomias.
+    const definen = [...PRODUCTIVO.alcanzables]
+      .filter(f => /\.jsx?$/.test(f))
+      .filter(f => readFileSync(join(RAIZ, f), 'utf8').includes('dico-esclera'));
     expect(definen).toEqual(['src/components/dico/CaraDeTinta.jsx']);
   });
 
   it('no dibuja rasgos faciales desde CSS', () => {
-    // Si un rasgo naciera de un `background-image` o un `content`, cambiar
-    // CaraDeTinta dejaria de alcanzar para cambiar la cara.
+    // El CSS transforma la anatomia; no la crea. Si un rasgo naciera de un
+    // `background-image` o un `content`, cambiar CaraDeTinta dejaria de
+    // alcanzar para cambiar la cara.
     const rasgos = /dico-(esclera|pupila|parpado|ceja|boca)[^{]*\{([^}]*)\}/g;
-    for (const archivo of fuentesDeLaApp().filter(f => f.endsWith('.css'))) {
-      const css = readFileSync(archivo, 'utf8');
-      for (const m of css.matchAll(rasgos)) {
+    const css = [...PRODUCTIVO.alcanzables].filter(f => f.endsWith('.css'));
+    expect(css.length).toBeGreaterThan(0);
+    for (const archivo of css) {
+      for (const m of readFileSync(join(RAIZ, archivo), 'utf8').matchAll(rasgos)) {
         expect(m[2], `${archivo}: ${m[0].slice(0, 60)}`).not.toMatch(/background-image:|content:\s*['"]|url\(/);
       }
     }
   });
+});
 
-  it('Native monta CaraDeTinta sobre el cuerpo, no una cara propia', () => {
-    const { container } = render(React.createElement(DicoCara, { estado: 'idle', size: 48 }));
+describe('B5 — Native y Physical rinden la anatomia de CaraDeTinta', () => {
+  // Referencia: el componente solo, sin cuerpo ni modalidad.
+  const referencia = firmaAnatomia(
+    render(React.createElement('svg', { viewBox: '0 0 120 120' }, React.createElement(CaraDeTinta))).container,
+  );
 
-    const cara = container.querySelector('.dico-capa-tinta .dico-cara .dico-tinta-cara');
-    expect(cara).toBeInTheDocument();
-    expect(cara.querySelectorAll('.dico-esclera')).toHaveLength(2);
-    expect(cara.querySelectorAll('.dico-parpado')).toHaveLength(2);
-    expect(cara.querySelectorAll('.dico-ceja')).toHaveLength(2);
-    expect(cara.querySelectorAll('.dico-boca').length).toBeGreaterThan(0);
-
-    // El cuerpo Native es asset limpio: la cara no viene adentro del render.
-    for (const img of container.querySelectorAll('img')) {
-      const src = img.getAttribute('src') || '';
-      for (const legacy of ARCHIVO_CARA_LEGACY) expect(src).not.toContain(legacy.replace('.webp', ''));
-    }
+  it('la referencia tiene la anatomia completa', () => {
+    expect(referencia).not.toBeNull();
+    expect(referencia.length).toBeGreaterThan(20);
   });
 
-  it('Physical monta la MISMA CaraDeTinta sobre el cuerpo 3D limpio', () => {
+  it('Native monta esa anatomia sobre el cuerpo, no una propia', () => {
+    const { container } = render(React.createElement(DicoCara, { estado: 'idle', size: 48 }));
+    const capa = container.querySelector('.dico-capa-tinta .dico-cara');
+    expect(capa).toBeInTheDocument();
+    expect(firmaAnatomia(capa)).toEqual(referencia);
+  });
+
+  it('Physical monta esa MISMA anatomia sobre el cuerpo 3D limpio', () => {
     const { container } = render(React.createElement(DicoSlot, { estado: 'physical_open' }));
+    const capa = container.querySelector('.dico-physical-cara');
+    expect(capa).toBeInTheDocument();
+    expect(firmaAnatomia(capa)).toEqual(referencia);
 
-    const cara = container.querySelector('.dico-physical-cara .dico-tinta-cara');
-    expect(cara).toBeInTheDocument();
-    expect(cara.querySelectorAll('.dico-esclera')).toHaveLength(2);
-    expect(cara.querySelectorAll('.dico-parpado')).toHaveLength(2);
-    expect(cara.querySelectorAll('.dico-ceja')).toHaveLength(2);
-
-    // El cuerpo Physical es un asset SIN cara: si alguien lo reemplaza por un
+    // El cuerpo Physical es un asset SIN cara. Si alguien lo reemplazara por un
     // render con rasgos, la cara canonica quedaria encima de otra cara.
     const cuerpo = container.querySelector('.dico-physical-cuerpo');
     expect(cuerpo.getAttribute('src')).toContain('dico-physical-body');
     expect(CUERPOS_RUNTIME).toContain('dico-physical-body.webp');
   });
 
-  it('pinta exactamente la misma anatomia en Native y en Physical', () => {
-    // El contrato de fondo de B5: una expresion nueva en CaraDeTinta se ve en
-    // las dos modalidades porque las dos leen la misma geometria. Si alguien
-    // bifurca la cara, estas dos firmas dejan de coincidir.
-    const native = render(React.createElement(DicoCara, { estado: 'idle', size: 48 }));
+  it('el fallback provisorio de Native tambien es canonico', () => {
+    // Existe para que borrar un .webp no rompa la app. Tambien tiene que caer
+    // del lado de la fuente unica.
+    const fuente = readFileSync(join(RAIZ, 'src/components/dico/DicoCara.jsx'), 'utf8');
+    expect(fuente.slice(fuente.indexOf('function DicoProvisoria'))).toContain('CapaDeTinta');
+  });
+
+  it('una expresion nueva en CaraDeTinta alcanza a las dos modalidades', () => {
+    // El contrato de fondo de B5. La firma son atributos internos del viewBox,
+    // asi que NO exige que Native y Physical se pinten al mismo tamanio,
+    // offset ni escala: los cuerpos son distintos y pueden transformarse
+    // distinto. Exige que la geometria venga del mismo componente.
+    const native = render(React.createElement(DicoCara, { estado: 'contento', size: 48 }));
     const physical = render(React.createElement(DicoSlot, { estado: 'physical_open' }));
+    const fN = firmaAnatomia(native.container.querySelector('.dico-cara'));
+    const fP = firmaAnatomia(physical.container.querySelector('.dico-physical-cara'));
 
-    const firmaNative = firmaFacial(native.container);
-    const firmaPhysical = firmaFacial(physical.container);
-
-    expect(firmaNative).not.toBeNull();
-    expect(firmaPhysical).toEqual(firmaNative);
-  });
-
-  it('mantiene la cara canonica incluso cuando falta el render del cuerpo', () => {
-    // El fallback provisorio de DicoCara existe para que borrar un .webp no
-    // rompa la app. Tambien tiene que caer del lado canonico.
-    const fuente = readFileSync('src/components/dico/DicoCara.jsx', 'utf8');
-    const provisoria = fuente.slice(fuente.indexOf('function DicoProvisoria'));
-    expect(provisoria).toContain('CapaDeTinta');
-  });
-});
-
-describe('la vitrina no es una superficie de la app', () => {
-  it('compila con su propia configuracion y no entra al bundle', () => {
-    // Es el consumidor legitimo de DicoEscena: ahi las poses narrativas se
-    // muestran a proposito. El contrato es que viva afuera del build de la app.
-    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-    expect(pkg.scripts.vitrina).toContain('tools/vitrina/vite.config.mjs');
-    expect(relative('.', 'tools/vitrina').replace(/\\/g, '/')).not.toContain('src/');
+    expect(fN).toEqual(referencia);
+    expect(fP).toEqual(referencia);
+    // Las bocas de todas las expresiones estan en el DOM de las dos: cual se ve
+    // lo decide `dico.css` por estado, no una anatomia distinta.
+    expect(fN.filter(l => l.includes('dico-boca')).length).toBeGreaterThan(3);
+    expect(fP.filter(l => l.includes('dico-boca')).length).toBe(fN.filter(l => l.includes('dico-boca')).length);
   });
 });

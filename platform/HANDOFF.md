@@ -8,6 +8,92 @@
 
 ---
 
+## 1/sep/2026 — Stage B5 cerrado: una sola cara canónica (sesión Claude)
+
+B5 quedó **CLOSED por evidencia, sin refactor productivo**. Se detuvo antes de
+B6: no se rediseñaron expresiones, ni placement facial, ni assets. No hubo
+push, preview, deploy ni cambio de producción, DB/RLS/auth ni dependencias.
+React Router sigue exactamente en `7.18.3`.
+
+### El hallazgo que decidió el lote
+
+La auditoría encontró la arquitectura **ya cumplida**: `CaraDeTinta` es el único
+módulo productivo que define geometría facial, Native (`DicoCara`) y Physical
+(`DicoSlot`) la montan, el cuerpo Physical está limpio —se inspeccionó el
+`.webp`: no tiene ojos, boca ni bigote— y los dos `import.meta.glob` nombran
+archivos exactos. El build lo confirma: emite tres assets Dico y ninguno tiene
+cara.
+
+Faltaba **garantía**, no código. Refactorizar habría sido trabajo inventado.
+
+### Hecho
+
+- Snapshot previo `DICO_B4_APPROVED_6ca8d67.bundle`: 8.785.799 bytes, SHA-256
+  `5d12e6f4749e9987a0d945009ac5039cd6dcc8f74c3454e15c6956b8f58efd3b`, historia
+  completa, HEAD `6ca8d67`, rama `feat/dico-panorama-v1`. Excluido por **ruta
+  exacta** en `.git/info/exclude`, sin regla global.
+- `src/test/dicoCaraCanonica.test.jsx` — 12 contratos estructurales. El gate de
+  legacy **camina el grafo de imports real desde `src/main.jsx`** en vez de
+  filtrar por rutas: productivo es lo que el bundle alcanza. Resuelve imports
+  estáticos y dinámicos, `export … from`, `@import` y `url()` de CSS, los alias
+  del build, y expande los `import.meta.glob` contra el disco como hace Vite.
+  Tests, `tools/vitrina` y documentación quedan afuera solos.
+- **`DicoEscena.jsx` y los 7 `escena-*.webp` no se movieron ni se borraron.**
+  Son legacy legítimo de vitrina/archivo. El contrato no es que no existan: es
+  que ninguna superficie productiva los alcance.
+- La paridad Native/Physical se define como *la geometría sale de
+  `CaraDeTinta`*, no como igualdad de tamaño, offset o encuadre. La firma
+  comparada son atributos internos del viewBox, y se compara contra el
+  componente renderizado **solo**: si las dos modalidades se bifurcaran a la
+  vez, compararlas entre sí no lo notaría.
+- `platform/PHASE-B5-CANONICAL-FACE.md`: matriz A/B/C/D/E completa, evidencia y
+  backlog.
+
+### Verificado
+
+- Contratos rotos a propósito, uno por uno: los **7** fallan. El control que
+  importa es el octavo: **la vitrina importa `DicoEscena` dos veces y la suite
+  queda 12/12 verde**, que es la prueba de que la exclusión es semántica.
+  Todas las mutaciones revertidas.
+- Tests dirigidos B5: **12 PASS**. Dirigidos Dico: **9 archivos / 89**. Suite
+  completa: **78 archivos / 1.056 PASS** con `--pool=threads`.
+- Integridad, typecheck, install-state, `qa:lite:test` 27/0, build identificado
+  y `git diff --check`: PASS.
+- QA Lite same-ref `6ca8d67` ↔ `6ca8d67`: **DOM igual, `blockingDiffPixels: 0`,
+  red externa 0 y scroll trace IDENTICAL**.
+- Medición en navegador (Playwright, 1440×900 y 390×844): cara centrada sobre
+  el cuerpo con desvío **0,02 px**; **la cara no se recorta** (queda 44,4 px por
+  dentro); **no se separa del cuerpo** al abrir/cerrar (rango del offset
+  relativo 0,0000 abriendo y 0,0039 cerrando); red externa cero.
+
+### Lo que queda anotado para B6/backlog
+
+1. **Escala y altura de la cara en Physical.** La anatomía es la misma pero su
+   proporción no: ojos a **10,21 %** del ancho de la moneda contra **23,24 %**
+   en Native, y el eje al doble de altura. Se comprobó que **no** es del probe:
+   Native mide igual a `size=36` (el real de la app) que a 220 px, ±0,11 %. La
+   causa es que `.dico-physical-cara` se posiciona en porcentajes del marco
+   entero y la galera empuja la moneda hacia abajo. Es acabado facial.
+2. **9 px de galera recortados.** `.ag-slot` tiene `overflow: hidden`
+   (Phase 3B) y `.dico-slot-stage` sobresale 161 px hacia arriba (Phase 9/B2).
+   Ningún test de los dos lotes cubre ese cruce. La cara no se ve afectada.
+
+### Trampa nueva, para no repetirla
+
+Medir layout desde la consola del panel del navegador puede dar
+`window.innerHeight === 0`. Con eso `max-height: 40vh` computa `0px`, `.ag-slot`
+mide 0 de alto y **todo Physical parece recortado**: casi se reporta un defecto
+grave inexistente. Toda medición que dependa de unidades de viewport va con
+Playwright y viewport declarado.
+
+Y un bug propio que vale como método: el expansor de globs del test escapaba los
+paréntesis que él mismo generaba, así que preguntar «¿este glob alcanza un asset
+legacy?» respondía que no **por vacío**. Lo destapó el contrato que pregunta al
+revés, «¿qué alcanza?». Cuando un gate sólo sabe decir que no, conviene
+obligarlo a decir qué sí.
+
+---
+
 ## 31/ago/2026 — Stage B2/B3/B4 cerrado: mensaje Native estable (sesión Codex)
 
 B2, B3 y B4 quedaron cerrados sobre el B1 aprobado. Se detuvo el trabajo antes

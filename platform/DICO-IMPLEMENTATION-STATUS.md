@@ -50,7 +50,7 @@ existe un gate o una aprobación ya persistida en el repositorio.
 | B2 — `DicoSlot` controlado | **CLOSED** | Auditoría estática y tests en `f429722`; no requirió código productivo nuevo. |
 | B3 — aviso encima de Native | **CLOSED** | `f429722`; DOM/layout, cola, hit target y transiciones cubiertos. |
 | B4 — typewriter estable | **CLOSED** | `f33d8eb`; fake timers, Reduced Motion, accesibilidad y gate real en cuatro viewports. |
-| B5 — cara canónica | **CLOSED por evidencia** | `platform/PHASE-B5-CANONICAL-FACE.md`. La auditoría encontró la arquitectura ya cumplida: `CaraDeTinta` es la única definición facial del repo, Native y Physical la montan, el cuerpo Physical está limpio y el build emite sólo tres assets sin cara. No hubo refactor; se agregaron 10 contratos estructurales, cada uno verificado rompiéndolo. Same-ref: DOM igual, pixels bloqueantes 0, scroll trace idéntico. |
+| B5 — cara canónica | **CLOSED** | `platform/PHASE-B5-CANONICAL-FACE.md`. Arquitectura ya cumplida: `CaraDeTinta` es el único módulo productivo con geometría facial, Native y Physical la montan y el cuerpo Physical está limpio. Sin refactor productivo: 12 contratos estructurales cuyo gate camina el grafo de imports desde `src/main.jsx`, no rutas. `DicoEscena` y los 7 renders legacy se conservan para la vitrina. Same-ref: DOM igual, pixels bloqueantes 0, scroll trace idéntico. |
 
 Los resultados completos y las rutas de artifacts están en `platform/HANDOFF.md`.
 Este documento no autoriza avanzar automáticamente a B5.
