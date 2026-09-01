@@ -69,8 +69,11 @@
  * punta corta y brillante. Eso da un cometa sin mascaras ni gradientes sobre
  * path, y es lo que lo separa de un spinner: el spinner es un arco solo y
  * duro; esto es una senial con cabeza y cola sobre un aro que ya existe. */
+/* El origen del giro sigue al centro declarado: sobre los assets finales el
+   personaje no esta centrado en la caja (48,05% en Y), y rotar alrededor del
+   50% dejaba el recorrido descentrado respecto del aro. */
 .dico-pulso-giro {
-  transform-origin: 50% 50%;
+  transform-origin: var(--dico-pulso-origen, 50% 50%);
 }
 
 .dico-pulso-estela,

@@ -37,6 +37,16 @@ export default function DicoPulso({
   activity = 'idle',
   /** Radio en unidades del viewBox de 100. Mueve la circunferencia. */
   radio = 44,
+  /**
+   * Centro de la circunferencia, en unidades del viewBox de 100.
+   *
+   * No siempre es 50/50. Medido sobre los assets finales de Dico 2D: el
+   * personaje ocupa el 78,8% del canvas, su centro cae en 49,90 / 48,05 —no en
+   * el medio— y el aro azul vive a r/R 0,67 de su radio, no en el borde. Con el
+   * centro clavado el pulso quedaba descentrado sobre el arte.
+   */
+  cx = 50,
+  cy = 50,
   /** Grosor del trazo, mismas unidades. */
   grosor = 6,
   /** Multiplicador global de opacidad, 0..1. */
@@ -60,6 +70,7 @@ export default function DicoPulso({
   ].filter(Boolean).join(' ');
 
   const vars = {
+    '--dico-pulso-origen': `${cx}% ${cy}%`,
     '--dico-pulso-grosor': grosor,
     '--dico-pulso-radio': radio,
     '--dico-pulso-intensidad': intensidad,
@@ -82,23 +93,23 @@ export default function DicoPulso({
     >
       <circle
         className="dico-pulso-aro"
-        cx="50" cy="50" r={radio}
+        cx={cx} cy={cy} r={radio}
         strokeWidth={grosor}
       />
       <g className="dico-pulso-giro">
         <circle
           className="dico-pulso-estela"
-          cx="50" cy="50" r={radio}
+          cx={cx} cy={cy} r={radio}
           strokeWidth={grosor}
           strokeDasharray={traza(estela)}
-          transform={`rotate(-90 50 50)`}
+          transform={`rotate(-90 ${cx} ${cy})`}
         />
         <circle
           className="dico-pulso-punta"
-          cx="50" cy="50" r={radio}
+          cx={cx} cy={cy} r={radio}
           strokeWidth={grosor}
           strokeDasharray={traza(punta)}
-          transform={`rotate(${-90 + estela * 360} 50 50)`}
+          transform={`rotate(${-90 + estela * 360} ${cx} ${cy})`}
         />
       </g>
     </svg>

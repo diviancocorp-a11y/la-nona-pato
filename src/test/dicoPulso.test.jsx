@@ -172,6 +172,26 @@ describe('B6R — DicoPulso: los cinco modos', () => {
     expect(svg.querySelector('.dico-pulso-punta').getAttribute('r')).toBe('30');
   });
 
+  it('el centro es parametrizable: el arte no esta centrado en la caja', () => {
+    // Medido sobre los assets finales de Dico 2D: el personaje ocupa el 78,8%
+    // del canvas y su centro cae en 49,90 / 48,05. Con cx/cy clavados en 50 el
+    // pulso quedaba descentrado respecto del aro azul.
+    const { container } = render(React.createElement(DicoPulso, {
+      activity: 'processing', cx: 49.9, cy: 48.05, radio: 26.4,
+    }));
+    const svg = container.querySelector('.dico-pulso');
+    for (const sel of ['.dico-pulso-aro', '.dico-pulso-estela', '.dico-pulso-punta']) {
+      const c = svg.querySelector(sel);
+      expect(c.getAttribute('cx'), sel).toBe('49.9');
+      expect(c.getAttribute('cy'), sel).toBe('48.05');
+      expect(c.getAttribute('r'), sel).toBe('26.4');
+    }
+    // El giro tiene que rotar alrededor del centro real, no del 50% de la caja.
+    expect(svg.style.getPropertyValue('--dico-pulso-origen')).toBe('49.9% 48.05%');
+    expect(svg.querySelector('.dico-pulso-punta').getAttribute('transform'))
+      .toContain('49.9 48.05');
+  });
+
   it('el aro base es opcional: sobre arte final no se redibuja', () => {
     const sin = render(React.createElement(DicoPulso, { activity: 'idle' }));
     expect(sin.container.querySelector('.dico-pulso')).not.toHaveClass('dico-pulso--con-aro');
