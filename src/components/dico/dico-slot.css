@@ -47,13 +47,31 @@
 }
 
 /* El render Physical tiene el centro limpio. La cara modular entra como tinta
-   viva sobre el volumen, sin convertir el render en una hoja de sprites. */
+   viva sobre el volumen, sin convertir el render en una hoja de sprites.
+ *
+ * ENCUADRE CANONICO (B6). Medido antes: la anatomia era identica pero se pintaba
+ * 2,28x mas chica que en Native —ojos al 10,21% del ancho de la moneda contra
+ * 23,25%—, con la jerarquia interna intacta (ojos/boca 1,732 contra 1,73). O
+ * sea: el problema nunca fue la geometria sino este marco, que se posiciona en
+ * porcentajes del cuadro entero mientras la galera empuja la moneda hacia abajo
+ * y la achata.
+ *
+ * Se corrige ACA y no en `CaraDeTinta`: hay una sola anatomia y no se duplica.
+ *
+ * El factor no es 2,28 sino 2,0, y es a proposito. Igualar el ancho exacto
+ * dejaba la cara ocupando el 58% del alto de una moneda escorzada contra el 45%
+ * de Native: se corrige una desproporcion creando otra. Con 2,0 las dos medidas
+ * quedan dentro del 12,5% de Native. El criterio del lote es "el mismo
+ * personaje en dos materiales", no dos renders identicos. */
 .dico-physical-cara {
+  --dico-cara-ancho: 98%;   /* 49% x 2,0 */
+  --dico-cara-cx: 49.96%;   /* centro horizontal de la moneda, medido por pixel */
+  --dico-cara-cy: 59.9%;
   position: absolute;
-  left: 25.5%;
-  top: 29%;
-  width: 49%;
-  height: 49%;
+  left: calc(var(--dico-cara-cx) - var(--dico-cara-ancho) / 2);
+  top: calc(var(--dico-cara-cy) - var(--dico-cara-ancho) / 2);
+  width: var(--dico-cara-ancho);
+  height: var(--dico-cara-ancho);
   overflow: visible;
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .08));
   animation: dico-physical-face-reveal 780ms linear both;
