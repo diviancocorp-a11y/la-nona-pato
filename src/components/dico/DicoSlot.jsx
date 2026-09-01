@@ -5,12 +5,17 @@
  * Dico Physical al plano de la interfaz y devolverlo a la maquina.
  */
 import CaraDeTinta from './CaraDeTinta';
+import { ESTADOS_DICO } from './DicoCara';
 import './dico.css';
 import physicalBody from './poses/dico-physical-body.webp';
 import './dico-slot.css';
 
+const FRAMES_HABLA = ['closed', 'mid', 'open'];
+
 export default function DicoSlot({
   estado,
+  cara = 'idle',
+  habla,
   onAbrir,
   onAperturaCompleta,
   onCerrar,
@@ -36,6 +41,13 @@ export default function DicoSlot({
     if (cerrando) onCierreCompleto?.();
   }
 
+  const caraSegura = ESTADOS_DICO.includes(cara) ? cara : 'idle';
+  const hablaSegura = FRAMES_HABLA.includes(habla) ? habla : '';
+  const claseDeCara = [
+    `dico--${caraSegura}`,
+    hablaSegura ? `dico--habla-${hablaSegura}` : '',
+  ].filter(Boolean).join(' ');
+
   const clases = [
     'dico-slot',
     visible ? 'dico-slot--visible' : '',
@@ -60,8 +72,12 @@ export default function DicoSlot({
               alt=""
               draggable="false"
             />
+            {/* Physical habla el MISMO vocabulario facial que Native: las
+                clases de estado son las de `dico.css` y la anatomia es la misma
+                `CaraDeTinta`. Antes esto estaba clavado en `dico--idle` y
+                Physical no podia expresar nada. */}
             <svg className="dico-physical-cara" viewBox="0 0 120 120" aria-hidden="true">
-              <g className="dico--idle">
+              <g className={claseDeCara}>
                 <CaraDeTinta />
               </g>
             </svg>

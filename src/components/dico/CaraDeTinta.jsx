@@ -92,6 +92,14 @@ function Ojo({ lado, cx, lookX, lookY }) {
             strokeLinecap="round"
           />
         </g>
+
+        {/* Error: la X reemplaza a la pupila sobre la misma esclera. La FORMA es
+            la senial —se lee igual en escala de grises— y el rojo entra solo
+            como acento; el color no carga el significado solo. */}
+        <g className="dico-ojo-x" strokeLinecap="round" fill="none" strokeWidth="2.9">
+          <path d={`M${cx - 5.2} ${OJO.cy - 6.4} L${cx + 5.2} ${OJO.cy + 6.4}`} />
+          <path d={`M${cx + 5.2} ${OJO.cy - 6.4} L${cx - 5.2} ${OJO.cy + 6.4}`} />
+        </g>
       </g>
     </g>
   );
@@ -124,6 +132,16 @@ export default function CaraDeTinta({ lookX = 0, lookY = 0 }) {
       <path className="dico-boca dico-boca--tensa" d="M54 74.8 Q60 75.4 66 74.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
+      {/* Pensando: boca chica y corrida, distinta de la de esperando. Razonar
+          no es lo mismo que estar trabajando. */}
+      <path className="dico-boca dico-boca--reflexiva" d="M56.4 73 Q59.8 75.4 63.4 73.6"
+        stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
+
+      {/* Error: boca corta hacia abajo. Frustracion, no agonia: Dico sigue
+          estando ahi para avisar que algo fallo. */}
+      <path className="dico-boca dico-boca--error" d="M54.6 76.4 Q60 71.6 65.4 76.4"
+        stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
+
       <path className="dico-boca dico-boca--pregunta" d="M54.4 73.2 Q60.8 77.5 66.7 71.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
@@ -142,8 +160,12 @@ export default function CaraDeTinta({ lookX = 0, lookY = 0 }) {
       <ellipse className="dico-boca dico-boca--habla-media" cx="60" cy="75" rx="4.8" ry="2.8" fill={TINTA} />
       <ellipse className="dico-boca dico-boca--habla-abierta" cx="60" cy="75" rx="4.8" ry="5.4" fill={TINTA} />
 
-      {/* Los puntos son feedback de proceso, no anatomia. */}
-      <g className="dico-espera-puntos" fill={TINTA} stroke={PAPEL} strokeWidth="1">
+      {/* Los puntos son feedback de proceso, no anatomia.
+          El halo crema era de 1px y alcanzaba mientras el simbolo flotaba sobre
+          el fondo de la pagina. Con Physical mostrando `esperando` cae sobre la
+          galera NEGRA y tinta sobre tinta desaparece. Engrosarlo lo rescata ahi
+          sin cambiar como se lee sobre claro, donde el halo se funde igual. */}
+      <g className="dico-espera-puntos" fill={TINTA} stroke={PAPEL} strokeWidth="2.2">
         <circle className="dico-espera-punto" cx="48" cy="7" r="2.7" />
         <circle className="dico-espera-punto" cx="60" cy="7" r="2.7" />
         <circle className="dico-espera-punto" cx="72" cy="7" r="2.7" />

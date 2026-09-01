@@ -23,7 +23,22 @@ import { useId } from 'react';
 import CaraDeTinta, { CAMPO } from './CaraDeTinta';
 import './dico.css';
 
-export const ESTADOS_DICO = ['idle', 'esperando', 'contento', 'preocupado', 'pregunta'];
+/**
+ * Vocabulario facial canonico. Los nombres van en espaniol como el resto del
+ * codigo; el mapeo a los terminos del sistema es directo:
+ *
+ *   idle        idle          rostro base, referencia neutral
+ *   esperando   processing    actividad tecnica en curso
+ *   pensando    thinking      razonamiento, distinto de processing
+ *   contento    success       satisfaccion
+ *   preocupado  worried       hay algo para revisar; NO es error
+ *   pregunta    question      falta informacion
+ *   error       error         fallo real, unico estado con rojo semantico
+ *
+ * `speakingFrame` es una dimension APARTE: el estado emocional y el frame de
+ * habla se combinan (`estado="error"` + `speakingFrame="open"` es valido).
+ */
+export const ESTADOS_DICO = ['idle', 'esperando', 'pensando', 'contento', 'preocupado', 'pregunta', 'error'];
 const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 // Glob y no import directo: asi el build no se rompe si el archivo no esta.

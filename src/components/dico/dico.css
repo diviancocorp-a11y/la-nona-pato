@@ -93,9 +93,17 @@
 
 .dico-boca,
 .dico-signo-pregunta,
-.dico-espera-puntos {
+.dico-espera-puntos,
+.dico-ojo-x {
   opacity: 0;
   transition: opacity .18s ease;
+}
+
+/* El unico rojo de la cara. Sale de la paleta del edificio; fuera de `.ag-root`
+   —la vitrina, por ejemplo— cae al mismo valor por el fallback. No se introduce
+   una paleta nueva y no hay amarillo de warning en ningun estado. */
+.dico-ojo-x {
+  stroke: var(--ms-bad, #b3261e);
 }
 
 .dico--idle .dico-boca--neutra {
@@ -132,7 +140,28 @@
   32% { transform: translateY(-1px) scale(1); opacity: 1; }
 }
 
-/* Contento: sonrisa adulta, sin salto ni squash. */
+/* Pensando: razonar, no trabajar. Se distingue de `esperando` en tres cosas
+   —mirada arriba y al costado, cejas asimetricas y boca chica corrida— y en que
+   NO trae los puntos de proceso: esos anuncian actividad tecnica. */
+.dico--pensando .dico-boca--reflexiva {
+  opacity: 1;
+}
+
+.dico--pensando .dico-ceja--izq {
+  transform: translateY(-2.6px) rotate(-4deg);
+}
+
+.dico--pensando .dico-ceja--der {
+  transform: translateY(-.4px) rotate(2deg);
+}
+
+.dico--pensando:not(.dico--mirada-dirigida) .dico-pupila-estado {
+  transform: translate(-1.1px, -1.4px);
+}
+
+/* Contento: sonrisa adulta, sin salto ni squash. Los parpados existian en el
+   SVG desde siempre y ningun estado los usaba; aca cierran apenas los ojos y
+   convierten la sonrisa en algo que llega tambien a la mirada. */
 .dico--contento .dico-boca--contenta {
   opacity: 1;
 }
@@ -144,6 +173,11 @@
 
 .dico--contento .dico-pupila-estado {
   transform: translateY(-.4px);
+}
+
+.dico--contento .dico-parpado {
+  opacity: 1;
+  transform: translateY(3.4px);
 }
 
 /* Preocupado: atencion profesional, no miedo ni tristeza. */
@@ -175,6 +209,39 @@
 
 .dico--pregunta:not(.dico--mirada-dirigida) .dico-pupila-estado {
   transform: translateX(1.25px);
+}
+
+/* Error: el unico estado con rojo semantico, y entra como ACENTO.
+ *
+ * La senial que importa es la forma —la X sobre la esclera— y por eso el estado
+ * se lee igual en escala de grises o para alguien que no distingue el rojo. La
+ * cara no se tinie: sigue siendo Dico avisando que algo fallo, no Dico muerto.
+ * Se ocultan pupila y parpado para que la X quede sola sobre el ojo. */
+.dico--error .dico-ojo-x,
+.dico--error .dico-boca--error {
+  opacity: 1;
+}
+
+.dico--error .dico-pupila-estado {
+  opacity: 0;
+}
+
+.dico--error .dico-parpado {
+  opacity: 0;
+}
+
+.dico--error .dico-ceja--izq {
+  transform: translate(1px, 2.2px) rotate(9deg);
+}
+
+.dico--error .dico-ceja--der {
+  transform: translate(-1px, 2.2px) rotate(-9deg);
+}
+
+/* El parpadeo sobre unos ojos que ya son una X no comunica nada y lo unico que
+   hace es mover la senial. */
+.dico--error .dico-ojo {
+  animation: none;
 }
 
 /* Tres frames opcionales para speaking, sin lipsync ni fonemas. */
@@ -340,12 +407,22 @@
 /* ---------- Accesibilidad ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  /* `.dico-physical-cara` va aparte a proposito: la cara de Physical NO cuelga
+     de `.dico`, asi que el neutralizador de arriba nunca la alcanzaba y el
+     parpadeo seguia corriendo con reduced motion activo. Se notaba poco
+     mientras Physical solo sabia estar en idle; desde que expresa estados
+     —puntos de proceso incluidos— habria sido movimiento con significado
+     ignorando la preferencia del usuario. */
   .dico *,
-  .dico-escena {
+  .dico-escena,
+  .dico-physical-cara * {
     animation: none !important;
     transition: none !important;
   }
 
+  /* El significado no se pierde: los estados siguen completos, lo que se apaga
+     es el movimiento. Los puntos animan su opacidad, asi que se fijan visibles
+     en vez de quedar en el 0 del primer frame. */
   .dico--esperando .dico-espera-puntos {
     opacity: 1;
   }
