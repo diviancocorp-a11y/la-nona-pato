@@ -121,7 +121,7 @@ export default function CaraDeTinta({ lookX = 0, lookY = 0 }) {
       <path className="dico-boca dico-boca--neutra" d="M53.8 71.5 Q59.7 76.8 66.5 70.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
-      <path className="dico-boca dico-boca--pensando" d="M55 72.2 Q60 76.2 65.4 71.8"
+      <path className="dico-boca dico-boca--proceso" d="M55 72.2 Q60 76.2 65.4 71.8"
         stroke={TINTA} strokeWidth="2.7" strokeLinecap="round" fill="none" />
 
       <g className="dico-boca dico-boca--contenta">

@@ -29,8 +29,12 @@ const slotCss = readFileSync(resolve(RAIZ, 'src/components/dico/dico-slot.css'),
 
 const FRAMES = ['closed', 'mid', 'open'];
 
-/** Los siete estados del vocabulario, en el idioma del codigo. */
-const CANONICOS = ['idle', 'esperando', 'pensando', 'contento', 'preocupado', 'pregunta', 'error'];
+/** Los siete estados canonicos. NO son diez: speaking es un eje aparte. */
+const CANONICOS = ['idle', 'processing', 'thinking', 'success', 'worried', 'question', 'error'];
+
+/** Alias legacy que tienen que seguir resolviendo al canonico. */
+const ALIAS = { esperando: 'processing', pensando: 'thinking', contento: 'success',
+                preocupado: 'worried', pregunta: 'question' };
 
 /** Firma de la anatomia: atributos internos del viewBox, independientes de escala. */
 function firmaAnatomia(raiz) {
@@ -43,10 +47,21 @@ function firmaAnatomia(raiz) {
   ].join('|'));
 }
 
-/** Las reglas de `dico.css` que un estado enciende, leidas del CSS. */
+/**
+ * Las reglas de `dico.css` que un estado enciende, leidas del CSS.
+ *
+ * TIRA si no encuentra ninguna. Al renombrar las clases al vocabulario canonico
+ * quedaron llamadas con el nombre viejo: devolvian `[]` y las aserciones que
+ * preguntan "esto NO deberia estar" pasaban POR VACIO. Un helper que solo sabe
+ * devolver nada es la forma mas facil de tener un gate que no mide.
+ */
 function bloquesDelEstado(estado) {
   const re = new RegExp(`\\.dico--${estado}\\b[^{]*\\{[^}]*\\}`, 'g');
-  return dicoCss.match(re) || [];
+  const encontrado = dicoCss.match(re) || [];
+  if (estado !== 'idle' && encontrado.length === 0) {
+    throw new Error(`dico.css no tiene reglas para .dico--${estado}: nombre viejo?`);
+  }
+  return encontrado;
 }
 
 describe('B6 — el vocabulario canonico esta completo', () => {
@@ -72,14 +87,54 @@ describe('B6 — el vocabulario canonico esta completo', () => {
     }
   });
 
-  it('pensando y esperando no son el mismo estado disfrazado', () => {
-    // Razonar y estar trabajando son lecturas distintas: si las dos encendieran
-    // la misma boca, el vocabulario tendria seis estados y no siete.
-    const pensando = bloquesDelEstado('pensando').join('\n');
-    const esperando = bloquesDelEstado('esperando').join('\n');
-    expect(pensando).toContain('dico-boca--reflexiva');
-    expect(esperando).toContain('dico-boca--pensando');
-    expect(pensando).not.toContain('dico-espera-puntos');
+  it('thinking y processing no son el mismo estado disfrazado', () => {
+    // Razonar y estar trabajando son lecturas distintas. Si solo se
+    // diferenciaran por un par de pixeles de ceja, a 36px —el tamanio real en
+    // el panel— serian el mismo estado: eso es lo que pasaba y se corrigio.
+    // Lo que se lee de lejos es la DIRECCION DE LA MIRADA, no la ceja.
+    const thinking = bloquesDelEstado('thinking').join('\n');
+    const processing = bloquesDelEstado('processing').join('\n');
+    expect(thinking).toContain('dico-boca--reflexiva');
+    expect(processing).toContain('dico-boca--proceso');
+    expect(thinking).not.toContain('dico-espera-puntos');
+
+    const mirada = (css) => {
+      const m = css.match(/dico-pupila-estado\s*\{[^}]*translate\(([^)]*)\)/);
+      return m ? m[1].split(',').map(v => parseFloat(v)) : null;
+    };
+    const t = mirada(thinking);
+    const p = mirada(processing);
+    expect(t, 'thinking sin mirada propia').not.toBeNull();
+    expect(p, 'processing sin mirada propia').not.toBeNull();
+    // Thinking se va ARRIBA; processing barre al costado y nivelado.
+    expect(t[1], 'thinking deberia mirar hacia arriba').toBeLessThan(-2);
+    expect(Math.abs(p[1]), 'processing no deberia mirar arriba').toBeLessThan(1);
+    // Y no van para el mismo lado.
+    expect(Math.sign(t[0])).not.toBe(Math.sign(p[0]));
+  });
+
+  it('los alias legacy resuelven al estado canonico', () => {
+    // `DicoAvisos`, `ProductsPanel` y la vitrina siguen pasando los nombres en
+    // espaniol. Tienen que funcionar, y lo que llega al DOM tiene que ser el
+    // canonico: si sobreviviera una segunda familia de clases, el vocabulario
+    // volveria a estar partido en dos.
+    for (const [alias, canonico] of Object.entries(ALIAS)) {
+      const native = render(React.createElement(DicoCara, { estado: alias, size: 48 }));
+      expect(native.container.querySelector(`.dico--${canonico}`), alias).toBeInTheDocument();
+      expect(native.container.querySelector(`.dico--${alias}`), `${alias} sobrevive como clase`).toBeNull();
+
+      const physical = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: alias }));
+      expect(physical.container.querySelector(`.dico-physical-cara .dico--${canonico}`), alias).toBeInTheDocument();
+    }
+  });
+
+  it('los diez valores visibles son SIETE estados mas un eje de habla', () => {
+    // El riesgo que nombra el brief: contar closed/mid/open como emociones y
+    // terminar con diez personajes en vez de siete estados y una boca que habla.
+    expect(ESTADOS_DICO).toHaveLength(7);
+    expect(FRAMES).toHaveLength(3);
+    for (const f of FRAMES) expect(ESTADOS_DICO).not.toContain(f);
+    expect(ESTADOS_DICO).not.toContain('speaking');
   });
 });
 
@@ -105,9 +160,9 @@ describe('B6 — error significa error sin depender del color', () => {
   });
 
   it('no usa amarillo semantico para warning ni introduce paleta nueva', () => {
-    // `preocupado` es "hay algo que revisar", no un error: no lleva color.
-    const preocupado = bloquesDelEstado('preocupado').join('\n');
-    expect(preocupado).not.toMatch(/color|stroke:|fill:/);
+    // `worried` es "hay algo que revisar", no un error: no lleva color.
+    const worried = bloquesDelEstado('worried').join('\n');
+    expect(worried).not.toMatch(/color|stroke:|fill:/);
     // El unico token de color semantico de la cara es el rojo de error.
     const tokens = [...dicoCss.matchAll(/var\((--[a-z0-9-]+)/g)].map(m => m[1]);
     expect([...new Set(tokens)].filter(t => t.startsWith('--ms-') || t.startsWith('--ag-')))
@@ -225,7 +280,7 @@ describe('B6 — reduced motion conserva el significado', () => {
   it('no apaga los estados: solo el movimiento', () => {
     const bloque = dicoCss.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*\}/)[0];
     // Los puntos animan su opacidad; sin la fijacion quedarian invisibles.
-    expect(bloque).toContain('.dico--esperando .dico-espera-puntos');
+    expect(bloque).toContain('.dico--processing .dico-espera-puntos');
     expect(bloque).toContain('opacity: 1');
     // Nada dentro del bloque esconde una expresion.
     expect(bloque).not.toMatch(/display:\s*none/);
@@ -239,7 +294,7 @@ describe('B6 — reduced motion conserva el significado', () => {
     // `/animation:\s*(?!none)/` parece decir "que no sea none" y no lo dice —
     // `\s*` retrocede hasta una posicion donde el lookahead pasa, asi que la
     // regla `animation: none` tambien matcheaba.
-    for (const estado of ['pensando', 'error']) {
+    for (const estado of ['thinking', 'error']) {
       for (const regla of bloquesDelEstado(estado)) {
         for (const m of regla.matchAll(/animation:\s*([^;}]+)/g)) {
           expect(m[1].trim(), `${estado}: ${regla.slice(0, 50)}`).toMatch(/^none\b/);

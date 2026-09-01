@@ -36,7 +36,7 @@ describe('DicoEscena', () => {
       estado: 'pregunta', lookX: 4, lookY: -4,
     }));
     const mirada = container.querySelector('.dico-pupila-param');
-    expect(container.querySelector('.dico--pregunta.dico--mirada-dirigida')).toBeInTheDocument();
+    expect(container.querySelector('.dico--question.dico--mirada-dirigida')).toBeInTheDocument();
     expect(mirada.style.getPropertyValue('--dico-look-x')).toBe('2.6px');
     expect(mirada.style.getPropertyValue('--dico-look-y')).toBe('-1.8px');
   });
@@ -56,7 +56,7 @@ describe('DicoEscena', () => {
       estado: 'esperando', size: 48, title: 'Dico esperando',
     }));
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
-    expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
+    expect(container.querySelector('.dico--processing')).toBeInTheDocument();
   });
 
   it('presenta la pregunta con signo y brazos articulados', () => {
@@ -73,7 +73,7 @@ describe('DicoEscena', () => {
       estado: 'pregunta', lookY: 0.65, title: 'Dico mira la accion',
     }));
     expect(screen.getByRole('img', { name: 'Dico mira la accion' })).toBeInTheDocument();
-    expect(container.querySelector('.dico-cuadro--core .dico--pregunta')).toBeInTheDocument();
+    expect(container.querySelector('.dico-cuadro--core .dico--question')).toBeInTheDocument();
     expect(container.querySelector('.dico-cuadro--core img').getAttribute('src')).toContain('moneda');
   });
 

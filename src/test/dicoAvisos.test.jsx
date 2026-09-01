@@ -52,7 +52,7 @@ describe('DicoAvisos en el panel real', () => {
       ...sano, productos: [prod({ price: 0 })], onIr,
     });
 
-    expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
+    expect(container.querySelector('.dico--worried')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/está sin precio/)).toHaveLength(3);
@@ -66,10 +66,10 @@ describe('DicoAvisos en el panel real', () => {
       ...sano, productos: [prod({ price: 0 })], recetas: receta([]),
     });
 
-    expect(container.querySelector('.dico--preocupado')).toBeInTheDocument();
+    expect(container.querySelector('.dico--worried')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
-    expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
+    expect(container.querySelector('.dico--processing')).toBeInTheDocument();
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
     expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
   });
@@ -87,7 +87,7 @@ describe('DicoAvisos en el panel real', () => {
       ...sano, recetas: receta([]),
     });
 
-    expect(container.querySelector('.dico--esperando')).toBeInTheDocument();
+    expect(container.querySelector('.dico--processing')).toBeInTheDocument();
     expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);

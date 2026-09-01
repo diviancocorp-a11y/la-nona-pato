@@ -5,12 +5,10 @@
  * Dico Physical al plano de la interfaz y devolverlo a la maquina.
  */
 import CaraDeTinta from './CaraDeTinta';
-import { ESTADOS_DICO } from './DicoCara';
+import { estadoCanonico, FRAMES_HABLA } from './DicoCara';
 import './dico.css';
 import physicalBody from './poses/dico-physical-body.webp';
 import './dico-slot.css';
-
-const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 export default function DicoSlot({
   estado,
@@ -41,7 +39,7 @@ export default function DicoSlot({
     if (cerrando) onCierreCompleto?.();
   }
 
-  const caraSegura = ESTADOS_DICO.includes(cara) ? cara : 'idle';
+  const caraSegura = estadoCanonico(cara);
   const hablaSegura = FRAMES_HABLA.includes(habla) ? habla : '';
   const claseDeCara = [
     `dico--${caraSegura}`,

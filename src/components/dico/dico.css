@@ -111,29 +111,31 @@
 }
 
 /* Esperando: atento y a la expectativa, no cansado ni amargado. */
-.dico--esperando .dico-boca--pensando,
-.dico--esperando .dico-espera-puntos {
+.dico--processing .dico-boca--proceso,
+.dico--processing .dico-espera-puntos {
   opacity: 1;
 }
 
-.dico--esperando .dico-ceja--izq {
+.dico--processing .dico-ceja--izq {
   transform: translateY(-1.8px);
 }
 
-.dico--esperando .dico-ceja--der {
+.dico--processing .dico-ceja--der {
   transform: translateY(-1.8px);
 }
 
-.dico--esperando:not(.dico--mirada-dirigida) .dico-pupila-estado {
-  transform: translate(.8px, -.7px);
+/* Mirada lateral y NIVELADA. Thinking se va arriba; processing barre al
+   costado. Esa es la diferencia que se lee de lejos, no la ceja. */
+.dico--processing:not(.dico--mirada-dirigida) .dico-pupila-estado {
+  transform: translate(2.1px, 0);
 }
 
-.dico--esperando .dico-espera-punto {
+.dico--processing .dico-espera-punto {
   animation: dico-espera-punto 1.25s ease-in-out infinite;
 }
 
-.dico--esperando .dico-espera-punto:nth-child(2) { animation-delay: .16s; }
-.dico--esperando .dico-espera-punto:nth-child(3) { animation-delay: .32s; }
+.dico--processing .dico-espera-punto:nth-child(2) { animation-delay: .16s; }
+.dico--processing .dico-espera-punto:nth-child(3) { animation-delay: .32s; }
 
 @keyframes dico-espera-punto {
   0%, 68%, 100% { transform: translateY(0) scale(.78); opacity: .32; }
@@ -143,71 +145,76 @@
 /* Pensando: razonar, no trabajar. Se distingue de `esperando` en tres cosas
    —mirada arriba y al costado, cejas asimetricas y boca chica corrida— y en que
    NO trae los puntos de proceso: esos anuncian actividad tecnica. */
-.dico--pensando .dico-boca--reflexiva {
+.dico--thinking .dico-boca--reflexiva {
   opacity: 1;
 }
 
-.dico--pensando .dico-ceja--izq {
-  transform: translateY(-2.6px) rotate(-4deg);
+/* La asimetria tiene que LEERSE a 36px, que es el tamanio real en el panel.
+   Con -2,6px y 4 grados esto era idle con dos pixeles de diferencia: una ceja
+   sube fuerte, la otra baja, y la mirada se va claramente arriba y al costado.
+   El limite lo pone la esclera: la pupila tiene ~3,3px de juego horizontal y
+   ~4,4px vertical antes de salirse del ojo. */
+.dico--thinking .dico-ceja--izq {
+  transform: translateY(-4.4px) rotate(-9deg);
 }
 
-.dico--pensando .dico-ceja--der {
-  transform: translateY(-.4px) rotate(2deg);
+.dico--thinking .dico-ceja--der {
+  transform: translateY(1.6px) rotate(5deg);
 }
 
-.dico--pensando:not(.dico--mirada-dirigida) .dico-pupila-estado {
-  transform: translate(-1.1px, -1.4px);
+.dico--thinking:not(.dico--mirada-dirigida) .dico-pupila-estado {
+  transform: translate(-2.4px, -3.1px);
 }
 
 /* Contento: sonrisa adulta, sin salto ni squash. Los parpados existian en el
    SVG desde siempre y ningun estado los usaba; aca cierran apenas los ojos y
    convierten la sonrisa en algo que llega tambien a la mirada. */
-.dico--contento .dico-boca--contenta {
+.dico--success .dico-boca--contenta {
   opacity: 1;
 }
 
-.dico--contento .dico-ceja--izq,
-.dico--contento .dico-ceja--der {
+.dico--success .dico-ceja--izq,
+.dico--success .dico-ceja--der {
   transform: translateY(-1.2px);
 }
 
-.dico--contento .dico-pupila-estado {
+.dico--success .dico-pupila-estado {
   transform: translateY(-.4px);
 }
 
-.dico--contento .dico-parpado {
+.dico--success .dico-parpado {
   opacity: 1;
   transform: translateY(3.4px);
 }
 
 /* Preocupado: atencion profesional, no miedo ni tristeza. */
-.dico--preocupado .dico-boca--tensa {
+.dico--worried .dico-boca--tensa {
   opacity: 1;
 }
 
-.dico--preocupado .dico-ceja--izq {
+.dico--worried .dico-ceja--izq {
   transform: translate(.5px, .5px) rotate(3deg);
 }
 
-.dico--preocupado .dico-ceja--der {
+.dico--worried .dico-ceja--der {
   transform: translate(-.5px, .5px) rotate(-3deg);
 }
 
 /* Pregunta: duda visible, signo y mano al menton. */
-.dico--pregunta .dico-boca--pregunta,
-.dico--pregunta .dico-signo-pregunta {
+.dico--question .dico-boca--pregunta,
+.dico--question .dico-signo-pregunta {
   opacity: 1;
 }
 
-.dico--pregunta .dico-ceja--izq {
+.dico--question .dico-ceja--izq {
   transform: translateY(-3px) rotate(-5deg);
 }
 
-.dico--pregunta .dico-ceja--der {
+.dico--question .dico-ceja--der {
   transform: translateY(1px) rotate(3deg);
 }
 
-.dico--pregunta:not(.dico--mirada-dirigida) .dico-pupila-estado {
+.dico--question:not(.dico--mirada-dirigida) .dico-pupila-estado {
   transform: translateX(1.25px);
 }
 
@@ -356,36 +363,36 @@
   transform-origin: 84.5% 44.5%;
 }
 
-.dico--esperando .dico-brazo--izq {
+.dico--processing .dico-brazo--izq {
   transform: translate(-1%, 7%) rotate(14deg);
 }
 
-.dico--esperando .dico-brazo--der {
+.dico--processing .dico-brazo--der {
   transform: translate(1%, 7%) rotate(-14deg);
 }
 
-.dico--contento .dico-brazo--izq {
+.dico--success .dico-brazo--izq {
   transform: translate(-2%, 5%) rotate(48deg);
 }
 
-.dico--contento .dico-brazo--der {
+.dico--success .dico-brazo--der {
   transform: translate(2%, 5%) rotate(-48deg);
 }
 
-.dico--preocupado .dico-brazo--izq {
+.dico--worried .dico-brazo--izq {
   transform: translate(2%, 9%) rotate(-16deg);
 }
 
-.dico--preocupado .dico-brazo--der {
+.dico--worried .dico-brazo--der {
   transform: translate(-2%, 9%) rotate(16deg);
 }
 
-.dico--pregunta .dico-brazo--izq {
+.dico--question .dico-brazo--izq {
   z-index: 3;
   transform: translate(14%, 3%) rotate(-50deg);
 }
 
-.dico--pregunta .dico-brazo--der {
+.dico--question .dico-brazo--der {
   transform: translate(-1%, 9%) rotate(9deg);
 }
 
@@ -423,7 +430,7 @@
   /* El significado no se pierde: los estados siguen completos, lo que se apaga
      es el movimiento. Los puntos animan su opacidad, asi que se fijan visibles
      en vez de quedar en el 0 del primer frame. */
-  .dico--esperando .dico-espera-puntos {
+  .dico--processing .dico-espera-puntos {
     opacity: 1;
   }
 }

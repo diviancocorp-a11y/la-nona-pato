@@ -24,22 +24,42 @@ import CaraDeTinta, { CAMPO } from './CaraDeTinta';
 import './dico.css';
 
 /**
- * Vocabulario facial canonico. Los nombres van en espaniol como el resto del
- * codigo; el mapeo a los terminos del sistema es directo:
+ * VOCABULARIO FACIAL CANONICO — siete estados emocionales.
  *
- *   idle        idle          rostro base, referencia neutral
- *   esperando   processing    actividad tecnica en curso
- *   pensando    thinking      razonamiento, distinto de processing
- *   contento    success       satisfaccion
- *   preocupado  worried       hay algo para revisar; NO es error
- *   pregunta    question      falta informacion
- *   error       error         fallo real, unico estado con rojo semantico
+ *   idle        rostro base, referencia neutral
+ *   processing  el sistema esta trabajando
+ *   thinking    Dico esta razonando; NO es lo mismo que processing
+ *   success     satisfaccion
+ *   worried     hay algo para revisar; NO es error
+ *   question    falta informacion
+ *   error       fallo real, unico estado con rojo semantico
  *
- * `speakingFrame` es una dimension APARTE: el estado emocional y el frame de
- * habla se combinan (`estado="error"` + `speakingFrame="open"` es valido).
+ * `speakingFrame` es una dimension APARTE, con tres frames (closed/mid/open).
+ * Se combina con cualquier estado: `estado="error"` + `speakingFrame="open"` es
+ * valido. NO son diez emociones: son siete mas un eje de habla.
+ *
+ * Los nombres en espaniol siguen aceptandose como ALIAS y resuelven al canonico
+ * —los usan `DicoAvisos`, `ProductsPanel`, la vitrina y varios tests—, pero lo
+ * que llega al DOM es siempre el nombre canonico, asi que el alias se resuelve
+ * de verdad y no queda una segunda familia de clases viva.
  */
-export const ESTADOS_DICO = ['idle', 'esperando', 'pensando', 'contento', 'preocupado', 'pregunta', 'error'];
-const FRAMES_HABLA = ['closed', 'mid', 'open'];
+export const ESTADOS_DICO = ['idle', 'processing', 'thinking', 'success', 'worried', 'question', 'error'];
+
+export const ALIAS_ESTADO = Object.freeze({
+  esperando: 'processing',
+  pensando: 'thinking',
+  contento: 'success',
+  preocupado: 'worried',
+  pregunta: 'question',
+});
+
+/** Resuelve alias y valores desconocidos. Todo lo que no existe cae en idle. */
+export function estadoCanonico(valor) {
+  const canonico = ALIAS_ESTADO[valor] || valor;
+  return ESTADOS_DICO.includes(canonico) ? canonico : 'idle';
+}
+
+export const FRAMES_HABLA = ['closed', 'mid', 'open'];
 
 // Glob y no import directo: asi el build no se rompe si el archivo no esta.
 const BASES = import.meta.glob('./poses/moneda-sin-brazos.{png,webp,avif}', { eager: true, import: 'default' });
@@ -63,7 +83,7 @@ export default function DicoCara({
   className = '',
   style,
 }) {
-  const seguro = ESTADOS_DICO.includes(estado) ? estado : 'idle';
+  const seguro = estadoCanonico(estado);
   const habla = FRAMES_HABLA.includes(speakingFrame) ? speakingFrame : '';
   const miradaDirigida = Math.abs(Number(lookX) || 0) > .001 || Math.abs(Number(lookY) || 0) > .001;
   const clases = [
