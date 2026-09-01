@@ -228,3 +228,153 @@ Ordenado por lo que **no** depende de assets faltantes, para no quedar bloqueado
 
 **Lo que NO se propone:** recrear el personaje en SVG para «destrabar». El brief
 lo prohíbe y con razón — el resultado sería otro personaje.
+
+---
+
+# B6R.2A — vocabularios cerrados y pulso Volt
+
+## V. Los tres vocabularios
+
+**No hay un vocabulario único.** Son tres ejes independientes; ninguno determina
+a los otros. Autoridad: `src/components/dico/vocabulario.js`.
+
+### `nativeState` — qué cara pone Dico 2D
+`neutral` · `curious` · `happy` · `celebrate` · `alert` · `concerned` · `question`
+
+Comunica con **cejas + ojos**. Sin boca.
+
+### `physicalPose` — qué pose toma Dico 3D
+`idle` · `explain` · `pointDown` · `pointUp` · `thinking` · `worried` · `success` · `error`
+
+`explain`, `pointDown` y `pointUp` son **poses corporales** y no tienen
+equivalente en 2D: Dico 2D no tiene cuerpo con el que señalar.
+
+### `activity` — qué está haciendo el sistema
+`idle` · `active` · `processing` · `thinking` · `attention`
+
+Es el único eje que se expresa por **movimiento**, y el único que consume
+`DicoPulso`.
+
+### Alias legacy conservados
+
+| Alias | Resuelve a | Eje | Por qué se conserva |
+|---|---|---|---|
+| `idle` | `neutral` | nativeState | vocabulario B6 |
+| `success` / `contento` | `happy` | nativeState | B6 / original |
+| `worried` / `preocupado` | `concerned` | nativeState | B6 / original |
+| `error` | `alert` | nativeState | B6 |
+| `question` / `pregunta` | `question` | nativeState | `DicoAvisos`, `ProductsPanel` |
+| `point-down` / `pointing` | `pointDown` | physicalPose | nomenclatura de los PNG |
+| `point-up` / `attention` | `pointUp` | physicalPose | ídem |
+| `explaining` | `explain` | physicalPose | ídem |
+| `esperando` | `processing` | **activity** | original |
+| `pensando` | `thinking` | **activity** | original |
+
+**Lo que revela la última fila:** la lista vieja de `DicoCara` mezclaba los tres
+ejes. `processing` y `thinking` nunca fueron expresiones faciales — son
+actividad del sistema. Quedan marcados en `LEGACY_NO_ES_EXPRESION` para que la
+migración de B6R.4 no los arrastre a `nativeState` por inercia.
+
+Un mismo nombre puede vivir en dos ejes: `thinking` es pose 3D **y** actividad.
+Cada resolutor se queda en el suyo, y hay contrato que lo fija.
+
+## VI. Blue Base vs Volt — resuelto midiendo
+
+El brief pidió inspeccionar la fuente de `#3D6BFF` antes de asignar. Se midieron
+los tres azules que hay en el arte final, agrupando píxeles por luminancia:
+
+| Origen | Hex | Luminancia |
+|---|---|---|
+| Aro del render 3D (`dico_body-pointing`, `dico_face-idle`) | `#2A3369` – `#2C3465` | 53 |
+| Aro del isologo plano (`Isologo_Dico_master_liso`) | `#0957E6` | 81 |
+| Declarado en la lámina | `#3D6BFF` | 108 |
+
+Y el contraste del pulso contra cada candidato a base:
+
+| Par | Contraste | Consecuencia |
+|---|---|---|
+| `#2A3369` vs `#3D6BFF` | **2,67:1** | el pulso se ve |
+| `#0957E6` vs `#3D6BFF` | **1,35:1** | el pulso desaparece |
+
+**Conclusión: `#3D6BFF` es el Volt, no la base.** La base tiene que ser el navy
+opaco del arte 3D. Usar el mismo hex para las dos cosas dejaría un pulso
+invisible sobre su propio aro.
+
+| Token | Valor | Rol |
+|---|---|---|
+| `--dico-blue-base` | `#2A3369` | el material del aro. Opaco y oscuro |
+| `--dico-blue-volt` | `#3D6BFF` | la señal. Nunca fondo, nunca relleno grande |
+| `--dico-blue-flat` | `#0957E6` | el aro **vectorial** del isologo. Ni base ni señal |
+
+## VII. `FINAL_ASSET_ALPHA_EXPORT_REQUIRED`
+
+**Dependencia bloqueante.** Los masters nuevos no tienen alfa utilizable y el
+encuadre 3D no está normalizado. No se recorta el fondo negro por luminancia
+—el 47,9 % de la zona central del personaje también es casi-negro— y no se
+recrea el personaje.
+
+### Requisitos del re-export — Dico 2D
+
+1. Transparencia real (alfa 0 fuera del personaje, 255 adentro, borde con alfa
+   parcial para el antialiasing).
+2. **Mismo canvas y mismo centro** para todos los estados.
+3. **Mismo diámetro** de moneda entre estados.
+4. Sin damero.
+5. Sin fondo de ningún color.
+6. Un archivo por estado de `nativeState` (7).
+
+### Requisitos del re-export — Dico 3D
+
+1. Transparencia real.
+2. **Mismo canvas** para todas las poses.
+3. **Centro de la moneda constante** entre poses.
+4. **Escala de la moneda constante** entre poses — hoy las resoluciones van de
+   1024×726 a 1488×1057 y el personaje cambia de tamaño: un crossfade saltaría.
+5. Padding suficiente para brazos y manos; **nada recortado**.
+6. Misma iluminación y mismo material entre poses.
+7. PNG o WebP **lossless** como master.
+8. Un archivo por `physicalPose` (8).
+
+### Lo que ya se sabe que hay que evitar
+
+- El set viejo con alfa tiene el sujeto pintado en **alfa 224–254**, con cero
+  píxeles totalmente opacos: levemente translúcido. Sobre fondo oscuro se
+  ensucia.
+- `Dico_3D_base_sin_rostro_sin_galera` tiene alfa **dura 0/255**, sin
+  antialiasing en el borde: se ve dentado.
+
+Ninguna de esas dos formas es un alfa de producción sano.
+
+## VIII. `DicoPulso` — implementado
+
+Es lo único de B6R que no depende de assets. Capa SVG separada: no se edita
+ningún PNG y no se toca el Gold.
+
+| | |
+|---|---|
+| API | `<DicoPulso activity="processing" radio={44} grosor={6} intensidad={1} aro={false} />` |
+| Modos | `idle` `active` `processing` `thinking` `attention` |
+| Desacoplado de | roles, verticales, `DicoPresence`, Slot, mensajes, poses |
+| Contratos | 23 tests, **10 mutaciones y las 10 fallan** |
+
+| Medición en navegador | Resultado |
+|---|---|
+| Reflow | **cero** desajuste de caja en 20 celdas |
+| Reduced motion | de 18 animaciones (15 infinitas) a **0** |
+| Significado en reduce | los 5 modos conservan forma estática propia |
+| Continuidad del recorrido | 238,5° → 319,3° → 30,8° → 114,7°, avance parejo |
+| Estabilidad del segmento | 6448 vs 6428 px de Volt entre frames — no parpadea |
+
+**Por qué no parece spinner:** la señal tiene cabeza y cola en vez de ser un arco
+duro; va sobre un aro que ya existe en vez de flotar sola; y la vuelta es calma
+—un spinner de 0,8 s grita «esperame», 2,6 s dice «estoy en eso».
+
+`attention` es **finita** (dos vueltas y para) a propósito: un loop infinito para
+«mirá esto» se vuelve ruido de fondo y deja de avisar.
+
+### Pendiente para cuando el pulso entre a la app
+
+`DicoPulso` **todavía no está montado en ninguna pantalla**. Cuando lo esté, sus
+animaciones infinitas van a aparecer en las superficies de QA Lite y hay que
+registrarlas en `e2e/qa-lite/dico-neutral-contract.mjs`, o el gate va a fallar
+por «unexpected selector».

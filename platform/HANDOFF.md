@@ -8,6 +8,61 @@
 
 ---
 
+## 1/sep/2026 — B6R.2A: vocabularios y pulso Volt (sesión Claude)
+
+Se cerraron los tres vocabularios y se construyó `DicoPulso`. Es lo único de
+B6R que no depende de los assets bloqueados. **No se integró ningún PNG, no se
+tocó la sidebar, no hay deploy.**
+
+### Tres ejes, no uno
+
+`nativeState` (7 caras 2D) · `physicalPose` (8 poses 3D) · `activity` (5 estados
+del sistema). Ninguno determina a los otros: que el sistema esté en `processing`
+no implica cara ni pose.
+
+El mapa de alias dejó a la vista lo que estaba mal: **la lista vieja de
+`DicoCara` mezclaba los tres ejes**. `processing` y `thinking` nunca fueron
+expresiones faciales, eran actividad. Quedan marcados en
+`LEGACY_NO_ES_EXPRESION` para que la migración no los arrastre por inercia.
+
+### El azul, resuelto midiendo antes de asignar
+
+|  | Hex | Luminancia |
+|---|---|---|
+| Aro del render 3D | `#2A3369` | 53 |
+| Aro del isologo plano | `#0957E6` | 81 |
+| Declarado en la lámina | `#3D6BFF` | 108 |
+
+Contraste del pulso: `#2A3369` vs `#3D6BFF` = **2,67:1** (se ve);
+`#0957E6` vs `#3D6BFF` = **1,35:1** (desaparece).
+
+**`#3D6BFF` es el Volt, no la base.** La base es el navy opaco del arte. Si se
+usaba el azul brillante de la lámina como base, el pulso quedaba invisible sobre
+su propio aro. `#0957E6` queda como `--dico-blue-flat`: el aro vectorial del
+isologo, ni base ni señal.
+
+### Medido en navegador
+
+Reflow **cero**. Reduced motion pasa de 18 animaciones (15 infinitas) a **0**
+conservando cinco formas estáticas distinguibles. Recorrido continuo verificado
+por el ángulo del centroide en cuatro frames (238,5° → 319,3° → 30,8° → 114,7°)
+y el segmento no parpadea (6448 vs 6428 px).
+
+23 contratos, **10 mutaciones y las 10 fallan**.
+
+### Deuda que deja este lote
+
+`DicoPulso` **no está montado en ninguna pantalla todavía**. Cuando lo esté, sus
+animaciones infinitas van a aparecer en las superficies de QA Lite y hay que
+registrarlas en `e2e/qa-lite/dico-neutral-contract.mjs` o el gate falla por
+«unexpected selector». No se registró ahora porque registrar una animación que
+no existe en ninguna superficie deja el contrato mintiendo.
+
+`FINAL_ASSET_ALPHA_EXPORT_REQUIRED` sigue bloqueando todo lo demás. Los
+requisitos exactos de re-export para 2D y 3D quedaron escritos en el manifiesto.
+
+---
+
 ## 1/sep/2026 — B6R.1: auditoría de assets finales (sesión Claude)
 
 Llegó un brief nuevo que **supersede la dirección visual anterior**. Se ejecutó
