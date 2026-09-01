@@ -70,7 +70,22 @@
   color: var(--bu-tinta);
   font: inherit;
   font-size: 14px;
-  line-height: 1.45;
+  /* 20px EXACTOS, no 1.45.
+   *
+   * `1.45` sobre 14px da 20,3px de caja de linea. Los 0,3 se acumulan linea a
+   * linea, la burbuja termina con un alto fraccionario —medido: 149,891— y todo
+   * lo que va debajo hereda una `y` fraccionaria. El CTA del pie caia asi en
+   * y=772,797 y, como su `border-radius` lo redondea, las esquinas se
+   * rasterizaban con una fase sub-pixel distinta segun la corrida.
+   *
+   * Eso era el nondeterminismo del gate same-ref: dos variantes fijas, 42
+   * pixeles siempre los mismos, borde en 567,243 contra 567,676. Todo el resto
+   * de la superficie era identico —91 bordes en la fila 200 sin mover uno solo—
+   * y solo cambiaban las dos filas donde el boton curva.
+   *
+   * 20 en vez de 20,3 aprieta el interlineado 0,3px por linea: no se nota y
+   * saca de raiz la fraccion. */
+  line-height: 20px;
   cursor: default;
 }
 
