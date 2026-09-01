@@ -8,6 +8,80 @@
 
 ---
 
+## 1/sep/2026 — Stage B6 cerrado: vocabulario facial canónico (sesión Claude)
+
+Siete estados emocionales y tres frames de habla sobre **una sola anatomía**.
+Se detuvo antes de Panorama de roles/verticales. Sin push, deploy, DB/RLS/auth
+ni dependencias. React Router sigue en `7.18.3`.
+
+### Los dos huecos que encontró la auditoría, y que el lote usa
+
+- **Los párpados eran geometría muerta.** Existían en el SVG desde siempre, con
+  `opacity: 0`, y *ninguna* regla los encendía. Ahora `contento` los usa para
+  cerrar apenas los ojos: la sonrisa llega también a la mirada.
+- **Physical estaba clavado en `idle`.** Literalmente
+  `<g className="dico--idle">` en el JSX de `DicoSlot`: no podía expresar nada.
+  Ahora recibe `cara` y `habla` y usa el mismo vocabulario que Native.
+
+### Hecho
+
+- Snapshot previo `DICO_B5_APPROVED_8965aa2.bundle`: 8.808.354 bytes, SHA-256
+  `81e3ecb73a7b03049af9281f8643191ca2d6d15e347a74f2832648c3135b8a00`.
+- `f25da40 fix(dico): align physical and native face proportions`. Physical
+  pintaba la misma cara **2,28× más chica**. Lo decisivo fue medir la jerarquía
+  interna: ojos/boca daba **1,732 contra 1,730**, o sea que la geometría ya era
+  correcta y el problema era el **marco**. Se corrige en el wrapper con tres
+  custom properties; no se duplicó anatomía ni nació una `CaraDeTintaPhysical`.
+- `d6b3b72 feat(dico): define canonical facial expression system`. Nuevos
+  `pensando` (thinking) y `error`. Los cinco que ya funcionaban no se
+  reimplementaron. `error` usa una **X sobre cada esclera**: la forma carga el
+  significado y el rojo entra sólo como acento — se lee igual en escala de
+  grises. La cara no se tiñe.
+- `24d2e4e test(dico): tighten the physical face frame contract`.
+- Nombres en español, como el resto del código; el mapeo al vocabulario del
+  sistema quedó escrito arriba de `ESTADOS_DICO`.
+
+### Verificado
+
+- 18 contratos nuevos, **9 mutaciones y todas fallan**; control 18/18 verde.
+- Suite completa **79 archivos / 1.074 PASS**. Integridad, typecheck,
+  install-state, `qa:lite:test` 27/0, build y `git diff --check`: PASS.
+- Proporción final: las cinco medidas faciales de Physical caen dentro del
+  **12,5 %** de Native (venían de 2,28× de desvío), centro dx **−0,00 %**,
+  jerarquía ojos/boca idéntica.
+- **No se agrega ninguna animación infinita**: el contrato de movimiento de QA
+  Lite queda igual.
+
+### Dos cosas que valen para el próximo
+
+- **El factor de escala es 2,0 y no el 2,28 que igualaría el ancho exacto.**
+  Igualarlo dejaba la cara ocupando el 58 % del alto de una moneda escorzada
+  contra el 45 % de Native: se corregía una desproporción creando otra.
+- **Reduced motion no cubría la cara de Physical.** El neutralizador apuntaba a
+  `.dico *` y esa cara no cuelga de `.dico`, así que el parpadeo seguía
+  corriendo con la preferencia activa. Se notaba poco mientras Physical sólo
+  sabía estar en idle.
+
+### Lo que queda pendiente
+
+1. **Ningún código emite `pensando`, `contento` ni `error`.** `DicoAvisos` mapea
+   los tres niveles de aviso y nada más, así que la app hoy sólo alcanza `idle`,
+   `esperando`, `preocupado` y `pregunta`. Cablear productores es lógica de
+   negocio.
+2. **Los ~9 px de galera recortados** siguen en el backlog de Phase 9, sin
+   tocar, como pedía el brief.
+3. Brazos para `pensando` y `error`: quedan en reposo. B6 es la cara.
+
+### Trampa nueva
+
+Al verificar por mutación, la función que revertía hacía
+`git checkout -- src/components/`. Como la implementación **todavía no estaba
+commiteada**, se llevó puesto el trabajo del lote; lo delató el control fallando
+igual que las mutaciones. Hubo que rehacerlo entero. **Commitear antes de
+mutar**: la mutación necesita un baseline en git, no en el working tree.
+
+---
+
 ## 1/sep/2026 — Stage B5 cerrado: una sola cara canónica (sesión Claude)
 
 B5 quedó **CLOSED por evidencia, sin refactor productivo**. Se detuvo antes de
