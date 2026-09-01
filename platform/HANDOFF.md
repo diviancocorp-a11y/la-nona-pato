@@ -8,6 +8,78 @@
 
 ---
 
+## 1/sep/2026 — B6R.1: auditoría de assets finales (sesión Claude)
+
+Llegó un brief nuevo que **supersede la dirección visual anterior**. Se ejecutó
+sólo hasta el STOP obligatorio: auditar, snapshot, reconciliar B6, manifiesto.
+**No se tocó UI.**
+
+### La corrección de arranque
+
+El brief supone que B6 pudo quedar «parcialmente editado y no commiteado».
+**No**: worktree limpio, B6 entero en 7 commits (`f25da40` … `40de375`). No hay
+nada que rescatar del disco ni que revertir.
+
+### El titular de la auditoría
+
+**El personaje nuevo está definido pero no existe como asset de producción.**
+Ningún conjunto reúne identidad vigente **y** transparencia:
+
+- `Downloads/Dico 3D/` (10 archivos, los más nuevos): es el personaje NUEVO
+  —aro azul, pestañas, sin galera— pero **los diez están sobre negro opaco**.
+- `…/02_Dico_3D` (11): tiene alfa real, pero es el personaje VIEJO con galera y
+  bigote.
+- `…/03_Isologo`: `Isologo_Dico_master_liso.png` **es** el Dico 2D del brief
+  (aro azul, dos ojos, sin boca) y **declara los tokens: GOLD `#E0AC3C`,
+  BLUE `#3D6BFF`** — pero es una lámina 1448×1086 con wordmark y muestras
+  horneadas, sin alfa.
+
+### Lo que decide el ritmo
+
+El fondo negro es puro (promedio 1,1 / máximo 3 sobre 255, 0 % fuera de negro),
+así que *parece* recortable por luminancia. **No lo es**: en la zona central del
+personaje el **47,9 % de los píxeles también es casi-negro** — aro azul oscuro,
+pupilas y pestañas. Un key por luminancia se lleva puesta media identidad.
+
+Además las resoluciones no son homogéneas (1024×726 a 1488×1057): el personaje
+no está al mismo tamaño entre poses y un crossfade saltaría de escala.
+
+**La salida correcta es pedir el re-export con alfa desde la fuente**, no
+recortar el PNG. Recrearlo en SVG está prohibido por el brief, y con razón.
+
+Anomalía extra medida en el set viejo: el sujeto está pintado con alfa 224–254 y
+**cero píxeles totalmente opacos**, o sea levemente translúcido.
+
+### Qué se conserva de B6
+
+No se revierte nada. Los commits quedan en la historia marcados superseded,
+porque revertirlos borraría también los contratos que viven en los mismos
+commits: el gate de imports, el método de mutación y el arreglo de reduced
+motion. B1–B4 intactos.
+
+`B5 = CLOSED FOR PREVIOUS CANONICAL-FACE ARCHITECTURE / SUPERSEDED BY FINAL
+ASSET DIRECTION`.
+
+### Choque de vocabularios, sin resolver a propósito
+
+Hay tres listas de estados que no coinciden: la del código (`idle` `processing`
+`thinking` `success` `worried` `question` `error`), la del brief §4 para 2D
+(`neutral` `curious` `happy` `celebrate` `alert` `concerned` `question`) y la
+del §11 para poses 3D (`idle` `explain` `point-down` `point-up` `thinking`
+`worried` `success` `error`). Elegir es decisión de producto y cambia la API de
+tres componentes.
+
+### Lo único que se puede hacer sin assets
+
+`DicoPulso`, el overlay Volt: es SVG/CSS propio, no depende de ningún archivo y
+el brief lo quiere reutilizable para 2D, 3D y logo. Es el candidato natural para
+B6R.2 mientras llega el re-export.
+
+Snapshot del estado encontrado: `DICO_B6_FOUND_40de375.bundle`, 8.838.901 bytes,
+SHA-256 `1703da4a50283911039e136e903266716c2857678140f037972cdf34eb5d584b`.
+
+---
+
 ## 1/sep/2026 — Stage B6 cerrado: vocabulario facial canónico (sesión Claude)
 
 Siete estados emocionales y tres frames de habla sobre **una sola anatomía**.
