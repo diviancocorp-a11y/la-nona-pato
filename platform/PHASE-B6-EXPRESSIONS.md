@@ -199,6 +199,47 @@ que haría una persona, ya con el marco corregido:
 | Native ausente con Physical afuera | **sí** — B1 intacto |
 | Native vuelve al cerrar | **sí** |
 
+### El same-ref falló la primera corrida
+
+Hay que decirlo con el número: la **primera** corrida de `qa:lite:compare`
+(`a276291` ↔ `a276291`) dio **`blockingDiffPixels: 1`** y el gate falló su
+propio criterio. La segunda dio **0**.
+
+| | Corrida 1 | Corrida 2 |
+|---|---|---|
+| DOM | igual | igual |
+| Scroll trace | idéntico | idéntico |
+| Red externa | cero | cero |
+| Píxeles crudos | 42 | 0 |
+| — antialias ignorados | 38 | — |
+| — redondeo ignorados | 3 | — |
+| **Bloqueantes** | **1** | **0** |
+
+**Dónde caían los 42.** En dos bandas verticales —columnas 567‑571 y 661‑674— y
+tres bandas de filas entre y 238 y y 305. Ampliado ×14, eso es la **curva
+antialiaseada de las esquinas redondeadas del botón «Registrar gasto»** de la
+burbuja del asesor, más algo del faldón. El forense está en
+`.qa-lite/artifacts/phase-b6-expresiones/forense/`.
+
+**No es la cara.** B6 tocó `CaraDeTinta`, las clases de estado y el marco de
+Physical. No tocó `BurbujaDico`, su CTA ni el layout de la burbuja.
+
+**Por construcción no puede ser una regresión de código.** Un same-ref compila
+las dos puntas desde el *mismo* commit: cualquier diferencia es no-determinismo
+del render y la captura, no del código. Un cambio podría, como mucho, hacer más
+probable una carrera preexistente — y la ubicación (la esquina de un botón, no
+el personaje) argumenta en contra incluso de eso.
+
+Ambas corridas alcanzaron quiescencia de animaciones (`timedOut: false`,
+`finalActiveCount: 0`); el harness sí espera las transiciones de pupila.
+
+**Queda como deuda, no como cierre silencioso:** el umbral del filtro de
+antialias es marginal en esa curva —absorbió 38 de 42 y dejó pasar 1— así que el
+gate puede volver a ponerse rojo sin que nada haya cambiado. Vale revisarlo en
+el lote que toque QA Lite. No se ajustó acá: bajar un umbral para que un gate
+deje de molestar, en el mismo lote que lo hizo fallar, es exactamente cómo se
+pierde un gate.
+
 ## 5. Lo que NO se hizo
 
 1. **Los productores.** La app hoy sólo alcanza `idle`, `esperando`,

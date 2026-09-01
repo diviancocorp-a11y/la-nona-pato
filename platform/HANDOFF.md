@@ -94,6 +94,23 @@ con Physical afuera y vuelve al cerrar.
 evaluó visualmente: Native y Physical se leen inequívocamente como el mismo
 Dico. Forzar la igualdad exacta empeoraba el encuadre vertical.
 
+### El same-ref falló una vez y hay que saberlo
+
+La primera corrida de `qa:lite:compare` sobre `a276291` ↔ `a276291` dio
+**`blockingDiffPixels: 1`** y el gate falló. La segunda dio **0**. DOM igual,
+scroll trace idéntico y red externa cero en las dos.
+
+Los 42 píxeles crudos (38 antialias + 3 redondeo + 1 bloqueante) caían en las
+**esquinas redondeadas del botón «Registrar gasto»** de la burbuja, no en la
+cara. Un same-ref compila las dos puntas desde el mismo commit, así que por
+construcción no puede ser regresión de código: es no-determinismo del render.
+
+**Deuda anotada:** el umbral del filtro de antialias es marginal en esa curva
+—absorbió 38 de 42 y dejó pasar 1—, así que el gate puede volver a ponerse rojo
+sin que nada haya cambiado. No se ajustó en este lote: bajar un umbral para que
+un gate deje de molestar, en el mismo lote que lo hizo fallar, es cómo se pierde
+un gate. Forense en `.qa-lite/artifacts/phase-b6-expresiones/forense/`.
+
 ### Lo que queda pendiente
 
 1. **Ningún código emite `pensando`, `contento` ni `error`.** `DicoAvisos` mapea
