@@ -1,7 +1,8 @@
 # Stage B6 — Canonical expressions + face proportions
 
-Siete estados emocionales y tres frames de habla sobre **una sola anatomía**.
-No son ocho personajes: la cara cambia por cejas, pupilas, párpados y boca.
+**Siete** estados emocionales y **un eje de habla** de tres frames, sobre una
+sola anatomía. No son diez emociones: la cara cambia por cejas, pupilas,
+párpados y boca.
 
 ---
 
@@ -12,7 +13,7 @@ No son ocho personajes: la cara cambia por cejas, pupilas, párpados y boca.
 | Rama | `feat/dico-panorama-v1` |
 | HEAD al empezar | `8965aa2` |
 | Snapshot | `DICO_B5_APPROVED_8965aa2.bundle` — 8.808.354 bytes, SHA-256 `81e3ecb73a7b03049af9281f8643191ca2d6d15e347a74f2832648c3135b8a00`, historia completa, excluido por ruta exacta |
-| Commits | `f25da40` proporciones · `d6b3b72` expresiones · `24d2e4e` contrato ajustado |
+| Commits | `f25da40` proporciones · `d6b3b72` expresiones · `24d2e4e` contrato ajustado · `a8fe2a4` vocabulario canónico y `thinking` |
 
 Sin push, sin deploy, sin DB/RLS/auth. React Router sigue en `7.18.3`.
 
@@ -39,6 +40,37 @@ lo aplicaba el ancestro por clase CSS.
 - **Physical estaba clavado en `idle`**: literalmente
   `<g className="dico--idle">` en el JSX. No podía expresar nada.
 
+## 1bis. Vocabulario canónico final
+
+**Siete estados emocionales y un eje de habla de tres frames.** No son diez: la
+plancha muestra diez columnas porque incluye los frames, y eso es exactamente lo
+que este cuadro existe para desambiguar.
+
+| Valor runtime | Estado canónico | ¿Alias? | Native | Physical |
+|---|---|---|---|---|
+| `idle` | idle | — | sí | sí |
+| `processing` | processing | — | sí | sí |
+| `thinking` | thinking | — | sí | sí |
+| `success` | success | — | sí | sí |
+| `worried` | worried | — | sí | sí |
+| `question` | question | — | sí | sí |
+| `error` | error | — | sí | sí |
+| `esperando` | **processing** | alias legacy | sí | sí |
+| `pensando` | **thinking** | alias legacy | sí | sí |
+| `contento` | **success** | alias legacy | sí | sí |
+| `preocupado` | **worried** | alias legacy | sí | sí |
+| `pregunta` | **question** | alias legacy | sí | sí |
+| cualquier otro | idle | fallback | sí | sí |
+
+**Eje de habla**, aparte del estado: `closed` · `mid` · `open`. Se combina con
+cualquier estado — `error` + `open` es válido. No hay una segunda máquina.
+
+Los alias se conservan porque los usan `DicoAvisos`, `ProductsPanel`, la vitrina
+y varios tests; sacarlos sería churn sin beneficio. Pero **lo que llega al DOM es
+siempre el nombre canónico**: `estadoCanonico()` resuelve, y hay un contrato que
+verifica que la clase del alias no sobreviva. Si sobreviviera, el vocabulario
+quedaría partido en dos familias de clases.
+
 ## 2. Cambios reales
 
 **Nada se reimplementó.** Los cinco estados que ya funcionaban quedaron como
@@ -47,19 +79,19 @@ estaban.
 | | |
 |---|---|
 | `CaraDeTinta.jsx` | + `dico-ojo-x` (2 paths por ojo), + `boca--reflexiva`, + `boca--error`; halo de los puntos 1 px → 2,2 px |
-| `dico.css` | + bloque `pensando`, + bloque `error`, párpados en `contento`, reduced motion cubre `.dico-physical-cara *` |
-| `DicoCara.jsx` | `ESTADOS_DICO` 5 → 7, con el mapeo al vocabulario del sistema documentado |
-| `DicoSlot.jsx` | props `cara` y `habla`; deja de estar clavado en `idle` |
+| `dico.css` | + bloque `thinking`, + bloque `error`, párpados en `success`, clases de estado al canónico, reduced motion cubre `.dico-physical-cara *` |
+| `DicoCara.jsx` | `ESTADOS_DICO` 5 → 7 en inglés + `ALIAS_ESTADO` + `estadoCanonico()` |
+| `DicoSlot.jsx` | props `cara` y `habla`, resueltas por `estadoCanonico()`; deja de estar clavado en `idle` |
 | `dico-slot.css` | encuadre canónico parametrizado |
 
-### Por qué los nombres siguen en español
+### Por qué el canónico pasó a ser el inglés
 
-El brief propone `idle/processing/thinking/success/worried/question/error` y
-aclara que no es obligatorio renombrar si la API existente ya lo expresa. El
-código de este repo va en español; renombrar cinco estados vivos para alinear
-con un documento habría tocado `DicoAvisos`, `ProductsPanel`, la vitrina y seis
-tests sin cambiar nada de lo que se ve. El mapeo queda escrito arriba de
-`ESTADOS_DICO`.
+En la primera pasada se dejaron los nombres en español como canónicos, con el
+mapeo escrito en un comentario. La revisión pidió lo contrario: vocabulario
+canónico explícito y aliases resueltos de verdad. Ahora `ESTADOS_DICO` declara
+los siete en inglés, `ALIAS_ESTADO` mapea los cinco nombres en español y
+`estadoCanonico()` resuelve ambos. Nada que ya funcionaba dejó de funcionar y no
+quedó una segunda familia de clases CSS.
 
 ### `error`: la forma carga el significado, el rojo acompaña
 
@@ -69,11 +101,25 @@ del brief. El rojo entra sólo en el trazo de la X (`var(--ms-bad)`, de la palet
 existente, con fallback fuera de `.ag-root`): **la cara no se tiñe**. Se apaga el
 parpadeo, porque mover una X no comunica.
 
-### `pensando` ≠ `esperando`
+### `thinking` era `idle` con dos píxeles de diferencia
 
-Razonar y estar trabajando son lecturas distintas. `pensando` mira arriba y al
-costado, tiene cejas asimétricas y boca chica corrida, y **no trae los puntos de
-proceso**: esos anuncian actividad técnica.
+La primera versión movía las cejas 2,6 px y las rotaba 4°. Puesto al lado de
+`idle` en la plancha **no se distinguía**, y a 36 px —el tamaño real en el
+panel— directamente no existe.
+
+Lo que se lee de lejos es la **dirección de la mirada**, así que ahí fue la
+corrección:
+
+| | pupilas | cejas | símbolo |
+|---|---|---|---|
+| `processing` | `(+2,1 / 0)` — barre al costado, **nivelado** | ambas apenas arriba | puntos de proceso |
+| `thinking` | `(−2,4 / −3,1)` — **arriba** y al costado | `−4,4` / `+1,6`, una sube y la otra baja | ninguno |
+
+El límite lo pone la esclera: la pupila tiene ~3,3 px de juego horizontal y
+~4,4 px vertical antes de salirse del ojo.
+
+Un contrato lee las dos transformaciones del CSS y exige que `thinking` mire
+hacia arriba, que `processing` no, y que no vayan para el mismo lado.
 
 ## 3. Proporciones — antes y después
 
@@ -104,7 +150,7 @@ no dos renders idénticos.
 
 ## 4. Contratos
 
-`src/test/dicoExpresiones.test.jsx` — **18 tests**. No se congela el SVG como
+`src/test/dicoExpresiones.test.jsx` — **20 tests**. No se congela el SVG como
 snapshot gigante: se afirma lo que cada estado tiene que lograr.
 
 | Mutación | Resultado |
@@ -118,7 +164,7 @@ snapshot gigante: se afirma lo que cada estado tiene que lograr.
 | Se introduce un amarillo de warning | 1 falla |
 | El encuadre se «arregla» con un valor fijo | 1 falla |
 | Se borra la parametrización del marco | 1 falla |
-| Control: sin mutaciones | 18/18 verde |
+| Control: sin mutaciones | 20/20 verde |
 
 ### Un contrato que la mutación encontró flojo
 
@@ -138,6 +184,20 @@ a `.dico-physical-cara *`.
 
 Ningún estado nuevo depende de una animación para significar, y **no se agrega
 ninguna animación infinita**: el contrato de movimiento de QA Lite queda igual.
+
+
+### Physical en el flujo real
+
+Medido con `DicoPresence` como autoridad y el Slot abierto con el mismo click
+que haría una persona, ya con el marco corregido:
+
+| Contrato | Resultado |
+|---|---|
+| La cara viaja pegada al cuerpo (rango del offset relativo, abriendo) | **0,0000** |
+| Ídem, cerrando | **0,0002** |
+| Cambio de escala durante la animación | **0,0000** |
+| Native ausente con Physical afuera | **sí** — B1 intacto |
+| Native vuelve al cerrar | **sí** |
 
 ## 5. Lo que NO se hizo
 

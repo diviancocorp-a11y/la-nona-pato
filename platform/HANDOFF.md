@@ -43,8 +43,8 @@ ni dependencias. React Router sigue en `7.18.3`.
 
 ### Verificado
 
-- 18 contratos nuevos, **9 mutaciones y todas fallan**; control 18/18 verde.
-- Suite completa **79 archivos / 1.074 PASS**. Integridad, typecheck,
+- **20 contratos**, **14 mutaciones y todas fallan**; control 20/20 verde.
+- Suite completa **79 archivos / 1.076 PASS**. Integridad, typecheck,
   install-state, `qa:lite:test` 27/0, build y `git diff --check`: PASS.
 - Proporción final: las cinco medidas faciales de Physical caen dentro del
   **12,5 %** de Native (venían de 2,28× de desvío), centro dx **−0,00 %**,
@@ -61,6 +61,38 @@ ni dependencias. React Router sigue en `7.18.3`.
   `.dico *` y esa cara no cuelga de `.dico`, así que el parpadeo seguía
   corriendo con la preferencia activa. Se notaba poco mientras Physical sólo
   sabía estar en idle.
+
+### Segunda pasada: vocabulario y `thinking`
+
+La revisión pidió dos cosas más y las dos eran correctas.
+
+- **El vocabulario canónico ahora es explícito.** `ESTADOS_DICO` declara los
+  siete en inglés (idle/processing/thinking/success/worried/question/error) y
+  `ALIAS_ESTADO` conserva los cinco nombres en español que ya usaban
+  `DicoAvisos`, `ProductsPanel`, la vitrina y varios tests. `estadoCanonico()`
+  resuelve ambos y **lo que llega al DOM es siempre el canónico**: hay un
+  contrato que verifica que la clase del alias no sobreviva, para que el
+  vocabulario no quede partido en dos familias de clases. La plancha muestra
+  diez columnas pero son **siete estados más un eje de habla**, no diez
+  emociones.
+- **`thinking` era `idle` con dos píxeles de diferencia.** Movía las cejas
+  2,6 px y las rotaba 4°: al lado de `idle` no se distinguía, y a 36 px no
+  existe. Lo que se lee de lejos es la dirección de la mirada, así que ahí fue
+  la corrección — `thinking` mira arriba y al costado, `processing` barre al
+  costado y nivelado. Un contrato lee las dos transformaciones del CSS y lo
+  exige.
+
+`dico-boca--pensando` se renombró a `dico-boca--proceso`: era la boca de
+*processing* con nombre de *thinking*, justo la confusión que hacía que los dos
+parecieran el mismo estado.
+
+Física verificada en el flujo real con el marco nuevo: la cara viaja pegada al
+cuerpo (rango 0,0000 abriendo y 0,0002 cerrando; escala 0,0000), Native ausente
+con Physical afuera y vuelve al cerrar.
+
+**No se persiguió el 0 % de diferencia de escala.** Quedó en 12,1–12,5 % y se
+evaluó visualmente: Native y Physical se leen inequívocamente como el mismo
+Dico. Forzar la igualdad exacta empeoraba el encuadre vertical.
 
 ### Lo que queda pendiente
 
