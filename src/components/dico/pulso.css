@@ -1,0 +1,208 @@
+/* DicoPulso — la firma tecnica de Dico.
+ *
+ * Es una capa de motion SEPARADA del asset. No se editan PNGs y no se toca el
+ * Gold: el overlay solo dibuja azul sobre la circunferencia del aro. Por eso el
+ * mismo componente sirve para Dico 2D, Dico 3D y la O del logo.
+ *
+ * ───────────────────────── LOS DOS AZULES ─────────────────────────
+ *
+ * Se midieron los tres azules que hay en el arte final antes de asignar nada:
+ *
+ *   aro del render 3D      #2A3369  luminancia 53   <- el material del objeto
+ *   aro del isologo plano  #0957E6  luminancia 81
+ *   declarado en la lamina #3D6BFF  luminancia 108
+ *
+ * Y se midio el contraste del pulso contra cada candidato a base:
+ *
+ *   #2A3369 vs #3D6BFF  ->  2,67:1   el pulso se ve
+ *   #0957E6 vs #3D6BFF  ->  1,35:1   el pulso desaparece
+ *
+ * De ahi salen los dos tokens: #3D6BFF es el VOLT —la senial— y la base tiene
+ * que ser el navy opaco del arte, no el azul brillante de la lamina. Usar el
+ * mismo hex para las dos cosas dejaria un pulso invisible.
+ *
+ * `#0957E6` queda documentado como el aro PLANO del isologo: es la version
+ * vectorial del mismo aro, y no es ni la base 3D ni el Volt.
+ */
+
+:root {
+  /* El material del aro. Opaco y oscuro: sobre esto se lee la senial. */
+  --dico-blue-base: #2A3369;
+  /* La senial. Nunca es fondo, nunca es relleno grande. */
+  --dico-blue-volt: #3D6BFF;
+  /* El aro plano del isologo, para cuando se dibuja el aro en vector. */
+  --dico-blue-flat: #0957E6;
+}
+
+/* ── El contenedor ──────────────────────────────────────────────────────
+ * `inset: 0` sobre un padre `position: relative`: la capa no participa del
+ * layout, asi que encender el pulso no puede provocar reflow. */
+.dico-pulso {
+  --dico-pulso-grosor: 6;      /* en unidades del viewBox de 100 */
+  --dico-pulso-radio: 44;      /* circunferencia parametrizable */
+  --dico-pulso-intensidad: 1;  /* multiplicador global de opacidad */
+  --dico-pulso-vuelta: 2.6s;
+
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* El aro base es OPCIONAL: cuando el pulso va sobre el arte final, el aro ya
+   esta pintado en el asset y dibujarlo de nuevo lo ensuciaria. Se enciende solo
+   donde no hay arte debajo (la O del logo, un placeholder, el probe). */
+.dico-pulso-aro {
+  stroke: var(--dico-blue-base);
+  fill: none;
+  opacity: 0;
+}
+
+.dico-pulso--con-aro .dico-pulso-aro {
+  opacity: calc(1 * var(--dico-pulso-intensidad));
+}
+
+/* ── La senial ──────────────────────────────────────────────────────────
+ * Dos trazos concentricos que giran juntos: una estela larga y tenue, y una
+ * punta corta y brillante. Eso da un cometa sin mascaras ni gradientes sobre
+ * path, y es lo que lo separa de un spinner: el spinner es un arco solo y
+ * duro; esto es una senial con cabeza y cola sobre un aro que ya existe. */
+.dico-pulso-giro {
+  transform-origin: 50% 50%;
+}
+
+.dico-pulso-estela,
+.dico-pulso-punta {
+  fill: none;
+  stroke: var(--dico-blue-volt);
+  stroke-linecap: round;
+  transition: opacity .3s ease, stroke-width .3s ease;
+}
+
+.dico-pulso-estela { opacity: 0; }
+.dico-pulso-punta  { opacity: 0; }
+
+/* ── idle: el sistema esta vivo y nada mas ──────────────────────────────
+ * Sin recorrido. Un respiro largo sobre todo el aro: a 24px se percibe como
+ * que la moneda "esta encendida", no como que algo esta cargando. */
+.dico-pulso--idle .dico-pulso-aro {
+  opacity: calc(.85 * var(--dico-pulso-intensidad));
+  animation: dico-pulso-respiro 5.4s ease-in-out infinite;
+}
+
+@keyframes dico-pulso-respiro {
+  0%, 100% { stroke: var(--dico-blue-base); }
+  50%      { stroke: color-mix(in srgb, var(--dico-blue-base) 76%, var(--dico-blue-volt)); }
+}
+
+/* ── active: invocado ───────────────────────────────────────────────────
+ * Presencia, no proceso. El aro entero sube a Volt tenue y respira mas corto.
+ * Sigue sin haber recorrido: recorrido significa trabajo. */
+.dico-pulso--active .dico-pulso-aro {
+  opacity: calc(1 * var(--dico-pulso-intensidad));
+  animation: dico-pulso-activo 2.8s ease-in-out infinite;
+}
+
+@keyframes dico-pulso-activo {
+  0%, 100% { stroke: color-mix(in srgb, var(--dico-blue-base) 55%, var(--dico-blue-volt)); }
+  50%      { stroke: var(--dico-blue-volt); }
+}
+
+/* ── processing: trabajo en curso ───────────────────────────────────────
+ * Recorrido continuo y legible. Velocidad calma a proposito: un spinner de
+ * 0,8s grita "esperame"; 2,6s dice "estoy en eso". */
+.dico-pulso--processing .dico-pulso-estela {
+  opacity: calc(.34 * var(--dico-pulso-intensidad));
+}
+.dico-pulso--processing .dico-pulso-punta {
+  opacity: calc(1 * var(--dico-pulso-intensidad));
+}
+.dico-pulso--processing .dico-pulso-giro {
+  animation: dico-pulso-vuelta var(--dico-pulso-vuelta) linear infinite;
+}
+
+/* ── thinking: razonar, no ejecutar ─────────────────────────────────────
+ * El mismo recorrido pero respirado: acelera y frena, y la estela es mas
+ * larga. Al lado de processing se distingue por el RITMO, no por el color. */
+.dico-pulso--thinking .dico-pulso-estela {
+  opacity: calc(.42 * var(--dico-pulso-intensidad));
+}
+.dico-pulso--thinking .dico-pulso-punta {
+  opacity: calc(.88 * var(--dico-pulso-intensidad));
+}
+.dico-pulso--thinking .dico-pulso-giro {
+  animation: dico-pulso-vuelta calc(var(--dico-pulso-vuelta) * 2.15)
+             cubic-bezier(.62, .02, .36, 1) infinite;
+}
+
+/* ── attention: un aviso, no un loop ────────────────────────────────────
+ * Dos vueltas y para. Es finita a proposito: un loop infinito para "mira esto"
+ * se vuelve ruido de fondo en treinta segundos y deja de avisar. */
+.dico-pulso--attention .dico-pulso-estela {
+  opacity: calc(.4 * var(--dico-pulso-intensidad));
+}
+.dico-pulso--attention .dico-pulso-punta {
+  opacity: calc(1 * var(--dico-pulso-intensidad));
+  stroke-width: calc(var(--dico-pulso-grosor) * 1.25);
+}
+.dico-pulso--attention .dico-pulso-giro {
+  animation: dico-pulso-vuelta calc(var(--dico-pulso-vuelta) * .72) cubic-bezier(.3, 0, .2, 1) 2 both;
+}
+
+@keyframes dico-pulso-vuelta {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────
+ * Se apaga el RECORRIDO, no el significado. Cada modo conserva una forma
+ * estatica propia, asi que idle, active, processing, thinking y attention
+ * siguen siendo cinco cosas distinguibles sin que nada se mueva. */
+@media (prefers-reduced-motion: reduce) {
+  .dico-pulso-giro,
+  .dico-pulso-aro,
+  .dico-pulso-estela,
+  .dico-pulso-punta {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* idle: aro base, apenas encendido. */
+  .dico-pulso--idle .dico-pulso-aro {
+    opacity: calc(.85 * var(--dico-pulso-intensidad));
+    stroke: color-mix(in srgb, var(--dico-blue-base) 82%, var(--dico-blue-volt));
+  }
+
+  /* active: el aro entero en Volt. Mas brillo, sin recorrido. */
+  .dico-pulso--active .dico-pulso-aro {
+    opacity: calc(1 * var(--dico-pulso-intensidad));
+    stroke: var(--dico-blue-volt);
+  }
+
+  /* processing: segmento quieto arriba, brillante y corto. */
+  .dico-pulso--processing .dico-pulso-punta {
+    opacity: calc(1 * var(--dico-pulso-intensidad));
+  }
+  .dico-pulso--processing .dico-pulso-estela {
+    opacity: calc(.3 * var(--dico-pulso-intensidad));
+  }
+
+  /* thinking: segmento quieto pero mas largo y mas tenue que processing. */
+  .dico-pulso--thinking .dico-pulso-punta {
+    opacity: calc(.7 * var(--dico-pulso-intensidad));
+  }
+  .dico-pulso--thinking .dico-pulso-estela {
+    opacity: calc(.55 * var(--dico-pulso-intensidad));
+  }
+
+  /* attention: el mas brillante y el mas grueso. Se lee de un vistazo. */
+  .dico-pulso--attention .dico-pulso-punta {
+    opacity: calc(1 * var(--dico-pulso-intensidad));
+    stroke-width: calc(var(--dico-pulso-grosor) * 1.45);
+  }
+  .dico-pulso--attention .dico-pulso-estela {
+    opacity: calc(.5 * var(--dico-pulso-intensidad));
+  }
+}
