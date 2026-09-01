@@ -8,6 +8,61 @@
 
 ---
 
+## 1/sep/2026 — B6R.QA1: el botón reparado, el gate todavía no (sesión Claude)
+
+Llegó el brief de Opción A con los siete assets finales de Dico 2D. Su primer
+bloque es obligatorio: reparar el nondeterminismo del same-ref **antes** de
+montar nada. **No se montó Dico 2D**: el gate sigue sin ser repetible.
+
+### El botón: reparado
+
+La causa era `line-height: 1.45` sobre 14 px en `.dico-burbuja-contenido` —
+**20,3 px de caja de línea**. Los 0,3 se acumulaban, la burbuja quedaba en
+`h: 149,891` y el CTA heredaba `y: 772,797`; con su `border-radius`, esa fase
+fraccionaria rasterizaba las esquinas distinto.
+
+Se localizó comparando **todos** los bordes verticales: filas 200, 240 y 330 con
+91, 4 y 8 bordes y **ninguno corrido**; sólo las dos filas donde el botón curva.
+
+El cambio es una declaración: `line-height: 20px`. Después, todos los deltas
+verticales de la cadena quedan enteros.
+
+**4 corridas de same-ref: `admin--dark` con 0 bloqueantes en las 4** (antes era 1
+en 2 de 3). No se subió umbral, no se excluyó píxel, no se declaró flake.
+
+### Lo que aparecio detrás
+
+El gate corta en el primer fallo y ese fallo era siempre el botón. Con el botón
+limpio salieron dos causas más, ninguna del lote:
+
+1. **`catalog--ambar`, 1 de 4 corridas: 1429 crudos / 451 bloqueantes.** Es el
+   título «¿Qué te seduce hoy?» con tracking distinto — carrera de carga de las
+   fuentes remotas del catálogo público. Delta 98: no es antialiasing.
+2. **`.ag-dico-stack`, 1 de 4: diferencia de DOM con píxeles en cero.** Mismo
+   `width: 430px` en las dos puntas, pero `margin: auto` resuelve 487px de un
+   lado y 0px del otro. El `auto` se resuelve contra un `.ag-slot` que no se
+   asentó.
+
+**1 de 4 corridas falla** (antes 2 de 3). Mejoró, no alcanza.
+
+### Lo que sí se hizo, sin montar nada
+
+Se verificaron los 7 assets: alfa RGBA real, cuerpo en 251-254 (menos del 2 % de
+mezcla), **dispersión de registro 0,022pp** entre los siete. Se midió algo que el
+brief no traía y que hace falta: **el aro azul está a r/R 0,67, no en el borde**,
+y el personaje se centra en **49,90 / 48,05**, no en el medio — así que
+`DicoPulso`, que tenía el centro clavado en 50/50, se parametrizó.
+
+Los masters quedan en `platform/brand/dico-2d-masters/` (fuera del grafo, 4,8 MB)
+y los derivados a 256 px en `src/components/dico/native/` (392 KB), reducidos con
+**alfa premultiplicada** para no dejar orla. Los derivados quedan mejor
+registrados que los masters: dispersión 0,000pp.
+
+`FINAL_ASSET_ALPHA_EXPORT_REQUIRED`: **RESUELTO para Dico 2D**, sigue **ABIERTO**
+para Dico 3D.
+
+---
+
 ## 1/sep/2026 — B6R.2A: vocabularios y pulso Volt (sesión Claude)
 
 Se cerraron los tres vocabularios y se construyó `DicoPulso`. Es lo único de

@@ -447,3 +447,105 @@ siguiente**: mientras esté, «same‑ref limpio» es un resultado con 50 % de
 probabilidad y no una garantía.
 
 Forense reproducible en `.qa-lite/artifacts/phase-b6-expresiones/forense/`.
+
+---
+
+# B6R.QA1 — el gate, después del fix
+
+## Lo asignado: reparado y estable
+
+El nondeterminismo del CTA «Registrar gasto» era `line-height: 1.45` sobre 14 px
+en `.dico-burbuja-contenido` = **20,3 px de caja de línea**. Los 0,3 se acumulan,
+la burbuja terminaba en `h: 149,891` y todo lo de abajo heredaba una `y`
+fraccionaria; el CTA caía en `y: 772,797` y su `border-radius` rasterizaba las
+esquinas con fase distinta.
+
+**Cómo se localizó:** comparando *todos* los bordes verticales de la zona.
+
+| Fila | Bordes | Corridos |
+|---|---|---|
+| 200 | 91 | **0** |
+| 240 | 4 | **0** |
+| 273 | 3 | 2 (+0,222) |
+| 303 | 4 | 2 (+0,337) |
+| 330 | 8 | **0** |
+
+Toda la superficie era idéntica salvo las dos filas donde el botón curva.
+
+**El cambio:** una declaración, `line-height: 20px`. Aprieta el interlineado
+0,3 px por línea —imperceptible— y saca la fracción de raíz. Verificado después:
+la burbuja pasa a `h: 149` y **todos los deltas verticales de la cadena quedan
+enteros** (+60, +2, +36, +3, +117).
+
+**Resultado en 4 corridas de same-ref:**
+
+| Corrida | `admin--dark` raw | `admin--dark` bloqueantes |
+|---|---|---|
+| 1 | 0 | **0** |
+| 2 | 0 | **0** |
+| 3 | 46 | **0** |
+| 4 | 0 | **0** |
+
+Antes: bloqueantes **1** en 2 de 3 corridas. Después: **0 en 4 de 4.** El píxel
+bloqueante del botón no volvió a aparecer.
+
+No se subió ningún umbral, no se excluyó ningún píxel, no se declaró flake.
+
+## Pero el gate todavía no es repetible: aparecieron otras dos
+
+El gate corta en el primer fallo, y ese primer fallo era siempre el botón. Con el
+botón limpio, salieron a la luz dos causas más, **ninguna en el botón y ninguna
+introducida por este lote**.
+
+### 1. Carrera de fuente en el catálogo — 1 de 4 corridas
+
+`catalog--ambar--390x844`: **1429 píxeles crudos, 451 bloqueantes**, todos en la
+banda `y 250-349`, delta máximo 98.
+
+Recortada la banda, es el título **«¿Qué te seduce hoy?»** renderizado con
+tracking distinto entre las dos puntas. Es el catálogo público, que carga
+Instrument Serif y DM Serif Display remotas: una carrera de carga de fuente.
+
+Delta 98 no es antialiasing — es texto en otra posición.
+
+Que en las otras tres corridas diera 0 confirma que es intermitente.
+
+### 2. Margen `auto` inestable en `.ag-dico-stack` — 1 de 4 corridas
+
+Corrida 4, diferencia de **DOM** con píxeles en cero:
+
+```
+$.19  div.ag-dico-stack   :root>main[1]>div[2]>div[1]
+  base       width 430px   margin-left 487px   margin-right 487px
+  candidate  width 430px   margin-left   0px   margin-right   0px
+```
+
+**El ancho es el mismo en las dos.** Lo que cambia es cómo resuelve
+`margin: 2px auto 0`: centrado en una punta, pegado a la izquierda en la otra.
+El `auto` necesita el ancho del bloque contenedor y lo está resolviendo contra un
+`.ag-slot` que todavía no se asentó.
+
+Es la misma familia que el botón —geometría que depende de que algo se haya
+asentado— pero en el shell, no en la burbuja.
+
+## Estado del gate
+
+**1 de 4 corridas falló.** Antes del fix eran 2 de 3. Mejoró, pero **sigue sin
+ser repetible**, así que por el §0 del brief no se montó Dico 2D.
+
+## Propuestas, para decidir
+
+| # | Qué | Dónde | Riesgo |
+|---|---|---|---|
+| A | Esperar `document.fonts.ready` antes de capturar el catálogo | harness QA Lite | bajo — no toca producto |
+| B | Autoalojar Instrument Serif y DM Serif Display | `index.html` + catálogo | medio — toca el catálogo público |
+| C | Centrar `.ag-dico-stack` con `justify-items` en vez de `margin: auto` | `admin-shell.css` | bajo, pero toca CSS de Phase 3B |
+
+**A** ataca la causa del catálogo sin tocar producto y es la más barata.
+**B** es la correcta de fondo: el catálogo ya pide fuentes remotas y eso también
+cuesta rendimiento real a los usuarios.
+**C** es mía y la puedo hacer en minutos; no se hizo porque toca `.ag-slot`, que
+tiene contratos propios de Phase 3B, y eso ya es una decisión de alcance.
+
+Ninguna de las tres es «el botón Registrar gasto», que es lo que este bloque
+pedía y quedó hecho.
