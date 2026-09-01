@@ -155,10 +155,25 @@ describe('B6 — Native y Physical hablan el mismo vocabulario', () => {
   it('la correccion de proporcion vive en el marco, no en una segunda anatomia', () => {
     // El encuadre de Physical se corrige por CSS sobre `.dico-physical-cara`.
     // Si alguien lo "arreglara" duplicando geometria, la firma de arriba dejaria
-    // de coincidir; esto ademas fija donde tiene que estar la correccion.
-    expect(slotCss).toMatch(/--dico-cara-ancho/);
-    expect(slotCss).toMatch(/--dico-cara-cx/);
-    expect(slotCss).toMatch(/--dico-cara-cy/);
+    // de coincidir; esto fija ademas COMO tiene que estar escrita la correccion.
+    //
+    // Se mira el BLOQUE, no el archivo entero. Buscar `--dico-cara-ancho` suelto
+    // en `slotCss` no probaba nada: al reemplazar la declaracion por un
+    // `width: 98%` fijo el nombre seguia apareciendo en el `var()` de mas abajo
+    // y el contrato pasaba igual. Lo encontro la mutacion, no la lectura.
+    const bloque = slotCss.match(/\.dico-physical-cara\s*\{([^}]*)\}/);
+    expect(bloque).not.toBeNull();
+    const cuerpo = bloque[1];
+
+    for (const v of ['--dico-cara-ancho', '--dico-cara-cx', '--dico-cara-cy']) {
+      expect(cuerpo, `falta ${v}`).toContain(v);
+    }
+    // La geometria se deriva de esas tres: ningun valor crudo la puentea.
+    for (const prop of ['left', 'top', 'width', 'height']) {
+      const decl = cuerpo.match(new RegExp(`(?:^|;|\\n)\\s*${prop}\\s*:([^;]*)`));
+      expect(decl, `falta ${prop}`).not.toBeNull();
+      expect(decl[1], `${prop} con valor fijo en vez de derivado`).toContain('var(--dico-cara-');
+    }
   });
 });
 
