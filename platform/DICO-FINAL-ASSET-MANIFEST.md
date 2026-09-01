@@ -378,3 +378,72 @@ duro; va sobre un aro que ya existe en vez de flotar sola; y la vuelta es calma
 animaciones infinitas van a aparecer en las superficies de QA Lite y hay que
 registrarlas en `e2e/qa-lite/dico-neutral-contract.mjs`, o el gate va a fallar
 por «unexpected selector».
+
+## IX. El gate same-ref falla ~la mitad de las veces, y ahora se sabe por qué
+
+En B6 esto se reportó como un *flake* de una corrida. **Era optimista.** Con una
+corrida más, el cuadro real es:
+
+| Lote | Corrida | `blockingDiffPixels` |
+|---|---|---|
+| B6 | 1 | **1** |
+| B6 | 2 | 0 |
+| B6R.2A | 1 | **1** |
+
+**Dos de tres.** No es ruido ocasional: es un gate que falla aproximadamente la
+mitad de las veces.
+
+### No es aleatorio: es bimodal y determinista
+
+Los 42 píxeles crudos de la corrida de B6R.2A son **exactamente los mismos** que
+los de B6 —mismas columnas (567‑571, 661‑674, 732), mismas filas, mismos
+deltas— sólo que con `base` y `candidate` intercambiados.
+
+O sea: la superficie se renderiza en **una de dos variantes**, siempre las
+mismas dos. El gate falla cuando las dos puntas caen en variantes distintas, que
+es una moneda al aire.
+
+### La causa, medida
+
+Perfil del canal rojo cruzando el borde izquierdo del botón «Registrar gasto»,
+fila 303:
+
+```
+  x     : 563 564 565 566 567 568 569 570 571 572
+  base  :  32  36  36  88 161 208 242 242 242 242
+  cand  :  32  36  36  88 140 189 208 225 242 242
+```
+
+La rampa es la misma forma, corrida. El centro de masa del gradiente da el borde
+en **567,243** contra **567,676**: un desplazamiento **sub‑píxel de 0,43 px**.
+
+No es antialiasing aleatorio. Es el botón —o la burbuja que lo contiene— cayendo
+en dos posiciones sub‑píxel distintas según la corrida.
+
+### No lo causa B6R.2A
+
+`DicoPulso` no está montado en ninguna pantalla, así que no puede alterar el
+render de la burbuja. Y la firma de píxeles es idéntica a la de B6, en dos
+commits con código distinto: las dos variantes ya existían.
+
+### Qué habría que hacer, y por qué no se hizo acá
+
+La hipótesis con más respaldo es una carrera de layout aguas arriba de la
+burbuja —métricas de fuente asentándose, o un offset que redondea distinto— que
+mueve el botón medio píxel.
+
+Tres salidas, en orden de preferencia:
+
+1. **Encontrar y fijar la fuente del medio píxel** en la burbuja. Es la correcta:
+   arregla el producto, no el termómetro.
+2. **Esperar quiescencia de fuentes** antes de capturar, si resulta ser eso.
+3. Subir el umbral del filtro de antialias. **Es la peor** y por eso no se tocó:
+   ajustar el umbral en el mismo lote en que el gate molesta es cómo se pierde
+   un gate.
+
+Ninguna entra en el alcance de B6R.2A, que es vocabularios y pulso. Queda
+anotado como **deuda que bloquea la certificación same‑ref de todo lote
+siguiente**: mientras esté, «same‑ref limpio» es un resultado con 50 % de
+probabilidad y no una garantía.
+
+Forense reproducible en `.qa-lite/artifacts/phase-b6-expresiones/forense/`.

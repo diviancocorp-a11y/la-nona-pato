@@ -50,6 +50,32 @@ y el segmento no parpadea (6448 vs 6428 px).
 
 23 contratos, **10 mutaciones y las 10 fallan**.
 
+### El gate same-ref falla ~la mitad de las veces
+
+En B6 esto se reportó como un flake de una corrida. **Era optimista.** Con esta
+corrida son **dos de tres** (B6: falla, pasa; B6R.2A: falla).
+
+Y no es ruido: los 42 píxeles son **exactamente los mismos** que en B6 —mismas
+columnas, mismas filas, mismos deltas— con `base` y `candidate` intercambiados.
+La superficie se renderiza en **una de dos variantes fijas** y el gate falla
+cuando las dos puntas caen en variantes distintas.
+
+**La causa, medida:** el borde izquierdo del botón «Registrar gasto» de la
+burbuja cae en **567,243** en una variante y **567,676** en la otra — un
+desplazamiento **sub‑píxel de 0,43 px**. La rampa del gradiente es la misma
+forma, corrida.
+
+No lo causa B6R.2A: `DicoPulso` no está montado en ninguna pantalla y la firma
+de píxeles es idéntica a la de B6, en dos commits con código distinto.
+
+**Qué habría que hacer**, en orden: encontrar y fijar la fuente del medio píxel
+en la burbuja; o esperar quiescencia de fuentes antes de capturar. Subir el
+umbral del antialias es la peor salida y por eso no se tocó — ajustar el umbral
+en el mismo lote en que el gate molesta es cómo se pierde un gate.
+
+**Bloquea la certificación same-ref de todo lote siguiente**: mientras esté,
+«same-ref limpio» es un resultado con 50 % de probabilidad, no una garantía.
+
 ### Deuda que deja este lote
 
 `DicoPulso` **no está montado en ninguna pantalla todavía**. Cuando lo esté, sus
