@@ -12,15 +12,18 @@ runtime, no cambia `DicoSlot`, `DicoPresence`, sidebar ni `DicoPulso`.
 - Las ocho poses oficiales existen en el set actual.
 - La identidad es la correcta: moneda Gold, aro azul oscuro, pestañas, sin
   galera ni bigote legacy.
-- Los ocho archivos son PNG RGB (`color type 2`) sobre negro opaco: **0 píxeles
-  transparentes**.
-- Ninguno es apto para runtime. No se intenta recuperar alfa por luminancia.
+- El lote auditado original sigue siendo PNG RGB (`color type 2`) sobre negro
+  opaco. No se intenta recuperar alfa por luminancia.
+- `dico-3d-idle.png` pasó el contrato final y queda declarado
+  **`CANONICAL_3D_FRAME_REFERENCE`**.
+- Las otras siete poses todavía requieren re-export RGBA contra esa referencia.
 - `error` tiene una escala de moneda aproximadamente 13,7 % mayor que la
   mediana de las otras siete poses y requiere reencuadre.
 - `processing` y `question` están disponibles, pero quedan fuera del vocabulario
   `physicalPose` cerrado.
 
-> **FINAL_3D_ALPHA_EXPORT_REQUIRED**
+> **FINAL_3D_ALPHA_EXPORT_REQUIRED: RESUELTO PARA `idle`; ABIERTO PARA LAS
+> OTRAS SIETE POSES.**
 
 ## 1. Vocabulario y nombres finales
 
@@ -112,14 +115,22 @@ Y y menos de 1 % relativo en diámetro. El recorrido
 `idle → thinking → explain → pointDown` ya comparte escala perceptual, aunque
 los canvases no sean iguales. `error` no puede cruzarse sin salto.
 
-## 5. Frame 3D canónico propuesto
+## 5. `CANONICAL_3D_FRAME_REFERENCE`
+
+Referencia vinculante validada: `dico-3d-idle.png`.
+
+SHA-256:
+`a08dfb896562140b4b8126b51714e0feb7d34e5447d5e8f1e811435534110a7b`.
 
 | Propiedad | Valor final |
 |---|---:|
 | Canvas master | **1600×1136 px** |
 | Formato | PNG 8-bit RGBA, no interlazado |
-| Centro de moneda | **(800, 545)** = (50 %, 48 %) |
-| Diámetro de moneda | **517 px** = 45,5 % del alto |
+| Centro de moneda medido | **(800, 546,5)** = (50 %, 48,1074 %) |
+| Diámetro de moneda medido | **517,02 px** = 45,5123 % del alto |
+| Diámetro exterior Blue | **453,5 px** |
+| Bbox de `idle` | **490,288–1124,878** = 635×591 px |
+| Padding `idle` T/R/B/L | **288/475/257/490 px** |
 | Safe area mínima | **96 px** en cada borde |
 | Tolerancia por pose | centro ±8 px; diámetro ±1,5 % |
 | Dispersión máxima del set | centro 8 px; diámetro 1,5 % |
@@ -130,20 +141,27 @@ múltiplos de 16. No se impone un cuadrado ni 1536×1536 porque sumarían área
 vacía sin mejorar el registro. El master puede derivarse a menor tamaño para
 runtime.
 
-El centro X final se lleva a 50 % deliberadamente. El offset de aproximadamente
-1,8 % del set actual no aporta significado y complicaría el anclaje futuro. El
-centro Y queda en 48 % para reservar más recorrido debajo de la moneda a
-`pointDown` sin comprometer `pointUp`.
+La geometría medida reemplaza a la propuesta teórica. Las otras poses se
+registran contra `(800,546,5)` y `517,02 px`; no contra una aproximación
+redondeada. La tolerancia sirve como gate de export, no autoriza compensaciones
+individuales en runtime.
+
+El piloto tiene alfa real: 1.576.748 píxeles transparentes, 10.267 de borde con
+alfa parcial y 230.585 opacos. Los píxeles con alfa 0 tienen RGB también en 0.
+No mostró halo sobre blanco, Zinc ni damero. El Blue conserva la misma mediana
+RGB del render opaco de origen (`#3B406F`) y contiene 0 píxeles Volt iguales o
+cercanos a `#3D6BFF`.
 
 ## 6. Especificación exacta del re-export
 
-Producción debe entregar una carpeta de masters con **sólo** los ocho nombres de
-§1 y estas condiciones:
+Producción debe conservar el `idle` canónico byte a byte y entregar las otras
+siete poses con los nombres de §1 y estas condiciones:
 
 1. PNG 8-bit RGBA (`color type 6`), 1600×1136, no interlazado.
 2. Alfa real: fondo en alfa 0, sujeto opaco, borde con alfa parcial de
    antialiasing. Sin negro horneado, damero ni halo.
-3. Centro (800,545) y diámetro 517 px en todas las poses, dentro de tolerancia.
+3. Centro **(800,546,5)** y diámetro **517,02 px** en todas las poses, dentro de
+   tolerancia.
 4. Manos, dedos y brazos completos; bbox dentro de la safe area de 96 px.
 5. Mismo Gold, Blue, material, cámara, perspectiva e iluminación de estudio
    superior izquierda en las ocho poses.
@@ -151,6 +169,23 @@ Producción debe entregar una carpeta de masters con **sólo** los ocho nombres 
    rasgo legacy.
 7. Perfil de color uniforme para todo el lote.
 8. `processing` y `question` no se mezclan con el paquete oficial.
+
+### Entrega vinculante de las otras siete poses
+
+| Pose | Archivo | Significado visual mínimo |
+|---|---|---|
+| `explain` | `dico-3d-explain.png` | gesto explicativo, brazos y palmas completos |
+| `pointDown` | `dico-3d-point-down.png` | señal inequívoca hacia abajo, sin recortar el dedo |
+| `pointUp` | `dico-3d-point-up.png` | señal inequívoca hacia arriba, sin recortar la mano |
+| `thinking` | `dico-3d-thinking.png` | estado reflexivo, misma identidad y cámara |
+| `worried` | `dico-3d-worried.png` | preocupación legible sin depender de recolor |
+| `success` | `dico-3d-success.png` | logro/alegría legible, sin introducir Volt |
+| `error` | `dico-3d-error.png` | error legible sin cambiar material, escala ni framing |
+
+Cada archivo debe usar el personaje de `idle` como fuente de identidad: misma
+moneda, aro, cara base, pestañas, brazos, guantes, material, iluminación y
+perspectiva. Sólo cambian gesto y expresión. La moneda no se redibuja, no se
+escala por pose y no se compensa moviendo el canvas.
 
 El PNG RGBA es el master. El WebP lossless de runtime se deriva después y debe
 conservar exactamente canvas, centro, escala y alfa; no reemplaza al master.
@@ -161,14 +196,15 @@ oscuros comparten luminancia con el fondo y se dañarían.
 ## 7. Registro del pulso Volt
 
 - Blue 3D observado: aproximadamente `#2A3369`.
+- Mediana Blue medida en el piloto y su fuente: `#3B406F`.
 - Volt de señal: `#3D6BFF`.
 - En el frame canónico, el futuro overlay se ancla al mismo centro
-  **(800,545)**.
-- El diámetro exterior observado del aro Blue es aproximadamente 88,6 % del
-  diámetro de moneda: referencia inicial **458 px** sobre el master.
+  **(800,546,5)**.
+- El diámetro exterior medido del aro Blue es **453,5 px**, aproximadamente
+  87,71 % del diámetro de moneda.
 
-La cifra de 458 px se vuelve a medir sobre los RGBA finales antes de montar el
-overlay. No se implementa otro `DicoPulso` en este stream.
+Las otras poses deben conservar esta geometría. No se implementa otro
+`DicoPulso` en este stream.
 
 ## 8. Transición futura, sólo contrato
 
@@ -178,7 +214,7 @@ API conceptual:
 <DicoPhysical
   physicalPose="thinking"
   transitionDuration={140}
-  position={{ x: 800, y: 545, anchor: 'coin-center' }}
+  position={{ x: 800, y: 546.5, anchor: 'coin-center' }}
 />
 ```
 
@@ -212,10 +248,10 @@ clipping y framing. No es una nueva dirección artística.
 
 ## 11. Bloqueos para la implementación
 
-1. Re-export de las ocho poses con alfa verdadero.
-2. Reencuadre de `error` al frame canónico.
+1. Re-export de las siete poses restantes con alfa verdadero.
+2. Reencuadre de `error` contra la referencia canónica.
 3. Confirmación visual final de material e iluminación después del re-export.
 4. Derivación WebP sólo después de que el master pase el validador.
 
-Hasta resolverlos, no copiar el set a `public/brand/dico-3d/` y no montarlo en
-`DicoSlot`.
+Hasta resolverlos, no copiar el lote incompleto a `public/brand/dico-3d/` y no
+montarlo en `DicoSlot`.

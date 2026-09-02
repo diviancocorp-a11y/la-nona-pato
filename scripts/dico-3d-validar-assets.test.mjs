@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
@@ -104,6 +105,17 @@ test('paquete positivo: ocho poses registradas y con RGBA real', () => {
   const result = validateFolder(completeFixture(), TEST_CONTRACT);
   assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
   assert.equal(result.analyses.length, 8);
+});
+
+test('referencia canonica: fija el hash de idle', () => {
+  const root = completeFixture();
+  const idle = join(root, FINAL_FILE_BY_POSE.idle);
+  const canonicalReferenceSha256 = createHash('sha256').update(readFileSync(idle)).digest('hex');
+  const pinnedContract = { ...TEST_CONTRACT, canonicalReferenceSha256 };
+  assert.equal(validateFolder(root, pinnedContract).ok, true);
+
+  writePose(idle, { centerX: TEST_CONTRACT.center.x * TEST_CONTRACT.width + 1 });
+  assert.ok(codes(validateFolder(root, pinnedContract)).has('CANONICAL_REFERENCE_MISMATCH'));
 });
 
 test('mutacion: falta una pose', () => {

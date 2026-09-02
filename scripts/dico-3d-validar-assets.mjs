@@ -51,11 +51,27 @@ export const AUDIT_SOURCE_BY_POSE = Object.freeze({
   error: 'dico_face-error.png',
 });
 
-export const FINAL_CONTRACT = Object.freeze({
+export const CANONICAL_3D_FRAME_REFERENCE = Object.freeze({
+  file: 'dico-3d-idle.png',
+  sha256: 'a08dfb896562140b4b8126b51714e0feb7d34e5447d5e8f1e811435534110a7b',
   width: 1600,
   height: 1136,
-  center: Object.freeze({ x: 0.5, y: 0.48 }),
-  coinDiameter: 0.455,
+  centerX: 800,
+  centerY: 546.5,
+  coinDiameter: 517.02,
+  blueDiameter: 453.5,
+  bbox: Object.freeze({ left: 490, top: 288, right: 1124, bottom: 878 }),
+});
+
+export const FINAL_CONTRACT = Object.freeze({
+  width: CANONICAL_3D_FRAME_REFERENCE.width,
+  height: CANONICAL_3D_FRAME_REFERENCE.height,
+  center: Object.freeze({
+    x: CANONICAL_3D_FRAME_REFERENCE.centerX / CANONICAL_3D_FRAME_REFERENCE.width,
+    y: CANONICAL_3D_FRAME_REFERENCE.centerY / CANONICAL_3D_FRAME_REFERENCE.height,
+  }),
+  coinDiameter: CANONICAL_3D_FRAME_REFERENCE.coinDiameter / CANONICAL_3D_FRAME_REFERENCE.height,
+  canonicalReferenceSha256: CANONICAL_3D_FRAME_REFERENCE.sha256,
   centerTolerancePx: 8,
   diameterToleranceRatio: 0.015,
   registrationCenterTolerancePx: 8,
@@ -308,6 +324,11 @@ export function validateFolder(folder, contract = FINAL_CONTRACT) {
     } catch (error) {
       issues.push(issue('PNG_INVALID', file, error.message));
       continue;
+    }
+
+    if (pose === 'idle' && contract.canonicalReferenceSha256
+      && analysis.sha256 !== contract.canonicalReferenceSha256) {
+      issues.push(issue('CANONICAL_REFERENCE_MISMATCH', file, 'idle no coincide byte a byte con la referencia canonica'));
     }
 
     if (analysis.width !== contract.width || analysis.height !== contract.height) {
