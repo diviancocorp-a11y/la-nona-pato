@@ -87,12 +87,38 @@ test('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
       await page.screenshot({ path: join(SALIDA, `${w}-colapsada.png`), caret: 'hide' })
 
       // Foco de teclado: expande igual que el hover.
-      await page.locator('.ag-sidebar-item').first().focus()
+      //
+      // Con TAB de verdad, no `.focus()` por script: `:focus-visible` —que es
+      // lo que dibuja el anillo— no matchea cuando el foco lo pone el codigo,
+      // asi que una captura hecha asi mostraria la sidebar abierta y sin
+      // anillo, y no probaria nada sobre navegacion por teclado.
+      await page.locator('body').click({ position: { x: w - 40, y: h - 40 } }).catch(() => {})
+      let pasos = 0
+      let dentro = false
+      while (pasos < 40 && !dentro) {
+        await page.keyboard.press('Tab')
+        pasos += 1
+        dentro = await page.evaluate(() => Boolean(
+          document.activeElement?.closest('.ag-sidebar-item'),
+        ))
+      }
+      expect(dentro, `${w}px: no se llega a la sidebar con Tab en 40 pasos`).toBe(true)
       await page.waitForTimeout(320)
       const conFoco = await medir()
       expect(conFoco.ancho, `${w}px no expande con foco de teclado`).toBeGreaterThan(antes.ancho)
+
+      // Y el anillo se ve: expandirse sin marcar donde esta el foco deja al
+      // usuario de teclado sin saber que item va a activar.
+      const anillo = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null
+        if (!el) return null
+        const s = getComputedStyle(el)
+        return { estilo: s.outlineStyle, ancho: s.outlineWidth, color: s.outlineColor }
+      })
+      expect(anillo?.estilo, `${w}px: el item con foco no dibuja anillo`).not.toBe('none')
       await page.screenshot({ path: join(SALIDA, `${w}-foco.png`), caret: 'hide' })
-      await page.locator('.ag-sidebar-item').first().blur()
+      fila.anilloDeFoco = `${anillo?.estilo} ${anillo?.ancho}`
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
 
       fila.iconos = antes.iconos.length
       fila.rielPx = antes.ancho

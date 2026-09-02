@@ -648,7 +648,11 @@ export async function freezeContinuousDecorativeMotion(
   for (const entry of registry) {
     const nodes = page.locator(entry.selector)
     const count = await nodes.count()
-    if (requireInventory) expect(count).toBe(entry.expectedCount)
+    // Con el selector adentro: "esperaba 1 y hay 2" sin decir de que, obliga
+    // a adivinar cual de las seis entradas del registro fallo.
+    if (requireInventory) {
+      expect(count, `${surface}: ${entry.selector} (${entry.expectedName})`).toBe(entry.expectedCount)
+    }
     if (count === 0) continue
 
     const motionContract = await nodes.evaluateAll((elements) => elements.map((element) => (

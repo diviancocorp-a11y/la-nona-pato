@@ -31,7 +31,7 @@ try {
     env: {
       NODE_ENV: 'test',
       QA_PHASE: 'secuencia',
-      QA_SEQUENCE_ONLY: '1',
+      ...(process.env.QA_SPEC ? { QA_SPEC: process.env.QA_SPEC } : { QA_SEQUENCE_ONLY: '1' }),
       QA_TARGET_URL: preview.url,
       QA_ARTIFACT_DIR: artifactDir,
       QA_SUPABASE_URL: local.status.apiUrl,

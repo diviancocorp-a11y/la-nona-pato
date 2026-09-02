@@ -9,10 +9,13 @@ if (!['127.0.0.1', 'localhost'].includes(hostname)) {
 const motionInventoryOnly = process.env.QA_MOTION_INVENTORY_ONLY === '1'
 // Captura de evidencia, no gate: corre a pedido y no engorda cada comparacion.
 const sequenceOnly = process.env.QA_SEQUENCE_ONLY === '1'
+// Un spec suelto, para diagnosticar sin pagar un compare completo de ~15min.
+// No afecta al gate: si la variable no esta, el testMatch es el de siempre.
+const specSuelto = (process.env.QA_SPEC || '').split(',').map((s) => s.trim()).filter(Boolean)
 
 export default defineConfig({
   testDir: './e2e/qa-lite',
-  testMatch: sequenceOnly
+  testMatch: specSuelto.length ? specSuelto : sequenceOnly
     ? ['dico-physical-sequence.spec.ts', 'dico-sidebar.spec.ts']
     : motionInventoryOnly
     ? ['motion-inventory.spec.ts']
