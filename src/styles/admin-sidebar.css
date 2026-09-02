@@ -61,6 +61,30 @@
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
 
+  /* MIENTRAS DICO ESTA AFUERA, LA SIDEBAR NO SE ABRE.
+     Physical mide 184px y sale justo a la derecha del riel: si la sidebar se
+     expandiera al pasar el mouse, el personaje quedaria peleando con los
+     rotulos de navegacion. Medido: Physical ocupa x 44..228 y la sidebar
+     abierta 0..224. Se resuelve donde nace el conflicto y no moviendo a
+     Physical lejos, que romperia la lectura de que sale del Slot.
+
+     Vale igual para el aviso abierto: el globo arranca en x=109 y con la
+     sidebar expandida taparia los rotulos. Colapsada no toca nada. */
+  .ag-sidebar:has(.dico-slot--visible):hover,
+  .ag-sidebar:has(.dico-slot--visible):focus-within,
+  .ag-sidebar:has(.dico-avisos--abierto):hover,
+  .ag-sidebar:has(.dico-avisos--abierto):focus-within {
+    width: var(--ag-sidebar-riel);
+    box-shadow: none;
+  }
+
+  .ag-sidebar:has(.dico-slot--visible) .ag-sidebar-label,
+  .ag-sidebar:has(.dico-slot--visible) .ag-sidebar-wordmark,
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-label,
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-wordmark {
+    opacity: 0;
+  }
+
   /* El workspace se corre SOLO el riel, nunca el ancho expandido. */
   .ag-root {
     padding-left: var(--ag-sidebar-riel);
@@ -71,9 +95,12 @@
   .ag-sidebar-marca {
     display: grid;
     grid-template-columns: var(--ag-sidebar-riel) 1fr;
-    align-items: center;
-    height: 72px;
+    align-items: start;
+    /* Alto FIJO en los dos estados. Si creciera al revelar el wordmark, los
+       iconos de abajo bajarian con el. Incluye el lugar del contador. */
+    height: 116px;
     flex-shrink: 0;
+    padding-top: 10px;
   }
 
   .ag-sidebar-presencia {
@@ -84,6 +111,8 @@
   /* El wordmark aparece A LA DERECHA de Dico, no en su lugar. Reemplazarlo
      haria que el mismo pixel sea dos controles distintos segun el estado. */
   .ag-sidebar-wordmark {
+    align-self: start;
+    margin-top: 18px;
     font-family: var(--font-heading, var(--ag-font));
     font-weight: 800;
     font-size: 17px;
@@ -99,6 +128,68 @@
   .ag-sidebar:focus-within .ag-sidebar-wordmark {
     opacity: 1;
     transform: none;
+  }
+
+  /* ── Dico dentro del riel ────────────────────────────────────────────
+   * El personaje entra en la columna de 64px; todo lo que ABRE —el aviso y
+   * Physical— sale de la sidebar y vive sobre el workspace. Por eso van
+   * `position: fixed`: la sidebar tiene `overflow: hidden` y sin eso los dos
+   * quedarian recortados dentro del riel. */
+  .ag-sidebar .dico-avisos {
+    padding: 0;
+    width: 100%;
+  }
+
+  /* Dico arriba, el contador debajo. En el riel no entran uno al lado del
+     otro: 40 + 44 = 84 contra 64 de ancho. */
+  .ag-sidebar .dico-avisos-presencia {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* El contador reserva su lugar SIEMPRE, haya avisos o no. Si apareciera y
+     desapareciera con los datos, los iconos de navegacion subirian y bajarian
+     solos mientras el usuario mira otra cosa. */
+  .ag-sidebar-presencia {
+    align-content: start;
+    padding-top: 6px;
+  }
+
+  .ag-sidebar .dico-avisos-trigger {
+    width: 44px;
+    height: 44px;   /* minimo tactil: no se recorta para ganar 10px de riel */
+  }
+
+  /* Physical emerge SOBRE el workspace, a la derecha del riel. Dentro de la
+     sidebar no entra: el escenario mide 184px. */
+  /* Con Physical guardado, el Slot no tiene nada que mostrar: la ranura suelta
+     quedaba flotando sobre los iconos de navegacion. En desktop el invocador
+     es Dico 2D, asi que la ranura solo hace falta cuando el personaje esta
+     afuera —ahi es el control para guardarlo—. */
+  .ag-sidebar .dico-slot:not(.dico-slot--visible) {
+    display: none;
+  }
+
+  .ag-sidebar .dico-slot {
+    position: fixed;
+    left: calc(var(--ag-sidebar-riel) + 8px);
+    /* El escenario de Physical mide 184px y CRECE HACIA ARRIBA desde
+       `bottom: 23px` del Slot. Con el Slot arriba del todo el personaje
+       quedaba en y=-79, o sea fuera de la pantalla. El piso tiene que estar
+       como minimo a 184 - 23 + alto del Slot para que la cabeza entre. */
+    top: 196px;
+    width: 128px;
+    z-index: calc(var(--ag-z-nav) + 1);
+  }
+
+  /* El aviso se abre HACIA EL WORKSPACE: a la derecha y un poco mas abajo que
+     Dico, nunca encima. Y con la cola lateral, porque una que baje apuntaria
+     al vacio en vez de a quien habla. */
+  .ag-sidebar .dico-avisos-mensaje {
+    position: fixed;
+    left: var(--ag-sidebar-riel);
+    top: 26px;
+    z-index: calc(var(--ag-z-nav) + 2);
   }
 
   .ag-sidebar-nav {

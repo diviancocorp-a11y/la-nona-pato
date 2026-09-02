@@ -49,7 +49,42 @@ function xDeCola(w, cola) {
   return 52;
 }
 
+/**
+ * DOS SALIDAS PARA LA COLA, segun donde este Dico.
+ *
+ * `izquierda` / `centro` / `derecha` la sacan por ABAJO: sirven cuando la
+ * burbuja esta encima del personaje, que es la composicion de mobile.
+ *
+ * `lateral` la saca por la IZQUIERDA, a la altura del hombro. Es para el
+ * shell desktop, donde Dico vive en la sidebar y la burbuja se abre hacia el
+ * workspace: una cola que baja apuntaria al vacio en vez de a quien habla.
+ *
+ * Los desvios estan escritos a mano y son SIEMPRE LOS MISMOS en las dos
+ * variantes: un temblor al azar cambiaria en cada render y se veria como un
+ * parpadeo.
+ */
+const ALTO_COLA_LATERAL = 34;   // a la altura del hombro, no del piso
+
 function contorno(w, h, cola) {
+  if (cola === 'lateral') {
+    const y = Math.min(ALTO_COLA_LATERAL, Math.max(h - 18, 20));
+    return [
+      `M${R + 2} 5`,
+      `L${w - R - 5} 1.5`,
+      `Q${w - 3} 1 ${w - 1.5} ${R + 3}`,
+      `L${w - 2.5} ${h - R + 1}`,
+      `Q${w - 4} ${h - 1} ${w - R - 5} ${h - 2}`,
+      `L${R + 2} ${h - 3}`,
+      `Q2.5 ${h - 4} 2 ${h - R - 2}`,
+      `L3 ${y + 16}`,
+      // Sale hacia la izquierda, hacia Dico. Misma asimetria que la de abajo.
+      `Q-7 ${y + 11} ${-21} ${y - 1}`,
+      `Q-6 ${y - 2} 3 ${y - 13}`,
+      `L3 ${R + 4}`,
+      `Q3 ${7} ${R + 2} 5`,
+      'Z',
+    ].join(' ');
+  }
   const x = xDeCola(w, cola);
   const globo = [
     `M${R + 2} 5`,

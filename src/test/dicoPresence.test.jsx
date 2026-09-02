@@ -71,6 +71,31 @@ describe('DicoPresence', () => {
     expect(physicalDe(container)).not.toBeInTheDocument();
   });
 
+  it('B1 completo: el click en Dico cierra el aviso y trae a Physical', () => {
+    // La secuencia que no puede romperse: nunca hay coexistencia. Antes de
+    // este contrato, invocar a Physical con el aviso abierto dejaba un globo
+    // flotando de un personaje que ya no estaba.
+    const { container } = render(React.createElement(DicoPresence, datos));
+    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    expect(estadoDe(container)).toBe('native_notice');
+    expect(container.querySelector('.dico-burbuja')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    expect(estadoDe(container)).toBe('physical_opening');
+    expect(container.querySelector('.dico-burbuja'), 'el globo sobrevivio a Physical').toBeNull();
+    expect(nativeDe(container)).not.toBeInTheDocument();
+    expect(physicalDe(container)).toBeInTheDocument();
+
+    esperarMovimiento(physicalDe(container));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
+    esperarMovimiento(physicalDe(container));
+    expect(estadoDe(container)).toBe('native_idle');
+    expect(nativeDe(container)).toBeInTheDocument();
+    // Y el aviso NO vuelve solo: volver del plano fisico no reabre lo que se
+    // habia cerrado.
+    expect(container.querySelector('.dico-burbuja')).toBeNull();
+  });
+
   it('muestra Native en native_idle', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
     expect(estadoDe(container)).toBe('native_idle');

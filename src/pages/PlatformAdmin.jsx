@@ -26,6 +26,7 @@ import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
 import NavLateral from '../components/admin/platform/NavLateral';
+import useMediaQuery from '../lib/useMediaQuery';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -569,6 +570,16 @@ export default function PlatformAdmin() {
     setTab(pantallaInicial(roles, tabs) || tabs[0].id);
   }, [tabs, tab, roles]);
 
+  // Desktop mueve a Dico al tope de la sidebar. Es la MISMA frontera que
+  // decide que navegacion se ve (`admin-sidebar.css`), y va por JS porque
+  // mover un componente de un lugar del arbol a otro no se puede hacer con
+  // CSS: montarlo en los dos lugares daria dos maquinas de presencia.
+  //
+  // VA ARRIBA DE LOS EARLY RETURNS. Abajo quedaba despues de cuatro salidas
+  // tempranas: el hook se saltaba en `checking`/`anon` y se ejecutaba recien
+  // al entrar al panel, o sea que el orden de hooks cambiaba entre renders.
+  const esDesktop = useMediaQuery('(min-width: 769px)');
+
   if (status === 'checking') return <Centered>Cargando...</Centered>;
   if (status === 'anon') return <LoginScreen onLogin={doLogin} />;
 
@@ -602,6 +613,23 @@ export default function PlatformAdmin() {
   // Que secciones ve este negocio segun su rubro. modulosDe() ya descarta las
   // que todavia no estan implementadas, asi que declarar "agenda" para
   // barberia no ensucia la nav hasta que exista.
+
+  // Una sola instancia, montada en un lugar o en el otro. El elemento se arma
+  // aca —no en cada rama— para que sea literalmente el mismo nodo de React.
+  const presenciaDico = (
+    <DicoPresence
+      listo={!loadingProducts && recetas !== null}
+      vertical={tenant?.vertical}
+      productos={products}
+      insumos={ings}
+      recetas={recetas}
+      gastos={gastos}
+      settings={sett}
+      omitir={products.length === 0 ? ['catalogo-vacio'] : []}
+      onIr={setTab}
+      anclaje={esDesktop ? 'lateral' : 'arriba'}
+    />
+  );
 
   return (
     <ConfirmSlideProvider>
@@ -676,17 +704,7 @@ export default function PlatformAdmin() {
               navegacion, controles persistentes ni dialogos. */}
           <div className="ag-slot">
           <div className="ag-dico-stack">
-            <DicoPresence
-              listo={!loadingProducts && recetas !== null}
-              vertical={tenant?.vertical}
-              productos={products}
-              insumos={ings}
-              recetas={recetas}
-              gastos={gastos}
-              settings={sett}
-              omitir={products.length === 0 ? ['catalogo-vacio'] : []}
-              onIr={setTab}
-            />
+            {!esDesktop && presenciaDico}
           </div>
           {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
               puede mejorar. Y solo para quien puede mirar los numeros del
@@ -889,7 +907,13 @@ export default function PlatformAdmin() {
             en que el usuario se quede sin ninguna mientras React decide.
             La nav inferior NO se elimina; se oculta donde la sidebar la
             sustituye. */}
-        <NavLateral tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
+        <NavLateral
+          tabs={tabs}
+          tab={tab}
+          onTab={setTab}
+          openCount={openCount}
+          presencia={esDesktop ? presenciaDico : null}
+        />
         <NavInferior tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
       </div>
     </ConfirmSlideProvider>

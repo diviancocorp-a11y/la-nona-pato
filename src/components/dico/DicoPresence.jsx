@@ -25,7 +25,7 @@ function reduceMotionActivo() {
   }
 }
 
-export default function DicoPresence({ onStateChange, ...avisos }) {
+export default function DicoPresence({ onStateChange, anclaje = 'arriba', ...avisos }) {
   const [estado, enviar] = useReducer(reduceDicoPresence, S.NATIVE_IDLE);
   const [reduceMotion] = useState(reduceMotionActivo);
   const visible = visibilidadDico(estado);
@@ -64,6 +64,7 @@ export default function DicoPresence({ onStateChange, ...avisos }) {
           onAbrir={abrirAviso}
           onCerrar={cerrarAviso}
           onInvocar={abrirPhysical}
+          anclaje={anclaje}
         />
       )}
     </>

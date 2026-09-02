@@ -154,13 +154,39 @@ describe('DicoAvisos en el panel real', () => {
     expect(onInvocar).toHaveBeenCalledTimes(1);
   });
 
-  it('con avisos el click atiende el aviso y no invoca a Physical', () => {
+  it('con avisos, Dico sigue siendo la invocacion y el contador el aviso', () => {
+    // DOS GESTOS, DOS TARGETS. Antes el mismo pixel hacia una cosa u otra
+    // segun cuantos avisos hubiera, o sea que el usuario tenia que saber el
+    // estado del sistema antes de tocar.
     const onInvocar = vi.fn();
-    renderAvisos({ ...sano, productos: [prod({ price: 0 })], onInvocar });
+    const { container } = renderAvisos({ ...sano, productos: [prod({ price: 0 })], onInvocar });
 
+    // El contador abre el aviso y NO trae a Dico.
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(onInvocar).not.toHaveBeenCalled();
     expect(screen.getAllByText(/está sin precio/).length).toBeGreaterThan(0);
+
+    // Dico trae a Dico, haya avisos o no.
+    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    expect(onInvocar).toHaveBeenCalledTimes(1);
+
+    // Y son controles separados: el contador ya no vive encima del arte.
+    const boton = container.querySelector('.dico-avisos-trigger');
+    expect(boton.querySelector('[data-dico-native]'), 'el contador envuelve al personaje').toBeNull();
+    expect(container.querySelector('.dico-avisos-idle [data-dico-native]')).toBeInTheDocument();
+  });
+
+  it('la cola del globo sale para el lado donde NO esta Dico', () => {
+    // Anclado arriba, el globo esta encima de Dico y la cola baja. Anclado
+    // al costado —Dico en la sidebar— una cola que baje apunta al vacio.
+    const arriba = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    expect(arriba.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
+    arriba.unmount();
+
+    const costado = renderAvisos({ ...sano, productos: [prod({ price: 0 })], anclaje: 'lateral' });
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    expect(costado.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-lateral');
   });
 
   it('hace la entrada una sola vez por dispositivo', () => {

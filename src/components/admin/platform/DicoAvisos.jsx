@@ -17,18 +17,20 @@
  * alerta con el panel todavia cargando es `alert` + `processing`, dos hechos
  * distintos expresados por dos medios distintos.
  *
- * ────────────────────── UN SOLO TARGET, DOS GESTOS ──────────────────────
+ * ─────────────────── DOS GESTOS, DOS TARGETS ───────────────────
  *
- * Sobre Dico 2D conviven dos acciones y se resuelven por estado:
+ * Dico 2D es SIEMPRE la invocacion de Physical: se lo toca y el personaje
+ * viene al plano, haya avisos o no. Que el mismo pixel hiciera una cosa u
+ * otra segun cuantos avisos hubiera obligaba al usuario a saber el estado del
+ * sistema antes de tocar.
  *
- *   sin avisos           -> invoca a Physical (antes no hacia nada)
- *   con avisos, cerrado  -> abre el aviso
- *   con avisos, abierto  -> lo cierra
+ * El aviso tiene su propio control: el contador. Deja de ser una calcomania
+ * decorativa sobre el personaje y pasa a ser un boton con su area propia, que
+ * es lo que permite que las dos acciones convivan sin robarse el click.
  *
- * Es la unica forma de que el personaje sea invocable sin robarle el click al
- * aviso ni inventar un segundo target de 44px pegado al primero. Si Physical
- * tiene que ser invocable SIEMPRE, hace falta ese segundo target y eso es una
- * decision de disenio, no de implementacion.
+ * Cuando Physical entra, el aviso se cierra solo: no puede quedar un globo
+ * flotando de un personaje que ya no esta. Eso lo resuelve la maquina, no
+ * este componente.
  */
 import { useEffect, useRef, useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
@@ -62,6 +64,14 @@ export default function DicoAvisos({
   onCerrar,
   onInvocar,
   onIr,
+  /**
+   * Donde vive Dico, que decide para donde sale la cola del globo.
+   * `arriba`  el aviso se abre ENCIMA del personaje (composicion mobile)
+   * `lateral` se abre A SU DERECHA (Dico en la sidebar desktop)
+   * No se deduce del ancho de pantalla: lo sabe el shell, que es quien lo
+   * monta en un lugar o en el otro.
+   */
+  anclaje = 'arriba',
   omitir = [],
   ...datos
 }) {
@@ -124,7 +134,7 @@ export default function DicoAvisos({
             key={`${firma}:${indice}`}
             texto={`${actual.titulo}. ${actual.detalle}`}
             nivel={actual.nivel}
-            cola="centro"
+            cola={anclaje === 'lateral' ? 'lateral' : 'centro'}
             accion={actual.ir?.texto}
             onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
             restantes={avisos.length - indice - 1}
@@ -135,20 +145,7 @@ export default function DicoAvisos({
       )}
 
       <div className="dico-avisos-presencia">
-        {tieneAvisos ? (
-          <button
-            type="button"
-            className="dico-avisos-trigger"
-            onClick={abierto ? onCerrar : onAbrir}
-            aria-expanded={abierto}
-            aria-label={abierto
-              ? 'Cerrar avisos de Dico'
-              : `Abrir ${avisos.length === 1 ? '1 aviso' : `${avisos.length} avisos`} de Dico`}
-          >
-            {personaje}
-            <span className="dico-avisos-badge" aria-hidden="true">{avisos.length}</span>
-          </button>
-        ) : onInvocar ? (
+        {onInvocar ? (
           <button
             type="button"
             className="dico-avisos-idle"
@@ -159,6 +156,23 @@ export default function DicoAvisos({
           </button>
         ) : (
           <span className="dico-avisos-idle">{personaje}</span>
+        )}
+
+        {/* El contador es un CONTROL, no una calcomania. Tiene su propia area
+            de 44 y su propio nombre accesible: es la unica forma de que abrir
+            el aviso y traer a Dico sean dos gestos distintos. */}
+        {tieneAvisos && (
+          <button
+            type="button"
+            className="dico-avisos-trigger"
+            onClick={abierto ? onCerrar : onAbrir}
+            aria-expanded={abierto}
+            aria-label={abierto
+              ? 'Cerrar avisos de Dico'
+              : `Abrir ${avisos.length === 1 ? '1 aviso' : `${avisos.length} avisos`} de Dico`}
+          >
+            <span className="dico-avisos-badge">{avisos.length}</span>
+          </button>
         )}
       </div>
     </div>

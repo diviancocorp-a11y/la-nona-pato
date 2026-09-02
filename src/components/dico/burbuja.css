@@ -89,6 +89,12 @@
   cursor: default;
 }
 
+/* La cola lateral sale por la izquierda: el aire tiene que estar de ese lado
+   y ser mayor, porque sobresale 21px contra los 17 de la de abajo. */
+.dico-burbuja--cola-lateral {
+  margin-left: 26px;
+}
+
 .dico-burbuja--cola-centro,
 .dico-burbuja--cola-derecha {
   margin-left: 0;
@@ -146,6 +152,12 @@
   padding-left: 4px;
 }
 
+/* La cola lateral no baja: sale por el costado. Reservar los 24px de abajo
+   dejaria el pie flotando lejos del globo, desprendido. */
+.dico-burbuja--cola-lateral .dico-burbuja-pie {
+  margin-top: 10px;
+}
+
 .dico-burbuja-accion,
 .dico-burbuja-mas,
 .dico-burbuja-cerrar {
@@ -191,9 +203,13 @@
   padding: 2px 16px 8px;
 }
 
+/* Dos controles, uno al lado del otro: el personaje y el contador. Antes el
+   contador vivia ENCIMA del personaje y por eso no podia ser un boton — su
+   area habria robado el click de Dico. */
 .dico-avisos-presencia {
   display: flex;
   align-items: center;
+  gap: 2px;
   min-height: 44px;
 }
 
@@ -225,11 +241,11 @@
   outline-offset: 3px;
 }
 
+/* El contador ya no se superpone al arte: vive en su propio control. Sobre el
+   Native de 36px el solape medido era de 13px y con el asset final de 40 pasaba
+   a 15,3px, o sea que le comia el aro al personaje. */
 .dico-avisos-badge {
-  position: absolute;
-  right: -3px;
-  top: -2px;
-  min-width: 16px;
+  min-width: 18px;
   height: 16px;
   padding: 0 4px;
   display: inline-flex;
@@ -238,8 +254,7 @@
   border-radius: 999px;
   background: var(--ag-c-danger, #c0392b);
   color: #fff;
-  box-shadow: 0 0 0 2px var(--ag-bg, #111318);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
