@@ -182,7 +182,16 @@
        184px y antes salia clavado a la derecha del riel, asi que al
        expandirse la sidebar le pasaba por encima. Ahora se reancla hacia el
        workspace en vez de impedir la expansion. */
-    left: calc(var(--ag-sidebar-ancho) + 8px);
+    /* Que quede fuera del riel es lo que se ve, y lo que se ve es la TINTA,
+       no la caja: el canvas del pack tiene margen transparente a los lados.
+       Se corre media caja menos donde arranca la tinta, menos la mitad del
+       Slot sobre el que el escenario esta centrado. Con `explain`, que es la
+       pose mas ancha, la tinta empieza justo despues del riel en los dos
+       estados —colapsado y expandido— sin numeros magicos. */
+    left: calc(
+      var(--ag-sidebar-ancho) + 8px
+      + (var(--pose-ancho) / 2) - var(--pose-tinta-izq) - 64px
+    );
     transition: left .18s var(--ag-ease);
     /* El escenario de Physical mide 184px y CRECE HACIA ARRIBA desde
        `bottom: 23px` del Slot. Con el Slot arriba del todo el personaje

@@ -39,14 +39,21 @@
  * resto es margen transparente, y ese margen es justamente lo que permite que
  * las ocho poses —incluidas las de brazo levantado— entren en el mismo encuadre
  * sin clipping. Recortarlo romperia el footprint compartido. */
-.dico-slot-stage {
+.dico-slot {
   --pose-ancho: 448px;
   --pose-alto: calc(var(--pose-ancho) / (1600 / 1136));
   /* Los pies del personaje caen a 878/1136 del alto: debajo queda 22,71% de
      margen transparente. Se descuenta para que los pies queden sobre la ranura
      y no flotando, que es lo que hace legible que Dico SALE del Slot. */
   --pose-bajo-pies: calc(var(--pose-alto) * 0.2271);
+  /* Donde empieza la TINTA dentro de la caja. Sale del extremo de las OCHO, no
+     de `idle`: `explain` abre los brazos hasta x=273 de 1600 (17,06%) contra
+     x=491 de idle. Anclar por idle dejaria a `explain` pisando lo que tenga a
+     la izquierda, y el salto solo se veria al cambiar de pose. */
+  --pose-tinta-izq: calc(var(--pose-ancho) * 0.1706);
+}
 
+.dico-slot-stage {
   position: absolute;
   left: 50%;
   bottom: calc(23px - var(--pose-bajo-pies) + 6px);
