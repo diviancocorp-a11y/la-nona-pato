@@ -209,6 +209,15 @@
   --ag-slot-max-h: 40vh;
   position: relative;
   z-index: var(--ag-z-content);
+  /* El Slot CENTRA a sus hijos el mismo. Antes lo hacia `margin: auto` en
+     `.ag-dico-stack`, y el valor COMPUTADO de un margen automatico no es
+     estable entre pasadas de layout: medido en el mismo estado y con la misma
+     posicion usada (x=505 siempre), `getComputedStyle` devolvia 0px en una
+     pasada y 463px en otra. El contrato de DOM leia ese numero y lo reportaba
+     como diferencia aunque no se moviera un pixel. Centrando desde el
+     contenedor, los margenes del hijo son 0 y no hay nada fluctuante que leer. */
+  display: grid;
+  justify-items: center;
   min-height: var(--ag-slot-min-h);
   max-height: var(--ag-slot-max-h);
   margin: 0 18px;
@@ -235,14 +244,30 @@
 
 /* Dico Presence stack: Slot arriba, Native debajo. Oportunidades y contenido
    siguen fuera de esta micro-composicion para no convertir Dico en un header. */
+/* El ancho es DEFINIDO, no `max-content`.
+ *
+ * Con `max-content` el ancho salia del dimensionado intrinseco de los hijos, y
+ * `margin: auto` dependia de esa medida: cuando el stack entraba en el slot los
+ * margenes centraban —463px de cada lado a 1440— y cuando no entraba se
+ * resolvian a 0. Dos anchos intrinsecos posibles daban dos posiciones validas, y
+ * el gate same-ref los vio como una diferencia de DOM.
+ *
+ * Ademas tapaba un defecto real: a 390px el stack media 346 dentro de un slot de
+ * 306 y el `overflow: hidden` del slot le cortaba 40px al aviso.
+ *
+ * `min(430px, 100%)` ata el ancho al contenedor: nunca desborda, y los margenes
+ * automaticos pasan a depender de dos numeros definidos. Cuando no hay aviso el
+ * stack sigue midiendo 430 pero la presencia queda centrada por
+ * `align-items: center`, asi que no se mueve nada de lo que se ve. */
 .ag-dico-stack {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: max-content;
+  width: min(430px, 100%);
   min-width: 128px;
-  margin: 2px auto 0;
+  /* Sin `auto`: centra el Slot. Ver el comentario de `.ag-slot`. */
+  margin: 2px 0 0;
   padding-top: 4px;
 }
 
@@ -258,14 +283,16 @@
   position: relative;
   top: auto;
   left: auto;
-  width: min(430px, calc(100vw - 44px));
+  /* Al stack, no al viewport: con `100vw` el mensaje volvia a ser mas ancho
+     que su contenedor y lo recortaba el `overflow: hidden` del slot. */
+  width: min(430px, 100%);
   margin: 0 0 5px;
   transform: none;
 }
 
 @media (max-width: 520px) {
   .ag-dico-stack .dico-avisos-mensaje {
-    width: min(350px, calc(100vw - 44px));
+    width: min(350px, 100%);
   }
 }
 
