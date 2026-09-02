@@ -24,7 +24,7 @@ const datos = {
 
 const estadoDe = container => container.querySelector('[data-dico-presence-state]')
   ?.getAttribute('data-dico-presence-state');
-const nativeDe = container => container.querySelector('[data-dico-core]');
+const nativeDe = container => container.querySelector('[data-dico-native]');
 const physicalDe = container => container.querySelector('.dico-physical');
 
 function esperarMovimiento(physical) {
@@ -45,7 +45,32 @@ beforeEach(() => {
   window.matchMedia = vi.fn().mockReturnValue({ matches: false });
 });
 
+/** Mismo panel pero sin nada que avisar: ahi Dico 2D es el invocador. */
+const sinAvisos = { ...datos, productos: [prod()], recetas: new Map([['p1', [{ ingredient_id: 'i1', qty: 1 }]]]),
+  insumos: [{ id: 'i1', name: 'Harina', cost: 100, stock: 10, min_stock: 0, food_category: 'dry' }],
+  gastos: [{ date: '2026-08-05' }] };
+
 describe('DicoPresence', () => {
+  it('el click en Dico 2D lo trae al plano y despues lo devuelve', () => {
+    // La secuencia completa, de punta a punta: es la unica forma de invocar a
+    // Physical desde el personaje, y tiene que dejar el sistema donde empezo.
+    const { container } = render(React.createElement(DicoPresence, sinAvisos));
+    expect(nativeDe(container)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    expect(estadoDe(container)).toBe('physical_opening');
+    expect(nativeDe(container)).not.toBeInTheDocument();   // Dico 2D se va
+
+    esperarMovimiento(physicalDe(container));
+    expect(estadoDe(container)).toBe('physical_open');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
+    esperarMovimiento(physicalDe(container));
+    expect(estadoDe(container)).toBe('native_idle');
+    expect(nativeDe(container)).toBeInTheDocument();        // y vuelve
+    expect(physicalDe(container)).not.toBeInTheDocument();
+  });
+
   it('muestra Native en native_idle', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
     expect(estadoDe(container)).toBe('native_idle');

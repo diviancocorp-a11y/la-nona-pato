@@ -209,13 +209,18 @@
   border: 0;
 }
 
-.dico-avisos-trigger {
+/* `.dico-avisos-idle` es un span cuando no hay nada que invocar y un boton
+   cuando Dico se puede traer al plano. Las dos formas comparten caja; solo la
+   invocable se comporta como control. */
+.dico-avisos-trigger,
+.dico-avisos-idle:is(button) {
   color: inherit;
   cursor: pointer;
   border-radius: 50%;
 }
 
-.dico-avisos-trigger:focus-visible {
+.dico-avisos-trigger:focus-visible,
+.dico-avisos-idle:is(button):focus-visible {
   outline: 2px solid var(--ds-focus-ring, #e0ac3c);
   outline-offset: 3px;
 }

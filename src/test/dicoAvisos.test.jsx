@@ -52,7 +52,7 @@ describe('DicoAvisos en el panel real', () => {
       ...sano, productos: [prod({ price: 0 })], onIr,
     });
 
-    expect(container.querySelector('.dico--worried')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/está sin precio/)).toHaveLength(3);
@@ -66,10 +66,11 @@ describe('DicoAvisos en el panel real', () => {
       ...sano, productos: [prod({ price: 0 })], recetas: receta([]),
     });
 
-    expect(container.querySelector('.dico--worried')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
-    expect(container.querySelector('.dico--processing')).toBeInTheDocument();
+    // `sin-receta` es una sugerencia: la cara baja de `alert` a `curious`.
+    expect(container.querySelector('[data-dico-native="curious"]')).toBeInTheDocument();
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
     expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
   });
@@ -78,17 +79,20 @@ describe('DicoAvisos en el panel real', () => {
     const { container } = renderAvisos({
       ...sano, productos: [], recetas: receta([]), omitir: ['catalogo-vacio'],
     });
-    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
   });
 
-  it('usa la espera con puntos cuando sólo hay una sugerencia', () => {
+  it('una sugerencia no se disfraza de sistema trabajando', () => {
     const { container } = renderAvisos({
       ...sano, recetas: receta([]),
     });
 
-    expect(container.querySelector('.dico--processing')).toBeInTheDocument();
-    expect(container.querySelectorAll('.dico-espera-punto')).toHaveLength(3);
+    // Antes esto ponia `esperando`: el sistema "esperando" usado como cara.
+    // Una sugerencia es curiosidad, y que haya algo que decir lo dice el pulso.
+    expect(container.querySelector('[data-dico-native="curious"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-pulso]'))
+      .toHaveAttribute('data-dico-pulso', 'attention');
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
     expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
@@ -96,7 +100,7 @@ describe('DicoAvisos en el panel real', () => {
 
   it('mantiene a Dico visible aunque no haya avisos', () => {
     const { container } = renderAvisos(sano);
-    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /aviso.*dico/i })).not.toBeInTheDocument();
   });
 
@@ -106,7 +110,7 @@ describe('DicoAvisos en el panel real', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /cerrar lo que dice dico/i }));
-    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
   });
 
@@ -120,16 +124,52 @@ describe('DicoAvisos en el panel real', () => {
     expect(avisos.firstElementChild).toHaveClass('dico-avisos-mensaje');
     expect(avisos.lastElementChild).toHaveClass('dico-avisos-presencia');
     expect(container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
-    expect(container.querySelector('[data-dico-core]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
+  });
+
+  it('cara y actividad son ejes independientes, no una sola tabla', () => {
+    // Mientras carga no hay avisos (`avisosDe` devuelve [] con listo:false),
+    // asi que NADA dicta una cara. El vocabulario viejo igual ponia
+    // `esperando` de cara; ahora la cara queda neutral y el trabajo del
+    // sistema lo cuenta el pulso, que es el eje que le corresponde.
+    const { container } = renderAvisos({ ...sano, listo: false });
+    expect(container.querySelector('[data-dico-native="neutral"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-dico-pulso]'))
+      .toHaveAttribute('data-dico-pulso', 'processing');
+
+    // Y con un aviso presente la cara la dicta el aviso, no la actividad.
+    const conAlerta = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
+    expect(conAlerta.container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
+    expect(conAlerta.container.querySelector('[data-dico-pulso]'))
+      .toHaveAttribute('data-dico-pulso', 'attention');
+  });
+
+  it('sin avisos Dico deja de ser decorativo: se lo puede invocar', () => {
+    const onInvocar = vi.fn();
+    renderAvisos({ ...sano, onInvocar });
+
+    // Sin `onInvocar` esto era un span inerte: el usuario veia a Dico y no
+    // podia hacer nada con el.
+    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    expect(onInvocar).toHaveBeenCalledTimes(1);
+  });
+
+  it('con avisos el click atiende el aviso y no invoca a Physical', () => {
+    const onInvocar = vi.fn();
+    renderAvisos({ ...sano, productos: [prod({ price: 0 })], onInvocar });
+
+    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    expect(onInvocar).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/está sin precio/).length).toBeGreaterThan(0);
   });
 
   it('hace la entrada una sola vez por dispositivo', () => {
     const props = { ...sano, productos: [prod({ price: 0 })] };
     const primera = renderAvisos(props);
-    expect(primera.container.querySelector('.dico--entrada')).toBeInTheDocument();
+    expect(primera.container.querySelector('.dico-native--entrada')).toBeInTheDocument();
     primera.unmount();
 
     const segunda = renderAvisos(props);
-    expect(segunda.container.querySelector('.dico--entrada')).not.toBeInTheDocument();
+    expect(segunda.container.querySelector('.dico-native--entrada')).not.toBeInTheDocument();
   });
 });

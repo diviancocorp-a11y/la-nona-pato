@@ -1,0 +1,88 @@
+/* DicoNative — la presencia 2D con los assets finales.
+ *
+ * El tamanio VISUAL y el area CLICKEABLE son dos cosas distintas. Dico se ve
+ * chico en la barra —una presencia, no un boton gordo— pero se toca comodo: el
+ * minimo de 44x44 se consigue con padding, no agrandando el personaje. Es la
+ * misma separacion que ya usaba el trigger de avisos.
+ */
+
+.dico-native {
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+}
+
+/* La caja del personaje: mide EXACTAMENTE el tamanio visual y es el contexto de
+   posicionamiento del pulso. Separarla del boton es lo que permite que el area
+   clickeable crezca a 44 sin arrastrar el overlay: si el pulso colgara del
+   boton, su viewBox se repartiria sobre 44px y el aro caeria fuera del que trae
+   el PNG. */
+.dico-native-caja {
+  position: relative;
+  display: block;
+  width: var(--dico-native-size, 40px);
+  height: var(--dico-native-size, 40px);
+}
+
+/* El arte ocupa la caja entera; el overlay del pulso va encima por `inset: 0`.
+   `image-rendering: auto` explicito: el derivado ya viene a 256px y cualquier
+   suavizado agresivo del navegador ensuciaria el aro. */
+.dico-native-arte {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ── Cuando es invocable ────────────────────────────────────────────────
+ * El area crece hacia afuera con padding y un `min-width/height` de 44, sin
+ * mover el personaje: `place-items: center` lo deja en el medio. */
+.dico-native--boton {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 999px;
+  /* Sin transicion de `transform`: mover el personaje al pasar el mouse lo
+     vuelve un boton de juego. La respuesta la da el pulso, que es la firma. */
+  transition: outline-color .15s ease;
+}
+
+.dico-native--boton:focus-visible {
+  outline: 2px solid var(--dico-blue-volt, #3D6BFF);
+  outline-offset: 3px;
+}
+
+/* -------- Entrada: una sola vez por dispositivo --------
+ * La entrada vieja era un giro 3D que revelaba la cara por capas (escena /
+ * cara / cuerpo del SVG). El asset final es UNA imagen: no hay capas que
+ * desfasar, asi que el giro va sobre la caja entera —pulso incluido, porque
+ * son el mismo objeto— y se mantiene el gesto: Dico se da vuelta y te mira. */
+.dico-native--entrada {
+  perspective: 420px;
+}
+
+.dico-native--entrada .dico-native-caja {
+  animation: dico-native-entrada 1.05s cubic-bezier(.2, .72, .25, 1) both;
+  transform-style: preserve-3d;
+}
+
+@keyframes dico-native-entrada {
+  0%   { transform: rotateY(180deg); opacity: 0; }
+  18%  { opacity: 1; }
+  48%  { transform: rotateY(180deg); }
+  78%  { transform: rotateY(-8deg); }
+  100% { transform: rotateY(0); opacity: 1; }
+}
+
+/* La entrada es decorativa: quien pidio menos movimiento ve a Dico ya presente,
+   no una version degradada del giro. */
+@media (prefers-reduced-motion: reduce) {
+  .dico-native--entrada .dico-native-caja {
+    animation: none;
+  }
+}

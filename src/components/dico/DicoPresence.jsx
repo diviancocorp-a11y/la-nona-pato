@@ -63,6 +63,7 @@ export default function DicoPresence({ onStateChange, ...avisos }) {
           abierto={visible.notice}
           onAbrir={abrirAviso}
           onCerrar={cerrarAviso}
+          onInvocar={abrirPhysical}
         />
       )}
     </>
