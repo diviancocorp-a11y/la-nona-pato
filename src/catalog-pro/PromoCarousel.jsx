@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useGuestUser } from "../lib/guestUser.js";
 import { useWeeklyTop, useMyRanking } from "./useTopCustomers";
 import { Avatar } from "../lib/avatars.jsx";
+import useMediaQuery from "../lib/useMediaQuery";
 
 const AUTO_PLAY_MS = 4500;
 const TOUCH_HOLD_MS = 15000; // si alguien toco, esta leyendo: pausa larga
@@ -313,14 +314,25 @@ export default function PromoCarousel({ onOpenAccount }) {
   const holdAutoplay = () => { pauseUntil.current = Date.now() + TOUCH_HOLD_MS; };
   const userGo = (fn) => { holdAutoplay(); fn(); };
 
+  // El CSS de mas abajo apagaba las transiciones con reduced motion, pero el
+  // carrusel SEGUIA avanzando solo cada 4,5s: contenido que se actualiza sin
+  // que el usuario pueda pararlo, que es justo lo que WCAG 2.2.2 pide evitar.
+  //
+  // Y de paso arregla un nondeterminismo real del gate: el avance es un
+  // `setInterval`, o sea un timer de JS que el harness no puede congelar —el
+  // mismo caso que el verbo rotante del home—, asi que dos corridas del MISMO
+  // commit podian fotografiar el carrusel con la capa de transicion montada o
+  // sin ella. Los pixeles daban identicos y el DOM no.
+  const menosMovimiento = useMediaQuery("(prefers-reduced-motion: reduce)");
+
   useEffect(() => {
-    if (len < 2) return;
+    if (len < 2 || menosMovimiento) return;
     const t = setInterval(() => {
       if (busy || showHelp || hovering || Date.now() < pauseUntil.current) return;
       next();
     }, AUTO_PLAY_MS);
     return () => clearInterval(t);
-  }, [len, busy, showHelp, hovering, next]);
+  }, [len, busy, showHelp, hovering, next, menosMovimiento]);
 
   if (len === 0) return null;
   const active = incoming ?? base;

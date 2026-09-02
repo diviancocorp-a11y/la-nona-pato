@@ -68,6 +68,8 @@ async function inventoryMotion(ref) {
         QA_ADMIN_EMAIL: user.email,
         QA_ADMIN_PASSWORD: user.password,
         QA_FIXED_NOW: FIXED_NOW,
+        // Pasa el presupuesto de reloj si esta seteado. Ver playwright.qa-lite.config.ts.
+        ...(process.env.QA_TEST_TIMEOUT_MS ? { QA_TEST_TIMEOUT_MS: process.env.QA_TEST_TIMEOUT_MS } : {}),
       },
     });
     console.log(`Motion inventory artifacts: ${artifactDir}`);

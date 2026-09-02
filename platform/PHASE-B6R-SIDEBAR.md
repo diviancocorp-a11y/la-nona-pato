@@ -148,3 +148,42 @@ que **no** sirve de base. El aro base del pulso es parametrizable
 herede el azul equivocado.
 
 **Ningún PNG se recoloreó.** El overlay se adapta al arte.
+
+---
+
+## 8. Mobile — propuesta, no aplicada
+
+**Lo que YA quedó y funciona**, medido en el panel real a 375 y 320:
+
+- `NavInferior` intacta: 5 items (4 + "Más"), todos 44×44, sin overflow.
+- Dico sigue en el slot del main, y el par *moneda + contador* queda centrado
+  (a 375: la moneda en 165,5 y el contador a su derecha, centro del par
+  187,5 = 375/2).
+- El globo se abre **encima** de Dico con la cola centrada, como siempre: la
+  cola lateral es sólo para desktop.
+- El aviso ya no se recorta a 390px — eso lo resolvió
+  `.ag-slot:has(.dico-avisos--abierto) { max-height: 70vh }` en el lote
+  anterior.
+
+O sea: **no hace falta ningún cambio importante en mobile**, y por eso no
+hice ninguno.
+
+**Lo que propongo, para decidir:**
+
+1. **Dico como único invocador, también en mobile.** Hoy en mobile hay *dos*
+   formas de traer a Physical: la ranura del Slot (que se ve siempre) y Dico
+   2D. En desktop la ranura sólo aparece cuando el personaje está afuera, para
+   guardarlo. Unificar el gesto es una línea de CSS, pero cambia lo que el
+   usuario ve en la pantalla de entrada, así que va como propuesta.
+2. **Guardar los hover detrás de `@media (hover: hover)`.** No hay ni uno en
+   `src/`, así que en touch el hover de la ranura
+   (`.dico-slot-control:hover .dico-slot-luz`) queda pegado después del tap.
+   No es copiar el hover: es que el dedo tenga una respuesta inmediata
+   (`:active`) donde el mouse tenía una anticipada.
+3. **El tap sobre Dico enciende el pulso en `active` antes de que Physical
+   termine de salir.** La firma visual ya existe y comunica "te escuché"
+   durante los ~700ms de la animación, que en mobile se sienten.
+
+**Lo que NO propongo:** long-press, swipe ni gestos nuevos. No hay ninguno hoy
+en el panel y agregarlos sobre el único elemento de marca es donde peor se
+descubren.

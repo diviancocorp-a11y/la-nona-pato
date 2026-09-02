@@ -22,7 +22,12 @@ export default defineConfig({
       'login-admin-race.spec.ts',
       'dico-native-message.spec.ts',
     ],
-  timeout: 90_000,
+  // Presupuesto de RELOJ, no umbral de comparacion: subirlo no esconde ni un
+  // pixel de diferencia, solo le da a las mismas comparaciones tiempo para
+  // terminar en una maquina cargada. El default committeado sigue siendo 90s;
+  // `QA_TEST_TIMEOUT_MS` existe para poder correr el gate sin tocar el
+  // contrato cuando la maquina esta ocupada.
+  timeout: Number(process.env.QA_TEST_TIMEOUT_MS) || 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
