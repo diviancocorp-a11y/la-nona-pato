@@ -144,7 +144,22 @@ for (const viewport of VIEWPORTS) {
     if (start.bottomNav && start.native) expect(start.native.bottom).toBeLessThanOrEqual(start.bottomNav.top)
     expect(stableBox(middle)).toEqual(stableBox(start))
 
-    await control.click()
+    // Saltear la escritura, SI todavia hay algo que saltear.
+    //
+    // El boton solo existe mientras el typewriter corre: al terminar pierde su
+    // nombre accesible y el `tabIndex` pasa a -1, justamente para que no quede
+    // un control fantasma. En una maquina cargada los pasos de arriba tardan
+    // mas que la escritura y el boton ya no esta: el spec quedaba esperando
+    // hasta el timeout un elemento que hizo bien en desaparecer.
+    //
+    // El contrato real es el estado final —texto entero, sin cursor, misma
+    // geometria— y se llega igual por las dos vias. La via del click se sigue
+    // ejercitando cuando hay tiempo de tomarla.
+    if (await control.count() > 0) {
+      await control.click()
+    } else {
+      await expect(page.locator('.dico-burbuja-contenido')).toHaveAttribute('tabindex', '-1')
+    }
     await expect(visibleText).toHaveText(expectedText)
     await expect(page.locator('.dico-burbuja-cursor')).toHaveCount(0)
     const complete = await geometry(page)
