@@ -30,6 +30,7 @@
  * a la vez, compararlas entre si no lo notaria.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
@@ -37,6 +38,7 @@ import { render } from '@testing-library/react';
 import CaraDeTinta from '../components/dico/CaraDeTinta';
 import DicoCara from '../components/dico/DicoCara';
 import DicoSlot from '../components/dico/DicoSlot';
+import { NATIVE_STATES } from '../components/dico/vocabulario';
 
 const RAIZ = resolve(__dirname, '..', '..');
 const ENTRADA = 'src/main.jsx';   // el mismo de index.html
@@ -320,5 +322,63 @@ describe('B5 — Native y Physical rinden la anatomia de CaraDeTinta', () => {
     // lo decide `dico.css` por estado, no una anatomia distinta.
     expect(fN.filter(l => l.includes('dico-boca')).length).toBeGreaterThan(3);
     expect(fP.filter(l => l.includes('dico-boca')).length).toBe(fN.filter(l => l.includes('dico-boca')).length);
+  });
+});
+
+describe('B6R — los assets publicos de Dico 2D', () => {
+  /**
+   * Vite copia `public/` tal cual: estos archivos se referencian por URL y NO
+   * pasan por el grafo de imports, asi que el gate de arriba —que camina el
+   * grafo desde `src/main.jsx`— no los ve. Necesitan su propio contrato.
+   *
+   * Y necesita ser POSITIVO, no solo negativo. Un gate que unicamente dice "no
+   * hay legacy" pasa igual si la carpeta esta vacia: la leccion de B5. Este
+   * declara los siete que TIENEN que estar.
+   */
+  const PUBLICO = 'public/brand/dico';
+  const OFICIALES = [
+    'dico-2d-neutral.png', 'dico-2d-curious.png', 'dico-2d-happy.png',
+    'dico-2d-celebrate.png', 'dico-2d-alert.png', 'dico-2d-concerned.png',
+    'dico-2d-question.png',
+  ];
+
+  it('estan exactamente los siete assets oficiales, ni uno mas ni uno menos', () => {
+    const enDisco = readdirSync(join(RAIZ, PUBLICO))
+      .filter((n) => n.toLowerCase().endsWith('.png')).sort();
+    expect(enDisco).toEqual([...OFICIALES].sort());
+  });
+
+  it('los siete cubren exactamente los siete nativeState del vocabulario', () => {
+    // Si maniana se agrega un estado al vocabulario y nadie exporta su asset,
+    // esto lo dice antes de que la sidebar muestre un hueco.
+    const estados = OFICIALES.map((f) => f.replace('dico-2d-', '').replace('.png', '')).sort();
+    expect(estados).toEqual([...NATIVE_STATES].sort());
+  });
+
+  it('no hay renders legacy ni cuerpos fuente en la carpeta publica', () => {
+    for (const f of readdirSync(join(RAIZ, PUBLICO))) {
+      for (const legacy of ARCHIVO_CARA_LEGACY) {
+        expect(f, `${f} es un render legacy`).not.toBe(legacy);
+      }
+      expect(f, `${f}: render de escena legacy`).not.toMatch(/^escena-/);
+      expect(f, `${f}: cuerpo fuente, no va al runtime`).not.toMatch(/^moneda/);
+    }
+  });
+
+  it('cada asset publico es RGBA de verdad', () => {
+    // Byte 25 del PNG es el color type del IHDR. 6 = RGBA. Un export sin canal
+    // alfa entraria como 2 (RGB) y la moneda vendria con fondo.
+    for (const f of OFICIALES) {
+      const buf = readFileSync(join(RAIZ, PUBLICO, f));
+      expect(buf.readUInt8(25), `${f} no es RGBA`).toBe(6);
+    }
+  });
+
+  it('los derivados coinciden con su master: el script --check pasa', () => {
+    // El contrato de fondo: nadie edita un derivado a mano. Si lo que hay en
+    // disco no es lo que sale de `platform/brand/dico-2d-masters/`, falla.
+    const r = spawnSync(process.execPath, ['scripts/dico-2d-derivar.mjs', '--check'],
+      { cwd: RAIZ, encoding: 'utf8' });
+    expect(r.status, `salida:\n${r.stdout || ''}\n${r.stderr || ''}`).toBe(0);
   });
 });
