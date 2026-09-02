@@ -218,15 +218,18 @@ describe('B6 — Native y Physical hablan el mismo vocabulario', () => {
     // fije el tamanio del escenario a ojo y rompa el encuadre compartido.
     //
     // Se mira el BLOQUE, como antes, y que los valores se DERIVEN.
+    // Las constantes viven en `.dico-slot` para que las use tambien quien lo
+    // posiciona; el escenario las consume.
+    const declara = slotCss.slice(slotCss.lastIndexOf('.dico-slot {'));
+    for (const v of ['--pose-ancho', '--pose-alto', '--pose-bajo-pies', '--pose-tinta-izq']) {
+      expect(declara.slice(0, declara.indexOf('}')), `falta ${v}`).toContain(v);
+    }
+    // El alto sale del aspecto del canvas, no de un numero suelto.
+    expect(declara.slice(0, declara.indexOf('}'))).toContain('1600 / 1136');
+
     const bloque = slotCss.match(/\.dico-slot-stage\s*\{([^}]*)\}/);
     expect(bloque).not.toBeNull();
     const cuerpo = bloque[1];
-
-    for (const v of ['--pose-ancho', '--pose-alto', '--pose-bajo-pies']) {
-      expect(cuerpo, `falta ${v}`).toContain(v);
-    }
-    // El alto sale del aspecto del canvas, no de un numero suelto.
-    expect(cuerpo).toContain('1600 / 1136');
     // Sin regex: alcanza con partir por `;` y mirar cada declaracion.
     const declaraciones = cuerpo.split(';').map((d) => d.trim());
     for (const prop of ['width', 'height', 'bottom']) {
