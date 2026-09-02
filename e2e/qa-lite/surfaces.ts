@@ -693,7 +693,31 @@ export async function freezeContinuousDecorativeMotion(
     // Con el selector adentro: "esperaba 1 y hay 2" sin decir de que, obliga
     // a adivinar cual de las seis entradas del registro fallo.
     if (requireInventory) {
-      expect(count, `${surface}: ${entry.selector} (${entry.expectedName})`).toBe(entry.expectedCount)
+      if (count !== entry.expectedCount) {
+        // El gemelo positivo del conteo: "esperaba 1 y hay 2" no dice DONDE
+        // estan los dos. Se lista el ancestro de cada match, que es lo que
+        // distingue "hay dos tarjetas" de "hay dos capas en la misma".
+        const donde = await nodes.evaluateAll((elementos) => elementos.map((el) => {
+          const camino = []
+          let actual: Element | null = el
+          while (actual && camino.length < 4) {
+            camino.push(`${actual.tagName.toLowerCase()}${actual.className ? `.${String(actual.className).split(' ').join('.')}` : ''}`)
+            actual = actual.parentElement
+          }
+          return camino.join(' < ')
+        }))
+        // Dato clave para el carrusel: si la pagina cree o no que le pidieron
+        // menos movimiento. Sin esto no se puede distinguir "el guard no
+        // funciona" de "la emulacion de Playwright no llego".
+        const menosMovimiento = await page.evaluate(() => ({
+          reduce: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          tarjetas: document.querySelectorAll('.cp-pcg-card').length,
+        }))
+        throw new Error(
+          `${surface}: ${entry.selector} (${entry.expectedName}) ${JSON.stringify(menosMovimiento)}\n`
+          + `esperaba ${entry.expectedCount}, hay ${count}:\n  ${donde.join('\n  ')}`,
+        )
+      }
     }
     if (count === 0) continue
 
