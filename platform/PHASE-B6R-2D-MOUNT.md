@@ -153,3 +153,49 @@ El registro del pulso declara `whenActivity: 'active'` y el chequeo exige las
 **dos** mitades: con esa actividad tiene que latir con nombre y duración
 exactos, con cualquier otra tiene que estar quieto. Aceptar «cero animaciones»
 a secas habría dejado pasar un pulso que dejó de funcionar.
+
+---
+
+## 8. Propuesta mobile — para decidir, no aplicada
+
+Medido antes de proponer, sobre las capturas del gate:
+
+| Viewport | Dico (caja 44) | Centrado | Burbuja |
+|---|---|---|---|
+| 320x800 | x 138 | 160 = 320/2 ✔ | 18..302 |
+| 375x812 | x 165,5 | 187,5 = 375/2 ✔ | 18..357 |
+| 768x900 | x 362 | 384 = 768/2 ✔ | 214..554 |
+| 1440x1000 | x 698 | 720 = 1440/2 ✔ | 550..890 |
+
+**La geometria ya funciona en mobile y no hay que rehacerla.** Dico queda
+centrado en los cuatro anchos y la burbuja se estira al ancho util. El recorte
+del aviso a 390px que aparecio en el lote anterior esta resuelto por
+`.ag-slot:has(.dico-avisos--abierto) { max-height: 70vh }`.
+
+Tampoco hay que achicar Dico: el arte es el mismo y el area ya es 44, que es
+justo el minimo tactil. Bajar a 36 para "que entre" perderia `alert` (§1) sin
+ganar espacio real.
+
+**Lo que falta no es tamaño, es el gesto.** Hoy el unico feedback de que la
+ranura es invocable es `:hover` (`.dico-slot-control:hover .dico-slot-luz`),
+que en touch no ocurre nunca. Y no hay un solo `@media (hover: hover)` en
+`src/`, asi que en touch ese hover queda pegado despues del tap.
+
+Tres propuestas, en orden de lo que rinde:
+
+1. **Guardar los hover detras de `@media (hover: hover)` y darle a touch su
+   propio estado `:active`.** No es copiar el hover: es que el dedo tenga una
+   respuesta inmediata donde el mouse tenia una anticipada. Barato y arregla
+   el hover pegado.
+2. **Que el tap sobre la ranura encienda el pulso en `active` antes de que
+   Physical termine de salir.** La firma visual ya existe y comunica
+   "te escuche" durante los ~700 ms de la animacion, que en mobile se sienten.
+3. **Si se adopta "Dico 2D invoca a Physical siempre" (§4), en mobile el
+   aviso tiene lugar para su propio target y en desktop no.** La burbuja ya
+   ocupa el ancho util: el disparador puede ser una fila tocable de ancho
+   completo en vez de un badge de 16px. O sea que la decision de §4 puede
+   resolverse distinto por viewport sin que sea una inconsistencia.
+
+**Lo que NO propongo:** long-press, swipe ni gestos nuevos. No hay ninguno hoy
+en el panel y agregarlos sobre el unico elemento de marca es donde peor se
+descubren.
