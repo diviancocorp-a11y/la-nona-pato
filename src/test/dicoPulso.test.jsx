@@ -219,17 +219,23 @@ describe('B6R — DicoPulso: los cinco modos', () => {
     }
     const brillo = pulsoCss.match(/\.dico-pulso-brillo\s*\{([^}]*)\}/)[1];
     expect(brillo).toContain('var(--dico-blue-volt)');
-    expect(brillo).not.toContain('--dico-blue-base');
+    expect(brillo).not.toContain('-base');
   });
 
-  it('el token base describe el ARTE 2D, medido, no el render ni la lamina', () => {
-    // 93% de los pixeles azules del asset final son #192B6C. El token lo copia;
-    // el PNG no se toca.
-    const base = pulsoCss.match(/--dico-blue-base:\s*(#[0-9a-fA-F]{6});/)[1];
-    expect(base.toUpperCase()).toBe('#192B6C');
-    // Y los otros dos azules quedan documentados, no usados como base.
-    expect(pulsoCss).toContain('--dico-blue-render');
-    expect(pulsoCss).toContain('--dico-blue-flat');
+  it('los tokens se nombran por SOPORTE, no por jerarquia', () => {
+    // "Blue Base" es una familia de material, no un RGB unico: cada soporte
+    // rinde el mismo azul distinto. Un token llamado `--dico-blue-base` a
+    // secas obligaria a elegir cual de los tres es "el" base, y de ahi a
+    // recolorear PNGs para que coincidan hay un paso.
+    expect(pulsoCss, 'volvio el token sin soporte').not.toMatch(/--dico-blue-base\s*:/);
+    for (const token of ['--dico-blue-2d-base', '--dico-blue-3d-base', '--dico-blue-flat', '--dico-blue-volt']) {
+      expect(pulsoCss, `falta ${token}`).toContain(`${token}:`);
+    }
+    // Y cada uno copia lo MEDIDO sobre su soporte.
+    const valor = (t) => pulsoCss.match(new RegExp(`${t}:\\s*(#[0-9a-fA-F]{6});`))[1].toUpperCase();
+    expect(valor('--dico-blue-2d-base')).toBe('#192B6C');
+    expect(valor('--dico-blue-3d-base')).toBe('#2A3369');
+    expect(valor('--dico-blue-flat')).toBe('#0957E6');
   });
 
   it('el aro base es opcional: sobre arte final no se redibuja', () => {
@@ -247,37 +253,52 @@ describe('B6R — DicoPulso: los cinco modos', () => {
   });
 });
 
-describe('B6R — DicoPulso: Blue Base vs Volt', () => {
-  it('separa los dos tokens y no los confunde', () => {
-    expect(pulsoCss).toContain('--dico-blue-base');
-    expect(pulsoCss).toContain('--dico-blue-volt');
-    const base = pulsoCss.match(/--dico-blue-base:\s*([^;]+);/)[1].trim();
-    const volt = pulsoCss.match(/--dico-blue-volt:\s*([^;]+);/)[1].trim();
-    expect(base.toLowerCase()).not.toBe(volt.toLowerCase());
+describe('B6R — DicoPulso: Volt es el sistematico', () => {
+  const LUM = (hex) => {
+    const v = hex.replace('#', '');
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16) / 255);
+    const f = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const valor = (t) => pulsoCss.match(new RegExp(`${t}:\\s*(#[0-9a-fA-F]{6});`))[1];
+  const contraste = (a, b) => {
+    const [x, y] = [LUM(a), LUM(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  };
+
+  it('el Volt se lee sobre TODOS los bases de soporte, no solo sobre uno', () => {
+    // Esta es la propiedad que hace a Volt sistematico: la senial tiene que
+    // funcionar igual sobre el 2D y sobre el 3D, que fisicamente NO son el
+    // mismo azul. Si algun dia un base se aclara, este contrato lo frena
+    // antes de que el pulso desaparezca sobre ese soporte.
+    const volt = valor('--dico-blue-volt');
+    for (const soporte of ['--dico-blue-2d-base', '--dico-blue-3d-base']) {
+      const base = valor(soporte);
+      expect(LUM(base), `${soporte} no es mas oscuro que el Volt`).toBeLessThan(LUM(volt));
+      expect(contraste(base, volt), `${soporte} contra Volt`).toBeGreaterThan(2);
+    }
   });
 
-  it('la base es mas oscura que el Volt, o el pulso no se ve', () => {
-    const lum = (hex) => {
-      const v = hex.replace('#', '');
-      const [r, g, b] = [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16) / 255);
-      const f = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
-    const base = pulsoCss.match(/--dico-blue-base:\s*(#[0-9a-fA-F]{6});/)[1];
-    const volt = pulsoCss.match(/--dico-blue-volt:\s*(#[0-9a-fA-F]{6});/)[1];
-    expect(lum(base)).toBeLessThan(lum(volt));
-    // Medido sobre el arte: el par elegido da 2,67:1. Por debajo de 2 la senial
-    // se pierde sobre su propio aro.
-    const cr = (lum(volt) + 0.05) / (lum(base) + 0.05);
-    expect(cr).toBeGreaterThan(2);
+  it('el aro plano NO alcanza como base, y por eso no lo es', () => {
+    // 1,35:1 contra el Volt. Queda documentado justamente para que nadie lo
+    // use de base creyendo que es "el azul de la marca".
+    const cr = contraste(valor('--dico-blue-flat'), valor('--dico-blue-volt'));
+    expect(cr).toBeLessThan(2);
+    expect(pulsoCss).not.toMatch(/stroke:\s*var\(--dico-blue-flat\)/);
   });
 
-  it('el aro plano del isologo queda documentado y NO se usa como base', () => {
-    // #0957E6 es el aro vectorial del isologo. Contra el Volt da 1,35:1: si se
-    // usara como base, el pulso seria invisible.
-    expect(pulsoCss).toContain('--dico-blue-flat');
-    const base = pulsoCss.match(/--dico-blue-base:\s*(#[0-9a-fA-F]{6});/)[1];
-    expect(base.toLowerCase()).not.toBe('#0957e6');
+  it('el pulso pinta con Volt; el track lo pone el arte', () => {
+    // El aro base es lo unico que puede usar un color de soporte, y solo
+    // donde no hay arte debajo. Todo lo demas que dibuja el pulso es Volt.
+    const trazos = [...pulsoCss.matchAll(/\.dico-pulso-(\w+)\s*\{([^}]*)\}/g)]
+      .filter(([, , cuerpo]) => cuerpo.includes('stroke:'));
+    for (const [, parte, cuerpo] of trazos) {
+      const usaVolt = cuerpo.includes('--dico-blue-volt');
+      const esAro = parte === 'aro';
+      expect(usaVolt || esAro, `.dico-pulso-${parte} no pinta con Volt`).toBe(true);
+    }
+    // Y el aro base es parametrizable por soporte, con el 2D como default.
+    expect(pulsoCss).toMatch(/var\(--dico-pulso-base,\s*var\(--dico-blue-2d-base\)\)/);
   });
 });
 

@@ -4,41 +4,42 @@
  * Gold: el overlay solo dibuja azul sobre la circunferencia del aro. Por eso el
  * mismo componente sirve para Dico 2D, Dico 3D y la O del logo.
  *
- * ───────────────────────── LOS DOS AZULES ─────────────────────────
+ * ───────────────────── LOS AZULES SON UNA FAMILIA ─────────────────────
  *
- * Se midieron los azules que hay en el arte antes de asignar nada:
+ * "Blue Base" NO es un RGB unico: es un material azul oscuro y opaco que cada
+ * soporte rinde distinto. Medido sobre el arte real, no elegido:
  *
- *   aro del asset 2D final #192B6C  luminancia 44   <- 93% de sus pixeles azules
- *   aro del render 3D      #2A3369  luminancia 53   <- el mismo aro, sombreado
- *   aro del isologo plano  #0957E6  luminancia 81
- *   declarado en la lamina #3D6BFF  luminancia 108
+ *   Dico 2D final          #192B6C  luminancia 44   93% de sus pixeles azules
+ *   Dico 3D render         #2A3369  luminancia 53   el mismo aro, sombreado
+ *   isologo plano          #0957E6  luminancia 81   la version vectorial
+ *   Volt                   #3D6BFF  luminancia 108  la senial
  *
- * Y el contraste del pulso contra cada candidato a base:
+ * Por eso los tokens se nombran por SOPORTE y no por jerarquia: forzar un
+ * unico base exacto obligaria a recolorear PNGs para que coincidan con un
+ * numero, que es exactamente lo prohibido. El arte manda.
  *
- *   #192B6C vs #3D6BFF  ->  2,96:1   el pulso se ve bien
- *   #2A3369 vs #3D6BFF  ->  2,67:1   se ve
- *   #0957E6 vs #3D6BFF  ->  1,35:1   el pulso desaparece
+ * EL UNICO QUE TIENE QUE SER SISTEMATICO ES VOLT. Es la senial activa y se
+ * lee igual sobre los tres soportes:
  *
- * De ahi salen los dos tokens: #3D6BFF es el VOLT —la senial— y la base es el
- * navy del ARTE FINAL 2D, que es el mas oscuro y el que manda. Usar el azul
- * brillante de la lamina para las dos cosas dejaria un pulso invisible.
+ *   #192B6C vs #3D6BFF  ->  2,96:1   sobre el 2D final
+ *   #2A3369 vs #3D6BFF  ->  2,67:1   sobre el render 3D
+ *   #0957E6 vs #3D6BFF  ->  1,35:1   sobre el plano, el pulso desaparece
  *
- * EL TOKEN DESCRIBE EL ARTE, NO AL REVES. No se recolorea ningun PNG para que
- * coincida con un token: el overlay se adapta al arte. `#2A3369` es el mismo
- * aro con el sombreado del render 3D y `#0957E6` la version vectorial del
- * isologo; quedan documentados y no son la base.
+ * Ese ultimo numero es la razon de que el plano NO sirva como base: si algun
+ * dia hay que dibujar el aro en vector bajo un pulso, hay que oscurecerlo.
+ *
+ * DicoPulso usa principalmente Volt. El track ya existe en el arte: el aro
+ * base solo se dibuja donde no hay arte debajo (ver `--con-aro`).
  */
 
 :root {
-  /* El material del aro, medido sobre el asset 2D final. Opaco y oscuro:
-     sobre esto se lee la senial. */
-  --dico-blue-base: #192B6C;
-  /* La senial. Nunca es fondo, nunca es relleno grande. */
+  /* La senial. Sistematica, la misma en los tres soportes. Nunca es fondo. */
   --dico-blue-volt: #3D6BFF;
-  /* El aro plano del isologo, para cuando se dibuja el aro en vector. */
+
+  /* Los bases, uno por soporte. Describen el arte; no se le imponen. */
+  --dico-blue-2d-base: #192B6C;
+  --dico-blue-3d-base: #2A3369;
   --dico-blue-flat: #0957E6;
-  /* El mismo aro con el sombreado del render 3D. Documentado, no usado. */
-  --dico-blue-render: #2A3369;
 }
 
 /* ── El contenedor ──────────────────────────────────────────────────────
@@ -68,7 +69,10 @@
  * ENCIMA del aro que ya existe. Por eso puede encenderse siempre, con arte o
  * sin arte, sin tocar un pixel del PNG. */
 .dico-pulso-aro {
-  stroke: var(--dico-blue-base);
+  /* Que base usar lo decide QUIEN monta el pulso, porque depende del soporte
+     que tenga debajo. El default es el 2D, que es donde se monta hoy; un
+     montaje sobre 3D pasa `--dico-pulso-base: var(--dico-blue-3d-base)`. */
+  stroke: var(--dico-pulso-base, var(--dico-blue-2d-base));
   fill: none;
   opacity: 0;
 }
