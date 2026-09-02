@@ -21,8 +21,11 @@ try {
   const env = installAndBuild(worktree, local.status);
   preview = await startPreview(worktree, 4173, env);
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  // Sin archivo explicito: el `testMatch` del config con QA_SEQUENCE_ONLY ya
+  // acota a los specs de evidencia. Pasarlo filtraba a uno solo y el de la
+  // sidebar nunca corria — sin fallar, que es peor.
   runCaptured(npx, ['playwright', 'test', '--config', 'playwright.qa-lite.config.ts',
-    'e2e/qa-lite/dico-physical-sequence.spec.ts', '--max-failures=1'], {
+    '--max-failures=1'], {
     cwd: REPO_ROOT,
     label: 'Captura de la secuencia Physical',
     env: {

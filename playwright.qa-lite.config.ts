@@ -13,7 +13,7 @@ const sequenceOnly = process.env.QA_SEQUENCE_ONLY === '1'
 export default defineConfig({
   testDir: './e2e/qa-lite',
   testMatch: sequenceOnly
-    ? ['dico-physical-sequence.spec.ts']
+    ? ['dico-physical-sequence.spec.ts', 'dico-sidebar.spec.ts']
     : motionInventoryOnly
     ? ['motion-inventory.spec.ts']
     : [

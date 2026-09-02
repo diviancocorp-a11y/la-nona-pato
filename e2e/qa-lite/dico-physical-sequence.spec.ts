@@ -33,7 +33,9 @@ test('click en Dico -> Physical -> vuelve', async ({ page }) => {
   expect(await estado(page)).toBe('native_idle')
   await foto(page, '1-native-idle')
 
-  await page.locator('button.dico-slot-control').click()
+  // B1: el invocador es DICO 2D, no la ranura. En desktop la ranura ni
+  // siquiera existe con Physical guardado — solo aparece para guardarlo.
+  await page.getByRole('button', { name: 'Traer a Dico' }).click()
   await expect(physical).toHaveCount(1)
   // Mientras Physical esta en escena, Dico 2D NO existe en el DOM.
   await expect(native).toHaveCount(0)
