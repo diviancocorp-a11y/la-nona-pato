@@ -118,6 +118,45 @@ export async function encodePhysicalWebp(masterFile) {
   return Buffer.from(encoded);
 }
 
+export async function validatePhysicalRuntime({
+  masterRoot = DICO_3D_MASTER_ROOT,
+  runtimeRoot = DICO_3D_RUNTIME_ROOT,
+} = {}) {
+  const masters = resolve(masterRoot);
+  const runtime = resolve(runtimeRoot);
+  const issues = [];
+  const rows = [];
+  if (!existsSync(masters)) issues.push({ code: 'MASTER_FOLDER_MISSING', file: null });
+  if (!existsSync(runtime)) issues.push({ code: 'RUNTIME_FOLDER_MISSING', file: null });
+  if (issues.length) return { ok: false, masters, runtime, issues, rows };
+
+  const expectedMasters = DICO_PHYSICAL_POSES.map(pose => DICO_PHYSICAL_ASSETS[pose].master);
+  const expectedRuntime = DICO_PHYSICAL_POSES.map(pose => DICO_PHYSICAL_ASSETS[pose].runtime);
+  const masterNames = exactImageNames(masters, expectedMasters);
+  const runtimeNames = exactImageNames(runtime, expectedRuntime);
+  for (const file of masterNames.missing) issues.push({ code: 'MASTER_MISSING', file });
+  for (const file of masterNames.unexpected) issues.push({ code: 'MASTER_UNEXPECTED', file });
+  for (const file of runtimeNames.missing) issues.push({ code: 'RUNTIME_MISSING', file });
+  for (const file of runtimeNames.unexpected) issues.push({ code: 'RUNTIME_UNEXPECTED', file });
+
+  for (const pose of DICO_PHYSICAL_POSES) {
+    const entry = DICO_PHYSICAL_ASSETS[pose];
+    const masterFile = join(masters, entry.master);
+    const runtimeFile = join(runtime, entry.runtime);
+    if (!existsSync(masterFile) || !existsSync(runtimeFile)) continue;
+    try {
+      const comparison = await compareMasterAndDerivative(masterFile, runtimeFile);
+      rows.push({ pose, master: entry.master, runtime: entry.runtime, ...comparison });
+      if (!comparison.sameGeometry) issues.push({ code: 'RUNTIME_GEOMETRY_MISMATCH', file: entry.runtime });
+      else if (!comparison.samePixels) issues.push({ code: 'RUNTIME_PIXEL_MISMATCH', file: entry.runtime });
+    } catch (error) {
+      issues.push({ code: 'RUNTIME_DECODE_FAILED', file: entry.runtime, message: error.message });
+    }
+  }
+
+  return { ok: issues.length === 0, masters, runtime, issues, rows };
+}
+
 export async function derivePhysicalAssets({
   check = false,
   masterRoot = DICO_3D_MASTER_ROOT,

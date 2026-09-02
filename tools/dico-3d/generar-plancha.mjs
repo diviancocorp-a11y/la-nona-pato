@@ -2,10 +2,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import {
-  AUDIT_SOURCE_BY_POSE,
+  FINAL_FILE_BY_POSE,
   FINAL_CONTRACT,
-  PHYSICAL_POSES,
-  auditFolder,
+  validateFolder,
 } from '../../scripts/dico-3d-validar-assets.mjs';
 
 const CELL_WIDTH = 420;
@@ -58,14 +57,14 @@ function cell(row, index, sourceFolder, overlays) {
   const y = HEADER + rowIndex * (CELL_HEIGHT + GAP);
   const imageX = x + 20;
   const imageY = y + 58;
-  const file = join(sourceFolder, AUDIT_SOURCE_BY_POSE[row.pose]);
+  const file = join(sourceFolder, FINAL_FILE_BY_POSE[row.pose]);
   const transform = imageTransform(row.width, row.height, imageX, imageY);
   const mapX = value => transform.x + value * transform.scale;
   const mapY = value => transform.y + value * transform.scale;
   const minSafeX = row.width * (FINAL_CONTRACT.minimumPaddingPx / FINAL_CONTRACT.width);
   const minSafeY = row.height * (FINAL_CONTRACT.minimumPaddingPx / FINAL_CONTRACT.height);
-  const status = row.alpha.real ? 'RGBA' : 'ALFA REQUERIDO';
-  const statusColor = row.alpha.real ? '#5eead4' : '#ff6b7a';
+  const status = 'MASTER PASS';
+  const statusColor = '#5eead4';
 
   const overlay = !overlays ? '' : `
     <rect x="${mapX(minSafeX)}" y="${mapY(minSafeY)}"
@@ -109,20 +108,21 @@ export function generateSheet(sourceFolder, outputFile, { overlays = true } = {}
   const source = resolve(sourceFolder);
   const output = resolve(outputFile);
   if (!existsSync(source)) throw new Error(`No existe la carpeta: ${source}`);
-  const audit = auditFolder(source);
-  const missing = audit.rows.filter(row => row.missing);
-  if (missing.length) throw new Error(`Faltan poses: ${missing.map(row => row.pose).join(', ')}`);
+  const validation = validateFolder(source);
+  if (!validation.ok) {
+    throw new Error(`Pack invalido: ${validation.issues.map(item => item.code).join(', ')}`);
+  }
 
   const width = MARGIN * 2 + COLUMNS * CELL_WIDTH + (COLUMNS - 1) * GAP;
   const height = HEADER + MARGIN + 2 * CELL_HEIGHT + GAP;
-  const cards = audit.rows.map((row, index) => cell(row, index, source, overlays)).join('\n');
+  const cards = validation.analyses.map((row, index) => cell(row, index, source, overlays)).join('\n');
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
   width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="100%" height="100%" fill="#0b0f18" />
   <g font-family="Arial, Helvetica, sans-serif">
     <text x="${MARGIN}" y="40" fill="#ffffff" font-size="26" font-weight="700">Dico Physical 3D — plancha tecnica</text>
-    <text x="${MARGIN}" y="66" fill="#aeb8cc" font-size="13">8 poses oficiales · fuente opaca auditada · ningun master fue modificado</text>
+    <text x="${MARGIN}" y="66" fill="#aeb8cc" font-size="13">8 masters RGBA oficiales · registro canonico validado · ningun master fue modificado</text>
     <line x1="${MARGIN}" y1="88" x2="${MARGIN + 36}" y2="88" stroke="#3D6BFF" stroke-width="2" />
     <text x="${MARGIN + 44}" y="92" fill="#aeb8cc" font-size="12">diametro de moneda + centro</text>
     <line x1="${MARGIN + 270}" y1="88" x2="${MARGIN + 306}" y2="88" stroke="#f6b94a" stroke-width="2" />
@@ -135,7 +135,7 @@ export function generateSheet(sourceFolder, outputFile, { overlays = true } = {}
 
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, svg, 'utf8');
-  return { output, poses: audit.rows.length, extras: audit.extras.map(item => item.file) };
+  return { output, poses: validation.analyses.length };
 }
 
 const args = process.argv.slice(2);
@@ -152,4 +152,3 @@ const result = generateSheet(
   { overlays: !args.includes('--no-overlays') },
 );
 console.log(`OK  ${result.poses} poses -> ${result.output}`);
-if (result.extras.length) console.log(`INFO extras excluidos: ${result.extras.join(', ')}`);

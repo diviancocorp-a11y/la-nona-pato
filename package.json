@@ -32,7 +32,9 @@
     "qa:lite:motion-inventory": "node scripts/qa-lite/inventory-motion.mjs",
     "qa:lite:test": "node --test e2e/qa-lite/unit/guards.test.mjs e2e/qa-lite/unit/compare.test.mjs e2e/qa-lite/unit/seed.test.mjs e2e/qa-lite/unit/admin-theme.test.mjs e2e/qa-lite/unit/finite-animation-quiescence.test.mjs e2e/qa-lite/unit/dico-neutral.test.mjs",
     "dico:3d:derive": "node scripts/dico-3d-derivar.mjs",
-    "dico:3d:check": "node scripts/dico-3d-derivar.mjs --check"
+    "dico:3d:check": "node scripts/dico-3d-derivar.mjs --check",
+    "dico:3d:test": "node --test scripts/dico-3d-validar-assets.test.mjs scripts/dico-3d-derivar.test.mjs",
+    "dico:3d:validate": "node scripts/dico-3d-validar-assets.mjs platform/brand/dico-3d-masters && npm run dico:3d:check && npm run dico:3d:test"
   },
   "dependencies": {
     "@sentry/react": "^10.57.0",

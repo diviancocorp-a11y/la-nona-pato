@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import test from 'node:test';
 import {
   FINAL_FILE_BY_POSE,
+  MASTER_SHA256_BY_FILE,
   PHYSICAL_POSES,
   validateFolder,
 } from './dico-3d-validar-assets.mjs';
@@ -44,6 +45,8 @@ function writePose(file, {
   diameter = TEST_CONTRACT.coinDiameter * height,
   opaqueBackground = false,
   clipped = false,
+  transparentRgbResidual = false,
+  voltPixel = false,
 } = {}) {
   const png = new PNG({ width, height });
   const radius = diameter / 2;
@@ -74,6 +77,19 @@ function writePose(file, {
         png.data[i + 3] = 255;
       }
     }
+  }
+  if (transparentRgbResidual) {
+    png.data[0] = 1;
+    png.data[1] = 2;
+    png.data[2] = 3;
+    png.data[3] = 0;
+  }
+  if (voltPixel) {
+    const i = (Math.round(centerY) * width + Math.round(centerX)) * 4;
+    png.data[i] = 61;
+    png.data[i + 1] = 107;
+    png.data[i + 2] = 255;
+    png.data[i + 3] = 255;
   }
   const colorType = opaqueBackground ? 2 : 6;
   const bytes = PNG.sync.write(png, { colorType, inputColorType: 6 });
@@ -107,6 +123,16 @@ test('paquete positivo: ocho poses registradas y con RGBA real', () => {
   assert.equal(result.analyses.length, 8);
 });
 
+test('paquete oficial: fija los ocho hashes master', () => {
+  const root = resolve('platform/brand/dico-3d-masters');
+  const result = validateFolder(root);
+  assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+  assert.deepEqual(
+    Object.fromEntries(result.analyses.map(row => [row.file, row.sha256])),
+    MASTER_SHA256_BY_FILE,
+  );
+});
+
 test('referencia canonica: fija el hash de idle', () => {
   const root = completeFixture();
   const idle = join(root, FINAL_FILE_BY_POSE.idle);
@@ -131,6 +157,16 @@ test('mutacion: asset sin alfa', () => {
   assert.ok(found.has('NO_REAL_TRANSPARENCY'));
 });
 
+test('mutacion: RGB residual bajo alfa cero', () => {
+  const root = completeFixture({ idle: { transparentRgbResidual: true } });
+  assert.ok(codes(validateFolder(root, TEST_CONTRACT)).has('TRANSPARENT_RGB_RESIDUAL'));
+});
+
+test('mutacion: Volt rasterizado dentro del PNG', () => {
+  const root = completeFixture({ idle: { voltPixel: true } });
+  assert.ok(codes(validateFolder(root, TEST_CONTRACT)).has('VOLT_RASTERIZED'));
+});
+
 test('mutacion: canvas incorrecto', () => {
   const root = completeFixture({ pointDown: { width: 164 } });
   assert.ok(codes(validateFolder(root, TEST_CONTRACT)).has('CANVAS_MISMATCH'));
@@ -150,6 +186,27 @@ test('mutacion: archivo legacy', () => {
   const root = completeFixture();
   copyFileSync(join(root, FINAL_FILE_BY_POSE.idle), join(root, 'dico-3d-retro-galera.png'));
   assert.ok(codes(validateFolder(root, TEST_CONTRACT)).has('LEGACY_ASSET'));
+});
+
+test('mutacion: processing y question quedan fuera del vocabulario', () => {
+  const root = completeFixture();
+  copyFileSync(join(root, FINAL_FILE_BY_POSE.idle), join(root, 'dico-3d-processing.png'));
+  copyFileSync(join(root, FINAL_FILE_BY_POSE.idle), join(root, 'dico-3d-question.png'));
+  const found = codes(validateFolder(root, TEST_CONTRACT));
+  assert.ok(found.has('NON_OFFICIAL_POSE'));
+  assert.ok(found.has('UNEXPECTED_ASSET'));
+});
+
+test('mutacion: un master oficial alterado rompe su hash fijado', () => {
+  const root = completeFixture();
+  const hashes = Object.fromEntries(PHYSICAL_POSES.map(pose => {
+    const file = FINAL_FILE_BY_POSE[pose];
+    return [file, createHash('sha256').update(readFileSync(join(root, file))).digest('hex')];
+  }));
+  const contract = { ...TEST_CONTRACT, masterSha256ByFile: hashes };
+  assert.equal(validateFolder(root, contract).ok, true);
+  writePose(join(root, FINAL_FILE_BY_POSE.worried), { centerX: 81 });
+  assert.ok(codes(validateFolder(root, contract)).has('MASTER_HASH_MISMATCH'));
 });
 
 test('mutacion: clipping contra el borde', () => {

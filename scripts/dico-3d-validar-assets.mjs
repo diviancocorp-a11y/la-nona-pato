@@ -63,6 +63,17 @@ export const CANONICAL_3D_FRAME_REFERENCE = Object.freeze({
   bbox: Object.freeze({ left: 490, top: 288, right: 1124, bottom: 878 }),
 });
 
+export const MASTER_SHA256_BY_FILE = Object.freeze({
+  'dico-3d-idle.png': 'a08dfb896562140b4b8126b51714e0feb7d34e5447d5e8f1e811435534110a7b',
+  'dico-3d-explain.png': 'd366d9772426bac0cf8f35956f3033d7ff5f150a81623b19b3a19e3e6e7b81c1',
+  'dico-3d-point-down.png': '089d50ef9ad42e3bd8ee8e5fdef185471f4af8ebf0b64874722a951f3963086b',
+  'dico-3d-point-up.png': 'd117ff936ffc15b38ddbc9c4b663e7e15622e7bb4ef50fc7f6f302d3209a582d',
+  'dico-3d-thinking.png': '813ede8b378d879050c9b9939ce400f4ddabe89e215e0950a4fdf73a486f424a',
+  'dico-3d-worried.png': '517bc8583230f8e13cbfafc8ced31ead1c379cdd2763e6cbd0a940aaa2957ea3',
+  'dico-3d-success.png': '764c5857dc7ddceb48773958f8d45a46f7137632a56c6465d73d6d511978eb23',
+  'dico-3d-error.png': 'ac0aaa0f3c60577e42bd16fc2191bf3fd3ec614f7791b0bf75c92592e49e0752',
+});
+
 export const FINAL_CONTRACT = Object.freeze({
   width: CANONICAL_3D_FRAME_REFERENCE.width,
   height: CANONICAL_3D_FRAME_REFERENCE.height,
@@ -72,6 +83,7 @@ export const FINAL_CONTRACT = Object.freeze({
   }),
   coinDiameter: CANONICAL_3D_FRAME_REFERENCE.coinDiameter / CANONICAL_3D_FRAME_REFERENCE.height,
   canonicalReferenceSha256: CANONICAL_3D_FRAME_REFERENCE.sha256,
+  masterSha256ByFile: MASTER_SHA256_BY_FILE,
   centerTolerancePx: 8,
   diameterToleranceRatio: 0.015,
   registrationCenterTolerancePx: 8,
@@ -82,6 +94,7 @@ export const FINAL_CONTRACT = Object.freeze({
 });
 
 const LEGACY_NAME = /(legacy|retro|galera|bigote|mustache|top[-_ ]?hat|old)/i;
+const NON_OFFICIAL_POSE_NAME = /(processing|question)/i;
 const IMAGE_EXTENSION = /\.(png|webp|avif|jpe?g)$/i;
 
 function pngHeader(bytes) {
@@ -234,11 +247,20 @@ export function analyzePng(file, { auditOpaque = false } = {}) {
   let transparent = 0;
   let partial = 0;
   let opaque = 0;
-  for (let i = 3; i < png.data.length; i += 4) {
-    const alpha = png.data[i];
-    if (alpha === 0) transparent++;
-    else if (alpha === 255) opaque++;
+  let transparentRgbResidual = 0;
+  let voltPixels = 0;
+  for (let i = 0; i < png.data.length; i += 4) {
+    const r = png.data[i];
+    const g = png.data[i + 1];
+    const b = png.data[i + 2];
+    const actualAlpha = png.data[i + 3];
+    if (actualAlpha === 0) {
+      transparent++;
+      if (r !== 0 || g !== 0 || b !== 0) transparentRgbResidual++;
+    }
+    else if (actualAlpha === 255) opaque++;
     else partial++;
+    if (Math.hypot(r - 61, g - 107, b - 255) <= 36 && actualAlpha > 0) voltPixels++;
   }
 
   const hasRealTransparency = transparent > 0 && opaque + partial > 0;
@@ -272,7 +294,9 @@ export function analyzePng(file, { auditOpaque = false } = {}) {
       transparentRatio: transparent / total,
       visibleRatio: (opaque + partial) / total,
       real: hasRealTransparency,
+      transparentRgbResidual,
     },
+    voltPixels,
     matte,
     bbox,
     padding: bbox ? {
@@ -306,6 +330,9 @@ export function validateFolder(folder, contract = FINAL_CONTRACT) {
   for (const file of imageFiles.filter(file => LEGACY_NAME.test(file))) {
     issues.push(issue('LEGACY_ASSET', file, 'el nombre identifica un asset legacy prohibido'));
   }
+  for (const file of imageFiles.filter(file => NON_OFFICIAL_POSE_NAME.test(file))) {
+    issues.push(issue('NON_OFFICIAL_POSE', file, 'processing y question no pertenecen al vocabulario oficial'));
+  }
   for (const file of expected) {
     if (!imageFiles.includes(file)) issues.push(issue('POSE_MISSING', file, 'falta la pose oficial'));
   }
@@ -330,6 +357,10 @@ export function validateFolder(folder, contract = FINAL_CONTRACT) {
       && analysis.sha256 !== contract.canonicalReferenceSha256) {
       issues.push(issue('CANONICAL_REFERENCE_MISMATCH', file, 'idle no coincide byte a byte con la referencia canonica'));
     }
+    const expectedSha256 = contract.masterSha256ByFile?.[file];
+    if (expectedSha256 && analysis.sha256 !== expectedSha256) {
+      issues.push(issue('MASTER_HASH_MISMATCH', file, 'el master no coincide byte a byte con el hash fijado'));
+    }
 
     if (analysis.width !== contract.width || analysis.height !== contract.height) {
       issues.push(issue('CANVAS_MISMATCH', file, `canvas ${analysis.width}x${analysis.height}; esperado ${contract.width}x${contract.height}`));
@@ -345,6 +376,12 @@ export function validateFolder(folder, contract = FINAL_CONTRACT) {
     }
     if (analysis.alpha.real && analysis.alpha.partial === 0) {
       issues.push(issue('NO_ALPHA_ANTIALIAS', file, 'el borde no contiene alfa parcial'));
+    }
+    if (analysis.alpha.transparentRgbResidual > 0) {
+      issues.push(issue('TRANSPARENT_RGB_RESIDUAL', file, `${analysis.alpha.transparentRgbResidual} pixeles transparentes conservan RGB residual`));
+    }
+    if (analysis.voltPixels > 0) {
+      issues.push(issue('VOLT_RASTERIZED', file, `${analysis.voltPixels} pixeles visibles coinciden o se aproximan a Volt`));
     }
     if (!analysis.bbox) {
       issues.push(issue('BBOX_EMPTY', file, 'no se pudo medir el personaje'));
