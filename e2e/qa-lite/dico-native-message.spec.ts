@@ -63,6 +63,7 @@ async function geometry(page: import('@playwright/test').Page) {
         && (message.compareDocumentPosition(presence) & Node.DOCUMENT_POSITION_FOLLOWING),
       ),
       centerTail: document.querySelectorAll('.dico-burbuja--cola-centro').length,
+      lateralTail: document.querySelectorAll('.dico-burbuja--cola-lateral').length,
       physicalCount: document.querySelectorAll('.dico-physical').length,
       accessibleSources: document.querySelectorAll('.dico-burbuja-lectura:not([aria-hidden="true"])').length,
       hiddenReserveSources: document.querySelectorAll('.dico-burbuja-reserva[aria-hidden="true"]').length,
@@ -119,7 +120,12 @@ for (const viewport of VIEWPORTS) {
     const middle = await geometry(page)
 
     expect(start.messageBeforeNative).toBe(true)
-    expect(start.centerTail).toBe(1)
+    // LA COLA SALE PARA EL LADO DONDE NO ESTA DICO. En desktop Dico vive en la
+    // sidebar y el globo se abre hacia el workspace: una cola que baje
+    // apuntaria al vacio. En mobile sigue encima del personaje.
+    const enSidebar = viewport.width >= 769
+    expect(start.centerTail, `${viewport.name}: colas centradas`).toBe(enSidebar ? 0 : 1)
+    expect(start.lateralTail, `${viewport.name}: colas laterales`).toBe(enSidebar ? 1 : 0)
     expect(start.physicalCount).toBe(0)
     expect(start.accessibleSources).toBe(1)
     expect(start.hiddenReserveSources).toBe(1)

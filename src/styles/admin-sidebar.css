@@ -188,7 +188,11 @@
   .ag-sidebar .dico-avisos-mensaje {
     position: fixed;
     left: var(--ag-sidebar-riel);
-    top: 26px;
+    /* Debajo de la topbar, no encima: la topbar es chrome persistente y el
+       globo taparia el nombre del negocio. Medida: la barra mide 57px.
+       Queda igual "a la derecha y un poco mas abajo" que Dico, que arranca
+       en y=18, y la cola lateral cae a la altura del bloque de marca. */
+    top: 64px;
     z-index: calc(var(--ag-z-nav) + 2);
   }
 
