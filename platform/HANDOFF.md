@@ -8,6 +8,88 @@
 
 ---
 
+## 2/sep/2026 — OPTION A — DICO 2D + SIDEBAR + VOLT = CLOSED / QA CERTIFIED
+
+**Commit certificado: `4bdfa1b`**, en `feat/dico-panorama-v1`. Tags:
+`DICO_OPTION_A_FEATURE_COMPLETE_GATE_PENDING` (e627e43) y
+`DICO_OPTION_A_QA_CERTIFIED` (4bdfa1b). Integrado por `--ff-only`, sin merge
+commit. Lo que venga despues de ese SHA es documentacion, no codigo. Sin push,
+sin deploy.
+
+Base única certificada para empezar Physical.
+
+### Qué quedó cerrado
+
+- **Dico 2D final montado**, 40 px visual / 44 de área. El tamaño se eligió
+  midiendo: a 32 y 36 las cejas de `alert` se pierden en la trama y el estado
+  se lee igual que `neutral` — para una alerta eso es un error semántico.
+- **Sidebar desktop**, riel 64 → 224. La frontera es `769px`, que **no es
+  nueva**: era la única división "teléfono vs no-teléfono" que el repo ya
+  tenía. `NavInferior` no se elimina, se oculta donde la sidebar la sustituye,
+  y las dos consumen el mismo `tabs`.
+- **Dico se adapta a la interfaz, no al revés** (REVIEW A). La sidebar se
+  expande siempre —hover, teclado, con Physical afuera o el aviso abierto— y
+  lo que se corre es Dico. Una sola geometría: `--ag-sidebar-ancho`.
+- **B1 exacto**: click en Dico cierra el aviso y trae a Physical, sin
+  coexistencia. Dos gestos, dos targets: el contador dejó de ser calcomanía
+  sobre el arte (pisaba 15,3 px del aro) y es un botón de 44×44.
+- **Volt sobre el aro real del arte.** Los azules se nombran por soporte
+  (`2d-base` `#192B6C`, `3d-base` `#2A3369`, `flat`, `volt`) porque no son el
+  mismo RGB; el único sistemático es Volt y hay contrato que exige su
+  contraste contra **cada** base. Ningún PNG recoloreado.
+
+Detalle completo: `platform/PHASE-B6R-2D-MOUNT.md` y
+`platform/PHASE-B6R-SIDEBAR.md`.
+
+### Causas raíz del lote QA-CATALOG-DETERMINISM
+
+Fue un lote propio (rama `fix/qa-catalog-determinism`) porque no era Dico.
+**Tres de las cinco causas estaban en el harness, no en el producto.**
+
+1. **La preferencia de movimiento declarada nunca llegaba a la página**
+   (harness). Con el config pidiendo `reduce`, la página reportaba
+   `matchMedia(...).matches === false`; `page.emulateMedia` sí funcionaba.
+   O sea: toda la QA corría con movimiento, y los
+   `test.use({ reducedMotion: 'no-preference' })` de tres specs eran **no-ops
+   silenciosos**. De ahí el carrusel auto-avanzando en cada superficie, cuya
+   transición monta una segunda capa durante 744 ms. Medido: 83 momentos con
+   dos capas → 0.
+2. **El contrato neutral de Dico describía un estado que sólo existía porque
+   el harness estaba roto** (harness). Con `reduce` real el pulso y la entrada
+   se apagan, así que no podía converger nunca.
+3. **El panel de cobro del POS se medía mientras terminaba de entrar**
+   (harness). Primera medición variable, segunda siempre 403,25.
+4. **El carrusel auto-avanzaba con `prefers-reduced-motion`** y su lista se
+   encogía bajo el usuario cuando el ranking cargaba vacío (producto).
+5. **`generateId` colisionaba** 1 de cada ~300 corridas y bloqueaba commits al
+   azar (producto).
+
+**No se subió ningún threshold, no se excluyeron píxeles, no se agregaron
+sleeps y no se desactivó funcionalidad.** El auto-avance del carrusel se pausa
+con la afordancia que el producto ya tiene —tocar la tarjeta— y el reloj fijo
+del harness hace que esa pausa no venza durante la captura.
+
+Detalle y mediciones: `platform/QA-CATALOG-DETERMINISM.md`.
+
+### Cómo quedó el gate
+
+5 corridas consecutivas: DOM igual, `blockingDiffPixels: 0`, scroll identical,
+red externa 0. Los crudos varían (0/8/0/22/134) y quedan absorbidos por el
+contrato de anti-alias y redondeo **que ya existía**. Suite 1140/1140, harness
+28/28.
+
+### Dos trampas de esta sesión que conviene no repetir
+
+- **El gate compila la app desde el ref de git, no desde el working tree.** Un
+  cambio de `src/` sin commitear NO aparece en la corrida; el harness (`e2e/`)
+  sí se lee del working tree. Perdí varias vueltas creyendo que un arreglo no
+  funcionaba cuando ni siquiera estaba en el build.
+- **Dos veces un commit se llevó archivos que el mensaje no describía**, porque
+  el índice quedaba sucio de un intento fallido de commit. `git show --stat`
+  lo agarró las dos veces: no es una formalidad.
+
+---
+
 ## 2/sep/2026 — B6R.QA1 CERRADO: same-ref determinista (sesión Claude)
 
 **Cinco corridas consecutivas verdes**: DOM igual, `blockingDiffPixels: 0`,
