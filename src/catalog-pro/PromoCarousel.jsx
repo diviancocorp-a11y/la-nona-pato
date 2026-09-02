@@ -267,8 +267,15 @@ export default function PromoCarousel({ onOpenAccount }) {
   const { top, loading: topLoading } = useWeeklyTop();
   const [showHelp, setShowHelp] = useState(false);
 
+  // El ranking entra SOLO cuando ya tiene datos.
+  //
+  // Estaba con `topLoading || top.length > 0`, o sea que aparecia mientras
+  // cargaba y desaparecia si volvia vacio: la lista se encogia sola bajo el
+  // usuario y el slide que estaba mirando pasaba a ser otro. Ademas hacia la
+  // pantalla no determinista —segun si la consulta habia vuelto o no, el
+  // primer slide era "ranking" o "cumple"— y el gate lo marcaba.
   const slides = [];
-  if (topLoading || top.length > 0) {
+  if (!topLoading && top.length > 0) {
     slides.push({
       id: "ranking", emoji: "🏆", label: "Ranking semanal",
       board: true, // leaderboard adentro del card
@@ -286,7 +293,17 @@ export default function PromoCarousel({ onOpenAccount }) {
   });
   const len = slides.length;
 
-  const [base, setBase] = useState(0);
+  // El slide actual se recuerda por ID, no por indice: cuando el ranking entra
+  // adelante, el indice 0 pasa a ser otro slide y quien estaba mirando
+  // "cumple" se encontraba con otra cosa sin haber tocado nada.
+  const [baseId, setBaseId] = useState(null);
+  const base = Math.max(0, slides.findIndex((s) => s.id === baseId));
+  const setBase = useCallback((indice) => {
+    setBaseId((previo) => {
+      const destino = slides[indice];
+      return destino ? destino.id : previo;
+    });
+  }, [slides]);
   const [incoming, setIncoming] = useState(null);
   const [revealed, setRevealed] = useState(false);
   const [hovering, setHovering] = useState(false);

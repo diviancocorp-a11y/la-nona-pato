@@ -4,6 +4,23 @@ import { describe, expect, it } from 'vitest';
 
 const fuente = readFileSync(join(process.cwd(), 'src/catalog-pro/PromoCarousel.jsx'), 'utf8');
 
+describe('PromoCarousel — la lista no cambia bajo el usuario', () => {
+  it('el ranking entra solo cuando YA tiene datos', () => {
+    // Con `topLoading || top.length > 0` el slide aparecia mientras cargaba y
+    // desaparecia si volvia vacio: la lista se encogia sola y el slide que
+    // estabas mirando pasaba a ser otro. Ademas hacia la pantalla no
+    // determinista para el gate.
+    expect(fuente).toContain('if (!topLoading && top.length > 0)');
+    expect(fuente, 'volvio la inclusion optimista').not.toContain('if (topLoading || top.length > 0)');
+  });
+
+  it('el slide actual se recuerda por ID, no por indice', () => {
+    // Cuando el ranking entra adelante, el indice 0 pasa a ser otro slide.
+    expect(fuente).toContain('const [baseId, setBaseId] = useState(null)');
+    expect(fuente).toContain('slides.findIndex((s) => s.id === baseId)');
+  });
+});
+
 describe('PromoCarousel — contenido que se actualiza solo', () => {
   it('no auto-avanza cuando el usuario pidio menos movimiento', () => {
     // WCAG 2.2.2: contenido que se actualiza solo tiene que poder pararse.
