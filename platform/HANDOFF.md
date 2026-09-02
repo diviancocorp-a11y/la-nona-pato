@@ -8,6 +8,73 @@
 
 ---
 
+## 2/sep/2026 — PAQUETE 3D INTEGRADO (assets, no runtime)
+
+**Tag `DICO_3D_ASSET_PACKAGE_INTEGRATED` en `4ce334f`.** Integrado sobre la
+base certificada `22a8e1b` por cherry-pick de **8 commits contiguos** de
+`prep/dico-3d-final`, en orden y sin una sola resolucion manual.
+
+**Esto es solo el paquete de assets.** No se monto ninguna pose, no se toco
+crossfade, poses, bubble/cloud ni la presencia 2D/3D. `src/` no cambio ni una
+linea.
+
+### Por que 8 y no 3
+
+El pedido original eran los 3 commits finales. **No son autocontenidos**: el
+ultimo (`8246bd0`) *modifica* cinco archivos —el contrato, el validator con su
+test, y la sonda de auditoria— que crean los cinco commits anteriores.
+Verificado en una worktree descartable antes de tocar la rama:
+
+  b0861b1 + 4aff034 limpios, 8246bd0 conflicto DU en los cinco archivos
+  saltear los dos intermedios tampoco alcanza: conflicto UU de contenido
+  los 8 contiguos: 8/8 limpio
+
+Los cinco "extra" son exactamente contrato + validator + sonda, y **ninguno
+toca `src/`**. Sin ellos el propio paso de "ejecutar el validator 3D" no tiene
+que ejecutar.
+
+### El pack
+
+8 poses: `idle` `explain` `pointDown` `pointUp` `thinking` `worried` `success`
+`error`. **No entran** `processing`, `question` ni nada legacy — hay mutaciones
+del validator que lo prueban.
+
+  platform/brand/dico-3d-masters/   8 PNG (masters)
+  public/brand/dico/physical/       8 WebP lossless (derivados)
+  scripts/dico-3d-validar-assets.mjs + .test.mjs
+  scripts/dico-3d-derivar.mjs + .test.mjs
+  tools/dico-3d/                    sonda de auditoria
+  platform/DICO-3D-FINAL-PREP.md    el contrato
+
+### Verificacion
+
+| | |
+|---|---|
+| validator sobre masters | 8/8 PASS |
+| derivados `--check` | 8/8 reproducibles, RGBA exacto |
+| tests + mutaciones | 21/21 PASS |
+| suite | 1140/1140 |
+| harness | 28/28 |
+| same-ref | DOM igual, bloqueantes 0, scroll identical, red externa 0, **crudos 0** en las 9 superficies |
+
+Contrato: canvas 1600x1136, centro 800/546,5 exacto en las ocho, diametro de
+referencia 517,02 px con tolerancia declarada de 1,5% — `explain` y `thinking`
+miden 515,52 (desvio 0,29%), el resto exacto. Blue 453,5 declarado en el
+contrato canonico.
+
+### Dos cosas que conviene saber
+
+- **`@jsquash/webp` es dependencia nueva** (con `wasm-feature-detect`). Despues
+  de traer estos commits hay que correr `npm install` o el pre-commit rechaza
+  todo por el chequeo de `node_modules` contra el lockfile.
+- **El gate de assets publicos NO cubre `public/brand/dico/physical/`.** Lee
+  `public/brand/dico` sin recursion y filtra `.png`, asi que los WebP nuevos no
+  lo tocan —sigue 17/17— pero tampoco estan protegidos por el. Si el pack 3D
+  tiene que quedar bajo contrato de "exactamente estos ocho y nada mas", hay
+  que extenderlo; no se hizo aca porque el lote era integracion, no cambios.
+
+---
+
 ## 2/sep/2026 — OPTION A — DICO 2D + SIDEBAR + VOLT = CLOSED / QA CERTIFIED
 
 **Commit certificado: `4bdfa1b`**, en `feat/dico-panorama-v1`. Tags:
