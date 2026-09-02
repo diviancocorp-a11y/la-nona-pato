@@ -1,0 +1,78 @@
+/* DicoPhysical — el pack oficial en runtime.
+ *
+ * ── UNA SOLA CAJA, DOS CAPAS ──
+ * Las dos capas son `absolute; inset: 0` con `object-fit: contain`. La caja la
+ * pone quien monta el primitive; las capas no participan del layout, asi que
+ * cambiar de pose NO puede producir reflow ni desplazamiento: no hay nada en
+ * el flujo que se pueda mover.
+ *
+ * `aspect-ratio` sale del canvas certificado (1600x1136) y no se toca: es lo
+ * que garantiza que las ocho poses compartan encuadre, escala y anclaje.
+ */
+
+.dico-physical {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1600 / 1136;
+  /* Decorativo por definicion: lo que Dico dice va en la burbuja, y el control
+     para guardarlo es la ranura del Slot. */
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.dico-physical-capa {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* `contain` sobre la caja del canvas entero: el personaje queda donde el
+     encuadre lo puso, y el margen transparente del asset se respeta. Recortar
+     ese margen romperia justamente lo que lo hace util: que las ocho poses
+     —incluidas las de brazo levantado— entren en el mismo canvas sin clipping. */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* La saliente se queda OPACA abajo. Si las dos se desvanecieran a la vez, en
+   el medio del cambio se veria el fondo a traves del personaje. */
+.dico-physical-capa--saliente {
+  z-index: 0;
+  opacity: 1;
+}
+
+/* La entrante aparece ENCIMA. Arranca invisible y no se revela hasta que el
+   WebP cargo (`--lista`): sin eso, la primera vez que se usa una pose el cruce
+   empieza contra un hueco transparente. */
+.dico-physical-capa--actual {
+  z-index: 1;
+  opacity: 0;
+}
+
+.dico-physical-capa--actual.dico-physical-capa--lista {
+  opacity: 1;
+  transition: opacity var(--dico-cruce, 140ms) ease-out;
+}
+
+/* Sin capa saliente no hay nada contra que cruzar: la primera pose aparece
+   directamente, sin un fundido de entrada que nadie pidio. */
+.dico-physical:not([data-dico-physical-cruzando='si']) .dico-physical-capa--actual.dico-physical-capa--lista {
+  transition: none;
+}
+
+/* ── Reduced Motion ──────────────────────────────────────────────────────
+ * Cambio inmediato: ni cruce ni traslacion. No se degrada la transicion, se
+ * saca. La pose se sustituye y punto. */
+.dico-physical--sin-cruce .dico-physical-capa--actual,
+.dico-physical--sin-cruce .dico-physical-capa--actual.dico-physical-capa--lista {
+  opacity: 1;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-physical-capa--actual,
+  .dico-physical-capa--actual.dico-physical-capa--lista {
+    opacity: 1;
+    transition: none;
+  }
+}
