@@ -7,10 +7,14 @@ if (!['127.0.0.1', 'localhost'].includes(hostname)) {
   throw new Error(`DICO-QA-Lite rechazo target no local: ${hostname}`)
 }
 const motionInventoryOnly = process.env.QA_MOTION_INVENTORY_ONLY === '1'
+// Captura de evidencia, no gate: corre a pedido y no engorda cada comparacion.
+const sequenceOnly = process.env.QA_SEQUENCE_ONLY === '1'
 
 export default defineConfig({
   testDir: './e2e/qa-lite',
-  testMatch: motionInventoryOnly
+  testMatch: sequenceOnly
+    ? ['dico-physical-sequence.spec.ts']
+    : motionInventoryOnly
     ? ['motion-inventory.spec.ts']
     : [
       'dom-parity.spec.ts',
