@@ -57,7 +57,12 @@ export const formatQty = (n) => {
   return num.toLocaleString("es-AR", { maximumFractionDigits: dp });
 };
 export const todayISO = () => new Date().toISOString().split("T")[0];
-export const generateId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+// 8 caracteres de azar, no 4. Con 4 hay ~1,68M combinaciones y cien ids
+// generados en el mismo milisegundo colisionan con ~0,3% de probabilidad —lo
+// suficiente para que el test de unicidad fallara solo cada tantas corridas y
+// bloqueara commits al azar—. Con 8 la probabilidad baja a ~2e-9. Mismo
+// formato base36, solo mas largo.
+export const generateId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 // Código corto unificado para pedidos y recibos: #XXXXXX (últimos 6 chars del ID sin guiones)
 export const formatOrderCode = (id) => { const s = String(id || "").replace(/-/g, ""); return "#" + s.slice(-6).toUpperCase(); };
 
