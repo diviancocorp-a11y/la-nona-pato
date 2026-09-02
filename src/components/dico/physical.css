@@ -10,7 +10,7 @@
  * que garantiza que las ocho poses compartan encuadre, escala y anclaje.
  */
 
-.dico-physical {
+.dico-pose {
   position: relative;
   width: 100%;
   aspect-ratio: 1600 / 1136;
@@ -20,7 +20,7 @@
   isolation: isolate;
 }
 
-.dico-physical-capa {
+.dico-pose-capa {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -36,7 +36,7 @@
 
 /* La saliente se queda OPACA abajo. Si las dos se desvanecieran a la vez, en
    el medio del cambio se veria el fondo a traves del personaje. */
-.dico-physical-capa--saliente {
+.dico-pose-capa--saliente {
   z-index: 0;
   opacity: 1;
 }
@@ -44,34 +44,34 @@
 /* La entrante aparece ENCIMA. Arranca invisible y no se revela hasta que el
    WebP cargo (`--lista`): sin eso, la primera vez que se usa una pose el cruce
    empieza contra un hueco transparente. */
-.dico-physical-capa--actual {
+.dico-pose-capa--actual {
   z-index: 1;
   opacity: 0;
 }
 
-.dico-physical-capa--actual.dico-physical-capa--lista {
+.dico-pose-capa--actual.dico-pose-capa--lista {
   opacity: 1;
   transition: opacity var(--dico-cruce, 140ms) ease-out;
 }
 
 /* Sin capa saliente no hay nada contra que cruzar: la primera pose aparece
    directamente, sin un fundido de entrada que nadie pidio. */
-.dico-physical:not([data-dico-physical-cruzando='si']) .dico-physical-capa--actual.dico-physical-capa--lista {
+.dico-pose:not([data-dico-physical-cruzando='si']) .dico-pose-capa--actual.dico-pose-capa--lista {
   transition: none;
 }
 
 /* ── Reduced Motion ──────────────────────────────────────────────────────
  * Cambio inmediato: ni cruce ni traslacion. No se degrada la transicion, se
  * saca. La pose se sustituye y punto. */
-.dico-physical--sin-cruce .dico-physical-capa--actual,
-.dico-physical--sin-cruce .dico-physical-capa--actual.dico-physical-capa--lista {
+.dico-pose--sin-cruce .dico-pose-capa--actual,
+.dico-pose--sin-cruce .dico-pose-capa--actual.dico-pose-capa--lista {
   opacity: 1;
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dico-physical-capa--actual,
-  .dico-physical-capa--actual.dico-physical-capa--lista {
+  .dico-pose-capa--actual,
+  .dico-pose-capa--actual.dico-pose-capa--lista {
     opacity: 1;
     transition: none;
   }

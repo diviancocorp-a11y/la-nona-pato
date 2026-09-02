@@ -11,7 +11,7 @@ const RAIZ = process.cwd();
 const physicalCss = readFileSync(join(RAIZ, 'src/components/dico/physical.css'), 'utf8');
 
 const montar = (props = {}) => render(React.createElement(DicoPhysical, { reducedMotion: false, ...props }));
-const capas = (c) => [...c.querySelectorAll('.dico-physical-capa')].map((i) => i.getAttribute('src'));
+const capas = (c) => [...c.querySelectorAll('.dico-pose-capa')].map((i) => i.getAttribute('src'));
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -48,7 +48,7 @@ describe('DicoPhysical — el pack oficial y nada mas', () => {
     const vistas = new Set();
     for (const pose of PHYSICAL_POSES) {
       const { container, unmount } = montar({ pose });
-      const src = container.querySelector('.dico-physical-capa--actual').getAttribute('src');
+      const src = container.querySelector('.dico-pose-capa--actual').getAttribute('src');
       expect(src, pose).toBe(`/brand/dico/physical/${DICO_PHYSICAL_ASSETS[pose].runtime}`);
       vistas.add(src);
       unmount();
@@ -79,7 +79,7 @@ describe('DicoPhysical — el cruce', () => {
     expect(container.querySelector('[data-dico-physical-cruzando]').dataset.dicoPhysicalCruzando).toBe('si');
 
     // En el navegador esto lo dispara el propio WebP; jsdom no carga imagenes.
-    act(() => { container.querySelector('.dico-physical-capa--actual').dispatchEvent(new Event('load')); });
+    act(() => { container.querySelector('.dico-pose-capa--actual').dispatchEvent(new Event('load')); });
     act(() => { vi.advanceTimersByTime(CRUCE_MS + 40); });
     expect(capas(container)).toEqual([rutaDePose('success')]);
     expect(container.querySelector('[data-dico-physical-cruzando]').dataset.dicoPhysicalCruzando).toBe('no');
@@ -90,12 +90,12 @@ describe('DicoPhysical — el cruce', () => {
     // hueco transparente mientras el navegador la baja.
     const { container, rerender } = montar({ pose: 'idle' });
     rerender(React.createElement(DicoPhysical, { pose: 'worried', reducedMotion: false }));
-    const entrante = container.querySelector('.dico-physical-capa--actual');
-    expect(entrante.className).not.toContain('dico-physical-capa--lista');
+    const entrante = container.querySelector('.dico-pose-capa--actual');
+    expect(entrante.className).not.toContain('dico-pose-capa--lista');
 
     act(() => { entrante.dispatchEvent(new Event('load')); });
-    expect(container.querySelector('.dico-physical-capa--actual').className)
-      .toContain('dico-physical-capa--lista');
+    expect(container.querySelector('.dico-pose-capa--actual').className)
+      .toContain('dico-pose-capa--lista');
   });
 
   it('cambiar ocho veces seguidas deja UNA sola capa', () => {
@@ -130,7 +130,7 @@ describe('DicoPhysical — reduced motion', () => {
     // Por clase para el override explicito, por media query para el caso en que
     // nadie pase la prop. Si solo estuviera la clase, un montaje sin prop
     // animaria igual.
-    expect(physicalCss).toContain('.dico-physical--sin-cruce');
+    expect(physicalCss).toContain('.dico-pose--sin-cruce');
     const bloque = physicalCss.slice(physicalCss.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(bloque).toContain('transition: none');
   });
@@ -139,20 +139,20 @@ describe('DicoPhysical — reduced motion', () => {
 describe('DicoPhysical — geometria', () => {
   it('las dos capas comparten caja y no participan del layout', () => {
     // Es lo que hace imposible el reflow y el salto entre poses.
-    const capa = physicalCss.match(/\.dico-physical-capa \{([^}]*)\}/)[1];
+    const capa = physicalCss.match(/\.dico-pose-capa \{([^}]*)\}/)[1];
     expect(capa).toContain('position: absolute');
     expect(capa).toContain('inset: 0');
     expect(capa).toContain('object-fit: contain');
   });
 
   it('el aspecto sale del canvas certificado, no de un numero suelto', () => {
-    const caja = physicalCss.match(/\.dico-physical \{([^}]*)\}/)[1];
+    const caja = physicalCss.match(/\.dico-pose \{([^}]*)\}/)[1];
     expect(caja).toContain('aspect-ratio: 1600 / 1136');
   });
 
   it('declara las dimensiones intrinsecas para que el navegador reserve la caja', () => {
     const { container } = montar({ pose: 'idle' });
-    const img = container.querySelector('.dico-physical-capa--actual');
+    const img = container.querySelector('.dico-pose-capa--actual');
     expect(img.getAttribute('width')).toBe('1600');
     expect(img.getAttribute('height')).toBe('1136');
   });
@@ -161,6 +161,6 @@ describe('DicoPhysical — geometria', () => {
     // Las ocho comparten canvas, centro y diametro. Mover el personaje entre
     // poses seria agregar movimiento decorativo, no arreglar continuidad.
     expect(physicalCss).not.toContain('translate');
-    expect(physicalCss).not.toMatch(/\.dico-physical-capa[^{]*\{[^}]*transform:/);
+    expect(physicalCss).not.toMatch(/\.dico-pose-capa[^{]*\{[^}]*transform:/);
   });
 });

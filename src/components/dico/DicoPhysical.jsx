@@ -90,7 +90,7 @@ export default function DicoPhysical({
     setCapas((c) => (c.lista ? c : { ...c, lista: true }));
   }, []);
 
-  const clases = ['dico-physical', sinCruce ? 'dico-physical--sin-cruce' : '', className]
+  const clases = ['dico-pose', sinCruce ? 'dico-pose--sin-cruce' : '', className]
     .filter(Boolean).join(' ');
 
   return (
@@ -105,7 +105,7 @@ export default function DicoPhysical({
       {capas.saliente && (
         <img
           key={capas.saliente}
-          className="dico-physical-capa dico-physical-capa--saliente"
+          className="dico-pose-capa dico-pose-capa--saliente"
           src={rutaDePose(capas.saliente)}
           alt=""
           width={1600}
@@ -116,7 +116,7 @@ export default function DicoPhysical({
       )}
       <img
         key={capas.actual}
-        className={`dico-physical-capa dico-physical-capa--actual${capas.lista ? ' dico-physical-capa--lista' : ''}`}
+        className={`dico-pose-capa dico-pose-capa--actual${capas.lista ? ' dico-pose-capa--lista' : ''}`}
         src={rutaDePose(capas.actual)}
         alt=""
         width={1600}

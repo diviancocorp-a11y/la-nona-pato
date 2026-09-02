@@ -23,12 +23,35 @@
   transition: padding-top 240ms cubic-bezier(.2, .72, .25, 1);
 }
 
+/* ── EL ESCENARIO, DERIVADO DEL CONTRATO ─────────────────────────────────
+ *
+ * El pack oficial NO es cuadrado: canvas 1600x1136 (aspecto 1,4085), contra el
+ * cuerpo legacy que era 1254x1254. Asi que la caja cambia de forma, y los
+ * numeros salen de medir, no de tantear:
+ *
+ *   legacy      moneda 75,60% del canvas -> en 184px se veia a ~139px
+ *   oficial     moneda 31,19% del canvas -> necesita 446px para verse igual
+ *
+ * Se toma 448px para que la moneda quede en ~139,7px: el mismo tamanio en
+ * pantalla que tenia Dico antes. No se elige una escala nueva.
+ *
+ * La caja se ve grande porque el personaje ocupa solo el 40% del canvas: el
+ * resto es margen transparente, y ese margen es justamente lo que permite que
+ * las ocho poses —incluidas las de brazo levantado— entren en el mismo encuadre
+ * sin clipping. Recortarlo romperia el footprint compartido. */
 .dico-slot-stage {
+  --pose-ancho: 448px;
+  --pose-alto: calc(var(--pose-ancho) / (1600 / 1136));
+  /* Los pies del personaje caen a 878/1136 del alto: debajo queda 22,71% de
+     margen transparente. Se descuenta para que los pies queden sobre la ranura
+     y no flotando, que es lo que hace legible que Dico SALE del Slot. */
+  --pose-bajo-pies: calc(var(--pose-alto) * 0.2271);
+
   position: absolute;
   left: 50%;
-  bottom: 23px;
-  width: 184px;
-  height: 184px;
+  bottom: calc(23px - var(--pose-bajo-pies) + 6px);
+  width: var(--pose-ancho);
+  height: var(--pose-alto);
   transform: translateX(-50%);
   pointer-events: none;
   overflow: visible;
@@ -45,47 +68,9 @@
   filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .34));
 }
 
-.dico-physical-cuerpo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
-  animation: dico-physical-body-reveal 780ms cubic-bezier(.2, .72, .18, 1) both;
-}
-
-/* El render Physical tiene el centro limpio. La cara modular entra como tinta
-   viva sobre el volumen, sin convertir el render en una hoja de sprites.
- *
- * ENCUADRE CANONICO (B6). Medido antes: la anatomia era identica pero se pintaba
- * 2,28x mas chica que en Native —ojos al 10,21% del ancho de la moneda contra
- * 23,25%—, con la jerarquia interna intacta (ojos/boca 1,732 contra 1,73). O
- * sea: el problema nunca fue la geometria sino este marco, que se posiciona en
- * porcentajes del cuadro entero mientras la galera empuja la moneda hacia abajo
- * y la achata.
- *
- * Se corrige ACA y no en `CaraDeTinta`: hay una sola anatomia y no se duplica.
- *
- * El factor no es 2,28 sino 2,0, y es a proposito. Igualar el ancho exacto
- * dejaba la cara ocupando el 58% del alto de una moneda escorzada contra el 45%
- * de Native: se corrige una desproporcion creando otra. Con 2,0 las dos medidas
- * quedan dentro del 12,5% de Native. El criterio del lote es "el mismo
- * personaje en dos materiales", no dos renders identicos. */
-.dico-physical-cara {
-  --dico-cara-ancho: 98%;   /* 49% x 2,0 */
-  --dico-cara-cx: 49.96%;   /* centro horizontal de la moneda, medido por pixel */
-  --dico-cara-cy: 59.9%;
-  position: absolute;
-  left: calc(var(--dico-cara-cx) - var(--dico-cara-ancho) / 2);
-  top: calc(var(--dico-cara-cy) - var(--dico-cara-ancho) / 2);
-  width: var(--dico-cara-ancho);
-  height: var(--dico-cara-ancho);
-  overflow: visible;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .08));
-  animation: dico-physical-face-reveal 780ms linear both;
-}
+/* El personaje lo dibuja `DicoPhysical` (ver `physical.css`): una caja con dos
+   capas, sin cuerpo-sin-cara ni capa de tinta encima. El pack oficial ya trae
+   la cara renderizada, asi que aca no queda nada que encuadrar. */
 
 .dico-slot-control {
   position: relative;
@@ -170,38 +155,10 @@
 
 /* Primero se lee moneda/objeto. Los brazos llegan cuando el giro ya resolvio
    la orientacion; no aparecen antes que el personaje tenga frente. */
-@keyframes dico-physical-body-reveal {
-  0%, 52% { clip-path: circle(31% at 50% 52%); }
-  72%, 100% { clip-path: inset(0); }
-}
-
 /* El rostro pertenece al frente: no debe verse durante el perfil. */
-@keyframes dico-physical-face-reveal {
-  0%, 55% { opacity: 0; }
-  68%, 100% { opacity: 1; }
-}
-
 /* El regreso invierte la causalidad: rostro -> brazos -> perfil -> Slot. */
 .dico-slot--cerrando .dico-physical {
   animation: dico-physical-return 700ms cubic-bezier(.55, .05, .72, .3) both;
-}
-
-.dico-slot--cerrando .dico-physical-cuerpo {
-  animation: dico-physical-body-return 700ms ease both;
-}
-
-.dico-slot--cerrando .dico-physical-cara {
-  animation: dico-physical-face-return 700ms linear both;
-}
-
-@keyframes dico-physical-face-return {
-  0% { opacity: 1; }
-  18%, 100% { opacity: 0; }
-}
-
-@keyframes dico-physical-body-return {
-  0%, 24% { clip-path: inset(0); }
-  48%, 100% { clip-path: circle(31% at 50% 52%); }
 }
 
 @keyframes dico-physical-return {
@@ -220,9 +177,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dico-physical,
-  .dico-physical-cuerpo,
-  .dico-physical-cara { animation: none; }
+  .dico-physical { animation: none; }
   .dico-slot,
   .dico-slot-luz { transition: none; }
 }

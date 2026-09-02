@@ -22,6 +22,7 @@ import { render } from '@testing-library/react';
 import CaraDeTinta from '../components/dico/CaraDeTinta';
 import DicoCara, { ESTADOS_DICO } from '../components/dico/DicoCara';
 import DicoSlot from '../components/dico/DicoSlot';
+import { PHYSICAL_POSES } from '../components/dico/vocabulario';
 
 const RAIZ = resolve(__dirname, '..', '..');
 const dicoCss = readFileSync(resolve(RAIZ, 'src/components/dico/dico.css'), 'utf8');
@@ -122,9 +123,6 @@ describe('B6 — el vocabulario canonico esta completo', () => {
       const native = render(React.createElement(DicoCara, { estado: alias, size: 48 }));
       expect(native.container.querySelector(`.dico--${canonico}`), alias).toBeInTheDocument();
       expect(native.container.querySelector(`.dico--${alias}`), `${alias} sobrevive como clase`).toBeNull();
-
-      const physical = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: alias }));
-      expect(physical.container.querySelector(`.dico-physical-cara .dico--${canonico}`), alias).toBeInTheDocument();
     }
   });
 
@@ -175,10 +173,15 @@ describe('B6 — Native y Physical hablan el mismo vocabulario', () => {
     render(React.createElement('svg', { viewBox: '0 0 120 120' }, React.createElement(CaraDeTinta))).container,
   );
 
-  it('Physical acepta los mismos estados que Native', () => {
-    for (const estado of CANONICOS) {
-      const { container } = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: estado }));
-      expect(container.querySelector(`.dico-physical-cara .dico--${estado}`), estado).toBeInTheDocument();
+  it('Physical expresa por POSE, no por una cara montada encima', () => {
+    // Cambio la modalidad, no el eje: antes Physical recibia un estado facial y
+    // se le pintaba `CaraDeTinta` arriba; ahora recibe una de las ocho poses
+    // del pack oficial, que ya traen la cara. Sigue sin quedar clavado.
+    for (const pose of PHYSICAL_POSES) {
+      const { container, unmount } = render(React.createElement(DicoSlot, { estado: 'physical_open', pose }));
+      expect(container.querySelector('[data-dico-physical]').dataset.dicoPhysical, pose).toBe(pose);
+      expect(container.querySelector('.dico-physical-cara'), `${pose} monta una cara encima`).toBeNull();
+      unmount();
     }
   });
 
@@ -187,47 +190,49 @@ describe('B6 — Native y Physical hablan el mismo vocabulario', () => {
     // expresar nada. Este contrato existe para que no vuelva a pasar.
     const fuente = readFileSync(resolve(RAIZ, 'src/components/dico/DicoSlot.jsx'), 'utf8');
     expect(fuente).not.toMatch(/className="dico--idle"/);
-    const { container } = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: 'error' }));
-    expect(container.querySelector('.dico--idle')).not.toBeInTheDocument();
+    const { container } = render(React.createElement(DicoSlot, { estado: 'physical_open', pose: 'error' }));
+    expect(container.querySelector('[data-dico-physical]').dataset.dicoPhysical).toBe('error');
   });
 
-  it('un estado desconocido cae en idle en las dos modalidades', () => {
+  it('un valor desconocido cae en el default de cada modalidad', () => {
     const native = render(React.createElement(DicoCara, { estado: 'inventado', size: 48 }));
     expect(native.container.querySelector('.dico--idle')).toBeInTheDocument();
-    const physical = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: 'inventado' }));
-    expect(physical.container.querySelector('.dico-physical-cara .dico--idle')).toBeInTheDocument();
+    // Physical no tiene un asset para lo que no existe: cae en `idle` o pediria
+    // un archivo que no esta.
+    const physical = render(React.createElement(DicoSlot, { estado: 'physical_open', pose: 'inventado' }));
+    expect(physical.container.querySelector('[data-dico-physical]').dataset.dicoPhysical).toBe('idle');
   });
 
-  it('las dos siguen montando la anatomia de CaraDeTinta, en todos los estados', () => {
+  it('Native sigue montando la anatomia de CaraDeTinta en todos los estados', () => {
     for (const estado of CANONICOS) {
       const native = render(React.createElement(DicoCara, { estado, size: 48 }));
-      const physical = render(React.createElement(DicoSlot, { estado: 'physical_open', cara: estado }));
       expect(firmaAnatomia(native.container.querySelector('.dico-cara')), `native ${estado}`).toEqual(referencia);
-      expect(firmaAnatomia(physical.container.querySelector('.dico-physical-cara')), `physical ${estado}`).toEqual(referencia);
     }
   });
 
-  it('la correccion de proporcion vive en el marco, no en una segunda anatomia', () => {
-    // El encuadre de Physical se corrige por CSS sobre `.dico-physical-cara`.
-    // Si alguien lo "arreglara" duplicando geometria, la firma de arriba dejaria
-    // de coincidir; esto fija ademas COMO tiene que estar escrita la correccion.
+  it('la geometria de Physical se deriva del canvas certificado, no se tantea', () => {
+    // Antes esto protegia el encuadre de `CaraDeTinta` sobre el cuerpo 3D: la
+    // cara se pintaba 2,28x mas chica y el arreglo tenia que vivir en el marco,
+    // no en una segunda anatomia. Con el pack oficial esa correccion no existe
+    // —la cara viene renderizada a escala—, pero el riesgo se mudo: que alguien
+    // fije el tamanio del escenario a ojo y rompa el encuadre compartido.
     //
-    // Se mira el BLOQUE, no el archivo entero. Buscar `--dico-cara-ancho` suelto
-    // en `slotCss` no probaba nada: al reemplazar la declaracion por un
-    // `width: 98%` fijo el nombre seguia apareciendo en el `var()` de mas abajo
-    // y el contrato pasaba igual. Lo encontro la mutacion, no la lectura.
-    const bloque = slotCss.match(/\.dico-physical-cara\s*\{([^}]*)\}/);
+    // Se mira el BLOQUE, como antes, y que los valores se DERIVEN.
+    const bloque = slotCss.match(/\.dico-slot-stage\s*\{([^}]*)\}/);
     expect(bloque).not.toBeNull();
     const cuerpo = bloque[1];
 
-    for (const v of ['--dico-cara-ancho', '--dico-cara-cx', '--dico-cara-cy']) {
+    for (const v of ['--pose-ancho', '--pose-alto', '--pose-bajo-pies']) {
       expect(cuerpo, `falta ${v}`).toContain(v);
     }
-    // La geometria se deriva de esas tres: ningun valor crudo la puentea.
-    for (const prop of ['left', 'top', 'width', 'height']) {
-      const decl = cuerpo.match(new RegExp(`(?:^|;|\\n)\\s*${prop}\\s*:([^;]*)`));
-      expect(decl, `falta ${prop}`).not.toBeNull();
-      expect(decl[1], `${prop} con valor fijo en vez de derivado`).toContain('var(--dico-cara-');
+    // El alto sale del aspecto del canvas, no de un numero suelto.
+    expect(cuerpo).toContain('1600 / 1136');
+    // Sin regex: alcanza con partir por `;` y mirar cada declaracion.
+    const declaraciones = cuerpo.split(';').map((d) => d.trim());
+    for (const prop of ['width', 'height', 'bottom']) {
+      const decl = declaraciones.find((d) => d.startsWith(`${prop}:`));
+      expect(decl, `falta ${prop}`).toBeDefined();
+      expect(decl, `${prop} con valor fijo en vez de derivado`).toContain('var(--pose-');
     }
   });
 });
@@ -253,12 +258,20 @@ describe('B6 — habla es una dimension aparte del estado', () => {
     expect(raiz).toHaveClass('dico--error');
     expect(raiz).toHaveClass('dico--habla-open');
 
+    // Physical NO tiene eje de habla: los ocho renders son poses, no frames de
+    // boca, y simular lipsync esta explicitamente fuera del contrato. Si
+    // apareciera un `habla` que cambia el asset, seria eso.
+    // Se mira el CODIGO, no la documentacion: el encabezado del componente
+    // explica justamente que el eje de habla se fue, y prohibir la palabra
+    // castigaria esa explicacion.
+    const codigo = readFileSync(resolve(RAIZ, 'src/components/dico/DicoSlot.jsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+    expect(codigo, 'volvio el eje de habla a Physical').not.toContain('habla');
     const physical = render(React.createElement(DicoSlot, {
-      estado: 'physical_open', cara: 'error', habla: 'open',
+      estado: 'physical_open', pose: 'error', habla: 'open',
     }));
-    const capa = physical.container.querySelector('.dico-physical-cara > g');
-    expect(capa.className.baseVal).toContain('dico--error');
-    expect(capa.className.baseVal).toContain('dico--habla-open');
+    expect(physical.container.querySelector('[data-dico-physical]').dataset.dicoPhysical).toBe('error');
   });
 
   it('un frame desconocido no ensucia las clases', () => {

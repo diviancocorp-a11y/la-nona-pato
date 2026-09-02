@@ -52,10 +52,12 @@ const rel = p => norm(p).slice(norm(RAIZ).length + 1);
  * hasta que alguien lo clasifique: es el unico momento en que se decide si una
  * imagen puede o no tocar la app. */
 
+/* Physical dejo de salir de aca: ahora usa el pack oficial 3D, que vive en
+   `public/brand/dico/physical/` y trae la cara renderizada. `dico-physical-body`
+   queda archivado como el resto. */
 const CUERPOS_RUNTIME = [
   'moneda-sin-brazos.webp',   // Native: disco liso, sin rasgos
   'brazos.webp',              // Native: brazos y guantes sobre alfa
-  'dico-physical-body.webp',  // Physical: moneda con galera, centro limpio
 ];
 
 /** Fuentes archivadas SIN cara. Podrian entrar sin dano; hoy no las usa nadie. */
@@ -214,7 +216,7 @@ describe('B5 — el grafo productivo no alcanza la cara legacy', () => {
     }
   });
 
-  it('alcanza exactamente los tres cuerpos sin cara', () => {
+  it('alcanza exactamente los dos cuerpos sin cara que le quedan a Native', () => {
     const dePoses = [...PRODUCTIVO.alcanzables]
       .filter(f => f.startsWith(`${POSES}/`) && !f.endsWith('.md'))
       .map(f => f.slice(POSES.length + 1))
@@ -239,7 +241,9 @@ describe('B5 — el grafo productivo no alcanza la cara legacy', () => {
 
   it('clasifica todos los assets de poses/ y no deja ninguno sin decidir', () => {
     const enDisco = readdirSync(join(RAIZ, POSES)).filter(n => n !== 'README.md').sort();
-    expect(enDisco).toEqual([...CUERPOS_RUNTIME, ...ARCHIVO_SIN_CARA, ...ARCHIVO_CARA_LEGACY].sort());
+    expect(enDisco).toEqual([
+      ...CUERPOS_RUNTIME, 'dico-physical-body.webp', ...ARCHIVO_SIN_CARA, ...ARCHIVO_CARA_LEGACY,
+    ].sort());
   });
 });
 
@@ -286,17 +290,19 @@ describe('B5 — Native y Physical rinden la anatomia de CaraDeTinta', () => {
     expect(firmaAnatomia(capa)).toEqual(referencia);
   });
 
-  it('Physical monta esa MISMA anatomia sobre el cuerpo 3D limpio', () => {
+  it('Physical usa el pack oficial y NO le monta una cara encima', () => {
+    // Esto era al reves: Physical era un cuerpo sin cara mas `CaraDeTinta`
+    // arriba, y habia un contrato que exigia que el cuerpo NO tuviera rasgos
+    // —"si alguien lo reemplazara por un render con rasgos, la cara canonica
+    // quedaria encima de otra cara"—. Los ocho assets oficiales SI traen la
+    // cara renderizada, asi que la regla se cumple de la unica forma posible:
+    // sacando la capa de tinta.
     const { container } = render(React.createElement(DicoSlot, { estado: 'physical_open' }));
-    const capa = container.querySelector('.dico-physical-cara');
-    expect(capa).toBeInTheDocument();
-    expect(firmaAnatomia(capa)).toEqual(referencia);
+    expect(container.querySelector('.dico-physical-cara')).toBeNull();
+    expect(container.querySelector('svg')).toBeNull();
 
-    // El cuerpo Physical es un asset SIN cara. Si alguien lo reemplazara por un
-    // render con rasgos, la cara canonica quedaria encima de otra cara.
-    const cuerpo = container.querySelector('.dico-physical-cuerpo');
-    expect(cuerpo.getAttribute('src')).toContain('dico-physical-body');
-    expect(CUERPOS_RUNTIME).toContain('dico-physical-body.webp');
+    const capa = container.querySelector('.dico-pose-capa--actual');
+    expect(capa.getAttribute('src')).toBe('/brand/dico/physical/dico-3d-idle.webp');
   });
 
   it('el fallback provisorio de Native tambien es canonico', () => {
@@ -306,22 +312,17 @@ describe('B5 — Native y Physical rinden la anatomia de CaraDeTinta', () => {
     expect(fuente.slice(fuente.indexOf('function DicoProvisoria'))).toContain('CapaDeTinta');
   });
 
-  it('una expresion nueva en CaraDeTinta alcanza a las dos modalidades', () => {
-    // El contrato de fondo de B5. La firma son atributos internos del viewBox,
-    // asi que NO exige que Native y Physical se pinten al mismo tamanio,
-    // offset ni escala: los cuerpos son distintos y pueden transformarse
-    // distinto. Exige que la geometria venga del mismo componente.
+  it('CaraDeTinta sigue siendo la unica anatomia de quien la use', () => {
+    // El contrato de fondo de B5 sigue vivo, con menos superficies: Physical ya
+    // no dibuja una cara —la trae el render— y Native 2D usa los PNG oficiales.
+    // Lo que queda del lado de la tinta es `DicoCara`, y ahi la firma tiene que
+    // seguir saliendo del mismo componente.
     const native = render(React.createElement(DicoCara, { estado: 'contento', size: 48 }));
-    const physical = render(React.createElement(DicoSlot, { estado: 'physical_open' }));
     const fN = firmaAnatomia(native.container.querySelector('.dico-cara'));
-    const fP = firmaAnatomia(physical.container.querySelector('.dico-physical-cara'));
-
     expect(fN).toEqual(referencia);
-    expect(fP).toEqual(referencia);
-    // Las bocas de todas las expresiones estan en el DOM de las dos: cual se ve
-    // lo decide `dico.css` por estado, no una anatomia distinta.
+    // Las bocas de TODAS las expresiones estan en el DOM: cual se ve lo decide
+    // `dico.css` por estado, no una anatomia distinta por expresion.
     expect(fN.filter(l => l.includes('dico-boca')).length).toBeGreaterThan(3);
-    expect(fP.filter(l => l.includes('dico-boca')).length).toBe(fN.filter(l => l.includes('dico-boca')).length);
   });
 });
 

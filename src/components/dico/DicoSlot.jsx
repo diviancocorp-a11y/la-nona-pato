@@ -4,16 +4,20 @@
  * El Slot no abre ni cierra los avisos. Su unica responsabilidad es traer a
  * Dico Physical al plano de la interfaz y devolverlo a la maquina.
  */
-import CaraDeTinta from './CaraDeTinta';
-import { estadoCanonico, FRAMES_HABLA } from './DicoCara';
+import DicoPhysical from './DicoPhysical';
+import { physicalPoseCanonica } from './vocabulario';
 import './dico.css';
-import physicalBody from './poses/dico-physical-body.webp';
 import './dico-slot.css';
 
 export default function DicoSlot({
   estado,
-  cara = 'idle',
-  habla,
+  /**
+   * Que pose muestra Dico 3D. Antes esto era `cara` + `habla`, porque el
+   * personaje se componia de un cuerpo sin cara mas una capa de tinta encima.
+   * El pack oficial ya trae la cara renderizada: no hay una capa que dirigir,
+   * hay una pose que elegir.
+   */
+  pose = 'idle',
   onAbrir,
   onAperturaCompleta,
   onCerrar,
@@ -39,12 +43,7 @@ export default function DicoSlot({
     if (cerrando) onCierreCompleto?.();
   }
 
-  const caraSegura = estadoCanonico(cara);
-  const hablaSegura = FRAMES_HABLA.includes(habla) ? habla : '';
-  const claseDeCara = [
-    `dico--${caraSegura}`,
-    hablaSegura ? `dico--habla-${hablaSegura}` : '',
-  ].filter(Boolean).join(' ');
+  const poseSegura = physicalPoseCanonica(pose);
 
   const clases = [
     'dico-slot',
@@ -60,25 +59,13 @@ export default function DicoSlot({
         {visible && (
           <div
             className="dico-physical"
-            role="img"
-            aria-label="Dico Physical"
             onAnimationEnd={terminarMovimiento}
           >
-            <img
-              className="dico-physical-cuerpo"
-              src={physicalBody}
-              alt=""
-              draggable="false"
-            />
-            {/* Physical habla el MISMO vocabulario facial que Native: las
-                clases de estado son las de `dico.css` y la anatomia es la misma
-                `CaraDeTinta`. Antes esto estaba clavado en `dico--idle` y
-                Physical no podia expresar nada. */}
-            <svg className="dico-physical-cara" viewBox="0 0 120 120" aria-hidden="true">
-              <g className={claseDeCara}>
-                <CaraDeTinta />
-              </g>
-            </svg>
+            {/* El pack oficial: ocho renders completos, con la cara adentro.
+                Ya no hay cuerpo-sin-cara + capa de tinta que dirigir, y por eso
+                tampoco hay una cara canonica que montar encima: seria una cara
+                sobre otra cara. */}
+            <DicoPhysical pose={poseSegura} title="Dico Physical" />
           </div>
         )}
       </div>

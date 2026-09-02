@@ -135,7 +135,10 @@ describe('DicoPresence', () => {
     expect(nativeDe(container)).not.toBeInTheDocument();
     expect(physicalDe(container)).toBeInTheDocument();
 
-    esperarMovimiento(container.querySelector('.dico-physical-cuerpo'));
+    // Un `animationend` que sube desde un HIJO no puede terminar el cierre:
+    // solo cuenta el del propio `.dico-physical`. El hijo hoy es la capa de la
+    // pose; antes era el cuerpo sin cara.
+    esperarMovimiento(container.querySelector('.dico-pose'));
     expect(estadoDe(container)).toBe('physical_closing');
     expect(nativeDe(container)).not.toBeInTheDocument();
   });

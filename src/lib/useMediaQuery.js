@@ -30,13 +30,18 @@ export default function useMediaQuery(query) {
     const alCambiar = (evento) => setCoincide(evento.matches);
     setCoincide(mq.matches);
     // `addListener` es el fallback para Safari viejo, donde `addEventListener`
-    // sobre un MediaQueryList no existe.
-    if (mq.addEventListener) mq.addEventListener('change', alCambiar);
-    else mq.addListener(alCambiar);
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener('change', alCambiar);
-      else mq.removeListener(alCambiar);
-    };
+    // sobre un MediaQueryList no existe. Y si no hay ninguna de las dos, se
+    // lee el valor y listo: pasa con los `matchMedia` stubbeados de los tests,
+    // y un hook que se cae por eso obliga a cada test a saber como esta hecho.
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', alCambiar);
+      return () => mq.removeEventListener('change', alCambiar);
+    }
+    if (typeof mq.addListener === 'function') {
+      mq.addListener(alCambiar);
+      return () => mq.removeListener(alCambiar);
+    }
+    return undefined;
   }, [query]);
 
   return coincide;
