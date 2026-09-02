@@ -64,10 +64,17 @@
     transition: width .18s var(--ag-ease);
   }
 
-  /* Foco de teclado. Va SUELTO, fuera de cualquier media query de puntero:
+  /* Foco de TECLADO. Va SUELTO, fuera de cualquier media query de puntero:
      quien navega con tabulador tiene que ver los rotulos en cualquier
-     dispositivo. */
-  .ag-sidebar:focus-within {
+     dispositivo.
+   *
+   * Se usa `:has(:focus-visible)` y no el foco a secas: con el foco a secas,
+     hacer click con el mouse en un item lo deja adentro y la sidebar se
+     quedaba abierta indefinidamente, aunque el mouse ya estuviera en el
+     workspace. `:focus-visible` es justo la distincion que hace falta —el
+     navegador solo lo marca cuando el foco vino del teclado—, asi que
+     expande tabulando y no expande al clickear. */
+  .ag-sidebar:has(:focus-visible) {
     --ag-sidebar-ancho: var(--ag-sidebar-abierta);
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
@@ -125,7 +132,7 @@
     white-space: nowrap;
   }
 
-  .ag-sidebar:focus-within .ag-sidebar-wordmark {
+  .ag-sidebar:has(:focus-visible) .ag-sidebar-wordmark {
     opacity: 1;
     transform: none;
   }
@@ -272,7 +279,7 @@
     overflow: hidden;
   }
 
-  .ag-sidebar:focus-within .ag-sidebar-label {
+  .ag-sidebar:has(:focus-visible) .ag-sidebar-label {
     opacity: 1;
     transform: none;
   }

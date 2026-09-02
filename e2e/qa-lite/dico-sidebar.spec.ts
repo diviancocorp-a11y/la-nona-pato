@@ -147,6 +147,9 @@ test('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
       // 1. Con el aviso abierto.
       await page.locator('button.dico-avisos-trigger').click()
       await expect(page.locator('.dico-burbuja')).toBeVisible()
+      // Alejar el mouse ANTES de medir: clickear el contador lo deja sobre la
+      // sidebar, o sea expandida, y el "colapsado" saldria ya corrido.
+      await alejar()
       const globoColapsada = await izquierdaDe('.dico-avisos-mensaje')
       await page.locator('.ag-sidebar').hover()
       await page.waitForTimeout(360)

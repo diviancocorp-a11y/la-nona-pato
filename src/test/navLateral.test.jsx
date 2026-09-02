@@ -161,9 +161,15 @@ describe('NavLateral — contrato de layout', () => {
     expect(desktop).toContain('position: fixed');
   });
 
-  it('se expande por hover Y por foco de teclado', () => {
+  it('se expande por hover Y por foco de TECLADO, no por click', () => {
     expect(sidebarCss).toContain('.ag-sidebar:hover');
-    expect(sidebarCss).toContain('.ag-sidebar:focus-within');
+    // `:focus-visible` y no el foco a secas: con el foco a secas, clickear un
+    // item con el mouse lo dejaba adentro y la sidebar se quedaba abierta
+    // aunque el mouse ya estuviera en el workspace.
+    expect(sidebarCss).toContain('.ag-sidebar:has(:focus-visible)');
+    const reglas = sidebarCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(reglas, 'una regla expande con el foco a secas: se abre al clickear')
+      .not.toContain(':focus-within');
   });
 
   it('DICO NUNCA LE SACA CAPACIDADES A LA NAVEGACION', () => {
@@ -219,8 +225,8 @@ describe('NavLateral — contrato de layout', () => {
     expect(conPuntero, 'el hover no esta acotado a puntero fino').toContain('.ag-sidebar:hover');
 
     const sinMediaQuery = sidebarCss.split('@media (hover: hover)')[0];
-    expect(sinMediaQuery, 'focus-within quedo adentro de la media query de hover')
-      .toContain('.ag-sidebar:focus-within');
+    expect(sinMediaQuery, 'el foco de teclado quedo adentro de la media query de hover')
+      .toContain('.ag-sidebar:has(:focus-visible)');
   });
 
   it('reduced motion apaga la transicion, no el estado', () => {
