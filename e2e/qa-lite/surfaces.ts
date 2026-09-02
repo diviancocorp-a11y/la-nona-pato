@@ -1098,6 +1098,19 @@ export async function openCatalog(page: Page, theme: 'ambar' | 'noche' | 'carbon
   const root = page.locator(rootSelector)
   await expect(root).toHaveCount(1)
   await expect(root).toBeVisible()
+
+  // PAUSAR EL CARRUSEL COMO LO PAUSA UN USUARIO.
+  //
+  // El auto-avance es un `setInterval`: el registro de motion no puede
+  // congelarlo, y cada 4,5s monta una segunda capa durante 744ms. En vez de
+  // apagarle una funcion real al producto, se usa la afordancia que ya tiene:
+  // tocar la tarjeta significa "la estoy mirando" y pausa el avance. Como el
+  // harness fija `Date.now()`, esa pausa no vence durante la captura.
+  const tarjeta = page.locator('.cp-pcg-card')
+  if (await tarjeta.count() > 0) {
+    await tarjeta.first().dispatchEvent('touchstart')
+  }
+
   await stabilizePage(page)
   await waitForFiniteAnimations(root, `catalog--${theme}--${MOBILE.width}x${MOBILE.height}`)
   const unfinishedOpacityTransitions = await root.locator('[style*="transition"][style*="opacity"]').evaluateAll((elements) => (

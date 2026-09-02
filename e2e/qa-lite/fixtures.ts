@@ -63,7 +63,12 @@ export const test = base.extend<{ networkAudit: NetworkAudit }>({
     // Se fuerza y se VERIFICA. Un `emulateMedia` que dejara de funcionar
     // volveria a fallar en silencio; esta comprobacion lo convierte en un
     // error inmediato.
-    await aplicarMovimiento(page, 'reduce')
+    // Movimiento ENCENDIDO por defecto: es lo que tiene la mayoria de la
+    // gente, y capturar todo bajo `reduce` esconderia del gate las animaciones
+    // productivas —que es justo lo que no hay que hacer—. Lo que congela el
+    // movimiento continuo es el registro de motion, no la preferencia.
+    // Un spec que quiera probar reduced motion lo pide explicitamente.
+    await aplicarMovimiento(page, 'no-preference')
 
     const fixedTime = new Date(fixedNow).getTime()
     if (!Number.isFinite(fixedTime)) throw new Error('QA_FIXED_NOW no es una fecha valida')

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect, aplicarMovimiento } from './fixtures'
+import { test, expect } from './fixtures'
 import { openAdmin } from './surfaces'
 
 /**
@@ -23,9 +23,6 @@ const ANCHOS = [
 ] as const
 
 test('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
-  // Estos specs miran el movimiento a proposito, asi que lo piden. El
-  // `test.use({ reducedMotion })` que habia aca no llegaba a la pagina.
-  await aplicarMovimiento(page, 'no-preference')
   await openAdmin(page, 'light', { width: 1440, height: 900 })
   await mkdir(SALIDA, { recursive: true })
   const informe: Record<string, unknown>[] = []
