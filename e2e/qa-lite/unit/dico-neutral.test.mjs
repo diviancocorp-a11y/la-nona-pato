@@ -21,17 +21,26 @@ function validStack() {
 
 test('inventario Dico previo contiene la pila completa', () => {
   assert.equal(validateDicoMotionStack(validStack()), true)
-  const sacada = DICO_NEUTRAL_STRATEGY.nodes.find((entry) => entry.selector === '.dico-pupila-micro')
+  const pulso = DICO_NEUTRAL_STRATEGY.nodes.find((entry) => entry.selector === '.dico-pulso-giro')
   assert.deepEqual(
-    { count: sacada.expectedCount, name: sacada.animationName, duration: sacada.duration },
-    { count: 2, name: 'dico-sacada', duration: 9700 },
+    { count: pulso.expectedCount, name: pulso.animationName, duration: pulso.duration, vueltas: pulso.iterations },
+    { count: 1, name: 'dico-pulso-vuelta', duration: 1872, vueltas: 2 },
   )
+})
+
+test('el movimiento de Dico en Admin es finito, no un loop', () => {
+  // El contrato viejo declaraba cinco animaciones infinitas. Si alguna vuelve
+  // a ser infinita, la superficie deja de ser determinista y hay que
+  // congelarla, no declararla: este test lo hace explicito.
+  for (const nodo of DICO_NEUTRAL_STRATEGY.nodes) {
+    assert.ok(Number.isFinite(nodo.iterations), `${nodo.selector} declara iteraciones infinitas`)
+  }
 })
 
 test('cantidad Dico incorrecta falla', () => {
   const stack = validStack()
-  stack.find((entry) => entry.selector === '.dico-ojo').nodes.pop()
-  assert.throws(() => validateDicoMotionStack(stack), /expected 2, got 1/)
+  stack.find((entry) => entry.selector === '.dico-pulso-giro').nodes.pop()
+  assert.throws(() => validateDicoMotionStack(stack), /expected 1, got 0/)
 })
 
 test('animacion Dico inesperada falla', () => {

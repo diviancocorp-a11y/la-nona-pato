@@ -182,45 +182,43 @@ export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
     freezeAt: 0,
     expectedCount: 1,
   },
+  // Dico ya no aporta movimiento INFINITO a esta superficie: el personaje es
+  // una imagen y su pulso en `attention` corre dos vueltas y se detiene. Lo
+  // que queda —entrada y pulso, los dos finitos— lo cubre
+  // `DICO_NEUTRAL_STRATEGY`, que los neutraliza en su estado final.
+  //
+  // El SVG viejo sigue existiendo (`DicoCoreEscena` en el panel de productos
+  // vacio) y sigue teniendo sus cinco loops. Sacarlo de aca NO es aflojar el
+  // gate: si alguna vez cae en una superficie capturada, el guard de motion
+  // sin registrar lo va a marcar como no declarado, que es lo correcto.
   {
-    selector: '.dico-piso',
-    expectedName: 'dico-piso',
-    duration: 5800,
-    iterations: Infinity,
+    selector: '.dico-native-caja',
+    expectedName: 'dico-native-entrada',
+    duration: 1050,
+    iterations: 1,
     strategy: 'static-neutral-dico',
     expectedCount: 1,
   },
   {
-    selector: '.dico-boya',
-    expectedName: 'dico-boya',
-    duration: 5800,
-    iterations: Infinity,
+    selector: '.dico-pulso-giro',
+    expectedName: 'dico-pulso-vuelta',
+    duration: 1872,
+    iterations: 2,
     strategy: 'static-neutral-dico',
     expectedCount: 1,
   },
   {
-    selector: '.dico-bamboleo',
-    expectedName: 'dico-bamboleo',
-    duration: 8200,
+    // El unico movimiento realmente continuo que queda en la superficie.
+    // `settleAdmin` deja el aviso ABIERTO, y con el aviso abierto la actividad
+    // es `active`: el brillo Volt late sobre el aro del arte, para siempre.
+    // Se congela en 0, que es el piso del latido (opacidad .42) y no depende
+    // de cuando se saco la foto.
+    selector: '.dico-pulso-brillo',
+    expectedName: 'dico-pulso-activo',
+    duration: 2800,
     iterations: Infinity,
-    strategy: 'static-neutral-dico',
+    freezeAt: 0,
     expectedCount: 1,
-  },
-  {
-    selector: '.dico-ojo',
-    expectedName: 'dico-parpadeo',
-    duration: 8800,
-    iterations: Infinity,
-    strategy: 'static-neutral-dico',
-    expectedCount: 2,
-  },
-  {
-    selector: '.dico-pupila-micro',
-    expectedName: 'dico-sacada',
-    duration: 9700,
-    iterations: Infinity,
-    strategy: 'static-neutral-dico',
-    expectedCount: 2,
   },
 ] as const
 
@@ -391,10 +389,46 @@ async function installDicoMotionStackObserver(page: Page) {
         }
       }),
     }))
+    // El observer espera a que TODOS los selectores del contrato lleguen a su
+    // cuenta. Si uno nunca aparece —porque el componente dejo de montarse— la
+    // espera no termina nunca y del lado de Node solo se ve "el predicado
+    // expiro", que no dice cual falto. Se guarda ademas lo ULTIMO que se vio,
+    // para poder responder la pregunta en positivo: que hay realmente en la
+    // pantalla.
+    const state2 = state as { __qaDicoMotionStackVisto?: unknown }
     const observe = () => {
       if (state.__qaDicoMotionStack !== undefined) return
       const candidate = snapshot()
-      if (candidate.every((group, index) => group.nodes.length === contract.nodes[index].expectedCount)) {
+      state2.__qaDicoMotionStackVisto = candidate.map((group, index) => ({
+        selector: group.selector,
+        esperados: contract.nodes[index].expectedCount,
+        encontrados: group.nodes.length,
+      }))
+      // La mitad positiva: que animaciones de Dico HAY corriendo. Sin esto el
+      // diagnostico dice que falta, pero no que lo reemplazo.
+      state2.__qaDicoMotionVivo = Array.from(document.querySelectorAll('*'))
+        .flatMap((element) => element.getAnimations()
+          .filter((animation) => animation instanceof CSSAnimation
+            && animation.animationName.startsWith('dico'))
+          .map((animation) => ({
+            elemento: `${element.tagName.toLowerCase()}.${Array.from(element.classList).join('.')}`,
+            animacion: (animation as CSSAnimation).animationName,
+            iteraciones: animation.effect?.getTiming()?.iterations,
+            duracion: Number(animation.effect?.getTiming()?.duration),
+          })))
+      // CONVERGER NO ES SOLO QUE EXISTAN LOS NODOS. El pulso existe desde el
+      // primer frame, pero mientras el panel carga corre en `processing`, que
+      // es infinito; recien cuando termina de cargar pasa a `attention`, que
+      // son dos vueltas y para. Si el observer se conformara con la cuenta,
+      // fotografiaria el estado de carga y el contrato leeria `Infinity`.
+      const asentado = (group: typeof candidate[number], entry: typeof contract.nodes[number]) => (
+        group.nodes.length === entry.expectedCount
+        && group.nodes.every((node) => node.animations.length === 1
+          && node.animations[0].name === entry.animationName
+          && node.animations[0].duration === entry.duration
+          && node.animations[0].iterations === entry.iterations)
+      )
+      if (candidate.every((group, index) => asentado(group, contract.nodes[index]))) {
         state.__qaDicoMotionStack = candidate
         sessionStorage.setItem(cacheKey, JSON.stringify(candidate, (_key, value) => (
           value === Infinity ? '__qa_infinity__' : value
@@ -408,9 +442,30 @@ async function installDicoMotionStackObserver(page: Page) {
 }
 
 async function inventoryDicoMotionStack(page: Page, surface: string) {
-  await expect.poll(() => page.evaluate(() => (
-    (window as unknown as { __qaDicoMotionStack?: unknown }).__qaDicoMotionStack !== undefined
-  ))).toBe(true)
+  try {
+    await expect.poll(() => page.evaluate(() => (
+      (window as unknown as { __qaDicoMotionStack?: unknown }).__qaDicoMotionStack !== undefined
+    ))).toBe(true)
+  } catch (error) {
+    // El gemelo positivo del contrato: en vez de "expiro la espera", decir
+    // exactamente que selector falto y cuantos habia.
+    const visto = await page.evaluate(() => (
+      (window as unknown as { __qaDicoMotionStackVisto?: Array<Record<string, unknown>> })
+        .__qaDicoMotionStackVisto
+    ))
+    const vivo = await page.evaluate(() => (
+      (window as unknown as { __qaDicoMotionVivo?: Array<Record<string, unknown>> })
+        .__qaDicoMotionVivo
+    ))
+    const detalle = Array.isArray(visto)
+      ? visto.map((row) => `  ${row.selector}: esperados ${row.esperados}, encontrados ${row.encontrados}`).join('\n')
+      : '  (el observer no llego a correr)'
+    throw new Error(
+      `El stack de motion de Dico nunca llego a la forma del contrato en ${surface}.\n${detalle}\nEn cambio, lo que SI esta corriendo:\n`
+      + `${(vivo || []).map((row) => `  ${row.elemento} -> ${row.animacion} x${row.iteraciones}`).join('\n') || '  (ninguna animacion dico-*)'}\n`
+      + `Original: ${(error as Error).message}`,
+    )
+  }
   const groups = await page.evaluate(() => (
     (window as unknown as { __qaDicoMotionStack?: unknown }).__qaDicoMotionStack
   ))
@@ -486,10 +541,17 @@ async function canonicalizeNeutralDico(page: Page, surface: string) {
       }
       return false
     }
+    // Que NO quede movimiento vivo sobre Dico. No es lo mismo que "cero
+    // animaciones": el pulso Volt de `active` es infinito y lo congela el
+    // registro de movimiento continuo, asi que queda presente pero en pausa.
+    // Exigir cero borraria esa distincion y obligaria a sacar el pulso del
+    // registro, que es justo lo que no hay que hacer. Una animacion que sigue
+    // en `running` sigue fallando.
     const remainingAnimations = document.getAnimations().flatMap((animation) => {
       const effect = animation.effect
       const target = effect instanceof KeyframeEffect && effect.target instanceof Element ? effect.target : null
       if (!target || !isDico(target)) return []
+      if (animation.playState !== 'running') return []
       return [{
         target: `${target.tagName.toLowerCase()}.${Array.from(target.classList).join('.')}`,
         name: animation instanceof CSSAnimation ? animation.animationName : animation.id,
@@ -512,10 +574,12 @@ async function canonicalizeNeutralDico(page: Page, surface: string) {
       afterSecondApply,
       frames,
       remainingAnimations,
+      // Que Dico ESTE, no solo que este quieto. Con el SVG esto miraba cara,
+      // cuerpo y brazos; con el asset final el equivalente es el arte y su
+      // pulso, que son las dos capas que componen la presencia.
       visibility: {
-        face: visible('.dico-cara', 1),
-        body: visible('.dico-cuerpo-render--moneda', 1),
-        arms: visible('.dico-brazo', 2),
+        arte: visible('.dico-native-arte', 1),
+        pulso: visible('.dico-pulso', 1),
       },
     }
   }, DICO_NEUTRAL_STRATEGY)
@@ -529,7 +593,7 @@ async function canonicalizeNeutralDico(page: Page, surface: string) {
     result.afterSecondApply,
   ])
   expect(result.remainingAnimations).toEqual([])
-  expect(result.visibility).toEqual({ face: true, body: true, arms: true })
+  expect(result.visibility).toEqual({ arte: true, pulso: true })
   for (const entry of DICO_NEUTRAL_STRATEGY.nodes) {
     const group = result.afterSecondApply.find((item) => item.selector === entry.selector)
     expect(group?.nodes).toHaveLength(entry.expectedCount)

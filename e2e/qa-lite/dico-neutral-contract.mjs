@@ -1,15 +1,36 @@
+/**
+ * Que movimiento tiene Dico en el Admin, y como se lo deja quieto.
+ *
+ * ESTE CONTRATO CAMBIO DE NATURALEZA. Antes Dico era un SVG con cinco
+ * animaciones INFINITAS —piso, boya, bamboleo, parpadeo, sacada— y la
+ * estrategia existia para congelarlas: sin eso, dos capturas del mismo commit
+ * salian distintas. Con los assets finales 2D no queda ninguna animacion
+ * infinita en la superficie: el arte es una imagen y lo unico que se mueve es
+ * el pulso, que en `attention` corre DOS vueltas y se detiene.
+ *
+ * Asi que el trabajo ya no es congelar un loop sino verificar que el
+ * movimiento sea finito y quede asentado. Se sigue neutralizando igual
+ * —anular la animacion y fijar el estado final— porque una animacion finita
+ * capturada a mitad de camino es tan no-determinista como un loop.
+ */
 export const DICO_NEUTRAL_STRATEGY = Object.freeze({
   strategy: 'static-neutral-dico',
   nodes: [
-    { selector: '.dico-piso', expectedCount: 1, animationName: 'dico-piso', duration: 5800, iterations: Infinity, styles: { animation: 'none', transform: 'none', opacity: '0.2' } },
-    { selector: '.dico-boya', expectedCount: 1, animationName: 'dico-boya', duration: 5800, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
-    { selector: '.dico-bamboleo', expectedCount: 1, animationName: 'dico-bamboleo', duration: 8200, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
-    { selector: '.dico-ojo', expectedCount: 2, animationName: 'dico-parpadeo', duration: 8800, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
-    { selector: '.dico-pupila-micro', expectedCount: 2, animationName: 'dico-sacada', duration: 9700, iterations: Infinity, styles: { animation: 'none', transform: 'none' } },
-    { selector: '.dico--entrada .dico-escena', canonicalSelector: '.dico-escena', expectedCount: 1, animationName: 'dico-entrada-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', transform: 'none', opacity: '1', transformStyle: 'flat' } },
-    { selector: '.dico--entrada .dico-cara', canonicalSelector: '.dico-cara', expectedCount: 1, animationName: 'dico-cara-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', opacity: '1' } },
-    { selector: '.dico--entrada .dico-cuerpo-render', canonicalSelector: '.dico-cuerpo-render', expectedCount: 3, animationName: 'dico-luz-vuelta', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', filter: 'none' } },
+    // La entrada de primera vez: un giro de 1,05s que termina en la identidad.
+    { selector: '.dico-native-caja', expectedCount: 1, animationName: 'dico-native-entrada', duration: 1050, iterations: 1, playStates: ['running', 'finished'], styles: { animation: 'none', transform: 'none', opacity: '1', transformStyle: 'flat' } },
+    // El pulso en `attention`: 2,6s x 0,72 = 1872ms, dos vueltas y para.
+    { selector: '.dico-pulso-giro', expectedCount: 1, animationName: 'dico-pulso-vuelta', duration: 1872, iterations: 2, playStates: ['running', 'finished'], styles: { animation: 'none', transform: 'none' } },
   ],
+})
+
+/**
+ * El gemelo positivo: que Dico ESTE. Neutralizar el movimiento no sirve de
+ * nada si lo que queda es un hueco — un contrato que solo mira animaciones
+ * pasaria feliz con el personaje sin renderizar.
+ */
+export const DICO_PRESENCIA_ESPERADA = Object.freeze({
+  arte: { selector: '.dico-native-arte', expectedCount: 1 },
+  pulso: { selector: '.dico-pulso', expectedCount: 1 },
 })
 
 export function validateDicoMotionStack(groups) {
