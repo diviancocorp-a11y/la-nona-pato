@@ -139,3 +139,16 @@ body[data-ui-owner="catalog"][data-cp-theme="carbon"] .cp-root {
 
 /* em italic dentro de headings: no recortar descendentes */
 .cp-root em { line-height: inherit; }
+
+/* La palabra que rota en el titulo del home.
+ *
+ * El reset global de `index.css` ya deja esto quieto bajo reduced motion —la
+ * animacion dura 0,01ms y el elemento vuelve a su opacidad inline— pero la
+ * regla se escribe explicita para que el comportamiento sea intencional y no
+ * dependa de una cadena en otro archivo: con la preferencia activa se ve la
+ * primera palabra y ninguna otra, sin movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .cp-verbo-palabra {
+    animation: none !important;
+  }
+}

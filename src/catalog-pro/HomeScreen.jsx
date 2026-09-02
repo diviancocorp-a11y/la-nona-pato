@@ -622,29 +622,70 @@ const qtyBtnStyle = {
 
 // Verbo rotativo con crossfade suave. Cambia entre sinonimos cada 2.5s.
 // Inline aqui para no crear archivo nuevo por un componentito de 20 lineas.
+/**
+ * La palabra que rota en el titulo.
+ *
+ * POR QUE ES UNA ANIMACION CSS Y NO UN setInterval
+ *
+ * Antes esto era un `setInterval` de 2500ms que cambiaba estado de React y
+ * hacia fade con una transicion inline. Funcionaba, pero el gate visual de
+ * QA Lite congela el movimiento continuo a traves de `getAnimations()`, y un
+ * timer de JS no aparece ahi: no habia forma de congelarlo. El resultado era
+ * que dos corridas del MISMO commit fotografiaban la palabra en fases
+ * distintas del fade, con el mismo bbox —`minWidth` lo mantenia— pero con
+ * distinta densidad de tinta y franjas de subpixel cambiadas. Medido: 1429
+ * pixeles distintos y 451 bloqueantes en `catalog--ambar`.
+ *
+ * Ahora las tres palabras estan las tres en el DOM, apiladas, y una sola
+ * animacion CSS infinita con `animation-delay` escalonado decide cual se ve.
+ * Eso la vuelve declarable en el registro de movimiento del harness y
+ * congelable como el resto.
+ *
+ * REDUCED MOTION: antes no se respetaba. Una palabra que se cambia sola para
+ * siempre es justo lo que pide WCAG 2.2.2 poder frenar. Con la preferencia
+ * activa no rota: se muestra la primera y punto.
+ */
 function RotatingVerb({ words = [], intervalMs = 2500, fadeMs = 350 }) {
-  const [idx, setIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
-  useEffect(() => {
-    if (words.length < 2) return;
-    const tick = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIdx(i => (i + 1) % words.length);
-        setVisible(true);
-      }, fadeMs);
-    }, intervalMs);
-    return () => clearInterval(tick);
-  }, [words, intervalMs, fadeMs]);
+  const total = Math.max(1, words.length) * intervalMs;
+  const pct = (ms) => `${((ms / total) * 100).toFixed(3)}%`;
+
+  if (words.length < 2) {
+    return <em style={{ fontStyle: 'italic', color: 'var(--ac)' }}>{words[0] || ''}</em>;
+  }
+
+  // Cada palabra: entra en `fadeMs`, se queda hasta `intervalMs - fadeMs`, sale
+  // en `fadeMs` y espera apagada el resto del ciclo. Con el retraso escalonado,
+  // la siguiente entra JUSTO cuando la anterior termino de salir: nunca hay dos
+  // visibles a la vez, igual que con el swap de texto de la version anterior.
+  const keyframes = `@keyframes cp-verbo-rota{`
+    + `0%{opacity:0}`
+    + `${pct(fadeMs)}{opacity:1}`
+    + `${pct(intervalMs - fadeMs)}{opacity:1}`
+    + `${pct(intervalMs)}{opacity:0}`
+    + `100%{opacity:0}}`;
+
   return (
-    <em style={{
-      fontStyle: "italic", color: "var(--ac)",
-      display: "inline-block",
-      opacity: visible ? 1 : 0,
-      transition: `opacity ${fadeMs}ms ease`,
-      minWidth: "5ch",
-    }}>
-      {words[idx] || ""}
-    </em>
+    <span
+      className="cp-verbo"
+      style={{ display: 'inline-grid', verticalAlign: 'bottom', minWidth: '5ch' }}
+    >
+      <style>{keyframes}</style>
+      {words.map((palabra, i) => (
+        <em
+          key={palabra}
+          className="cp-verbo-palabra"
+          aria-hidden={i > 0 ? 'true' : undefined}
+          style={{
+            gridArea: '1 / 1',
+            fontStyle: 'italic',
+            color: 'var(--ac)',
+            opacity: i === 0 ? 1 : 0,
+            animation: `cp-verbo-rota ${total}ms linear ${i * intervalMs}ms infinite backwards`,
+          }}
+        >
+          {palabra}
+        </em>
+      ))}
+    </span>
   );
 }

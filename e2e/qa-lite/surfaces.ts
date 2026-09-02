@@ -226,6 +226,21 @@ export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
 
 export const CATALOG_CONTINUOUS_DECORATIVE_MOTION = [
   {
+    // La palabra que rota en el titulo. Antes era un `setInterval` que este
+    // registro no podia ver ni congelar, y por eso `catalog--ambar` salia
+    // distinto entre dos corridas del mismo commit. Ahora es una animacion CSS
+    // declarada: tres palabras apiladas con el mismo ciclo y retraso
+    // escalonado. Se congela en 1000ms, que cae dentro de la ventana en la que
+    // la PRIMERA esta completamente visible y las otras dos siguen en su fase
+    // de retraso, o sea con la opacidad 0 del fill `backwards`.
+    selector: '.cp-verbo-palabra',
+    expectedName: 'cp-verbo-rota',
+    duration: 7500,
+    iterations: Infinity,
+    freezeAt: 1000,
+    expectedCount: 3,
+  },
+  {
     selector: '.cp-pcg-card [aria-hidden][style*="cp-pcg-vert"]',
     expectedName: 'cp-pcg-vert',
     duration: 30000,
