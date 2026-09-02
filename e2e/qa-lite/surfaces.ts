@@ -219,6 +219,12 @@ export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
     iterations: Infinity,
     freezeAt: 0,
     expectedCount: 1,
+    // El brillo late SOLO en `active`. En las demas actividades el elemento
+    // existe y no anima. Declararlo asi permite exigir las dos mitades: con el
+    // aviso abierto tiene que latir, y con el aviso cerrado tiene que estar
+    // quieto. Aceptar "cero animaciones" a secas dejaria pasar un pulso que
+    // dejo de funcionar.
+    whenActivity: 'active',
   },
 ] as const
 
@@ -655,11 +661,25 @@ export async function freezeContinuousDecorativeMotion(
         }
       })
     )))
+    // Actividad declarada por el propio componente. Es el eje que decide que
+    // animacion corresponde; leerla es mas honesto que adivinar por la fase.
+    const actividad = 'whenActivity' in entry
+      ? await page.locator('[data-dico-pulso]').first()
+        .getAttribute('data-dico-pulso').catch(() => null)
+      : null
+    const correspondeAnimar = !('whenActivity' in entry) || actividad === entry.whenActivity
+
     for (const animations of motionContract) {
       if ('strategy' in entry && entry.strategy === 'static-neutral-dico' && animations.length === 0) {
         // La misma pagina visita varias superficies Admin. La primera pasada
         // deja estos nodos neutralizados inline; una pasada posterior debe
         // aceptar ese estado ya canonico sin debilitar el inventario inicial.
+        continue
+      }
+      if (!correspondeAnimar) {
+        // La otra mitad del contrato: si la actividad no es la que anima, el
+        // nodo tiene que estar QUIETO. No se saltea, se verifica.
+        expect(animations, `${entry.selector} anima en actividad ${actividad}`).toEqual([])
         continue
       }
       expect(animations).toEqual([{
@@ -670,6 +690,7 @@ export async function freezeContinuousDecorativeMotion(
     }
 
     if ('strategy' in entry && entry.strategy === 'static-neutral-dico') continue
+    if (!correspondeAnimar) continue
 
     const result = await nodes.evaluateAll(async (elements, freezeAt) => {
       const animations = elements.flatMap((element) => element.getAnimations())
