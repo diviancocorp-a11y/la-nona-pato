@@ -30,7 +30,9 @@
     "qa:lite:setup": "node platform/qa-lite/prepare-local.mjs",
     "qa:lite:compare": "node scripts/qa-lite/compare-refs.mjs",
     "qa:lite:motion-inventory": "node scripts/qa-lite/inventory-motion.mjs",
-    "qa:lite:test": "node --test e2e/qa-lite/unit/guards.test.mjs e2e/qa-lite/unit/compare.test.mjs e2e/qa-lite/unit/seed.test.mjs e2e/qa-lite/unit/admin-theme.test.mjs e2e/qa-lite/unit/finite-animation-quiescence.test.mjs e2e/qa-lite/unit/dico-neutral.test.mjs"
+    "qa:lite:test": "node --test e2e/qa-lite/unit/guards.test.mjs e2e/qa-lite/unit/compare.test.mjs e2e/qa-lite/unit/seed.test.mjs e2e/qa-lite/unit/admin-theme.test.mjs e2e/qa-lite/unit/finite-animation-quiescence.test.mjs e2e/qa-lite/unit/dico-neutral.test.mjs",
+    "dico:3d:derive": "node scripts/dico-3d-derivar.mjs",
+    "dico:3d:check": "node scripts/dico-3d-derivar.mjs --check"
   },
   "dependencies": {
     "@sentry/react": "^10.57.0",
@@ -52,6 +54,7 @@
     "@fontsource/inter": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/source-serif-4": "5.3.0",
+    "@jsquash/webp": "1.5.0",
     "@playwright/test": "^1.50.0",
     "@sentry/vite-plugin": "^5.3.0",
     "@tailwindcss/vite": "^4.2.2",
