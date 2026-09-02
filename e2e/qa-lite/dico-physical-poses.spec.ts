@@ -110,8 +110,20 @@ test('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
   // con `overflow: hidden`. La caja de 448 no entra, pero la TINTA si —lo unico
   // que se recorta es el margen transparente—. Es el caso mas ajustado, asi que
   // se mide con `explain`, la pose mas ancha.
+  //
+  // OJO: cruzar la frontera de 769px REMONTA `DicoPresence` —en desktop vive en
+  // la sidebar y en mobile en el flujo— y su maquina arranca de cero, asi que
+  // Physical se guarda solo. Por eso hay que volver a invocarlo aca en vez de
+  // arrastrar el estado del tramo anterior.
   await page.setViewportSize({ width: 390, height: 844 })
   await page.waitForTimeout(320)
+  await expect(page.locator('.dico-pose')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Traer a Dico' }).click()
+  await expect(page.locator('.dico-pose')).toHaveCount(1)
+  await expect.poll(() => page.evaluate(() => (
+    document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
+  ))).toBe('physical_open')
+
   await page.evaluate(() => {
     const capa = document.querySelector('.dico-pose-capa--actual') as HTMLImageElement
     capa.src = '/brand/dico/physical/dico-3d-explain.webp'
