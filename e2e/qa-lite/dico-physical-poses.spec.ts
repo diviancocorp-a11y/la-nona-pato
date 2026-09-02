@@ -105,6 +105,58 @@ test('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
     await page.screenshot({ path: join(SALIDA, `pose-${pose}.png`), caret: 'hide' })
   }
 
-  await writeFile(join(SALIDA, 'poses.json'), `${JSON.stringify(filas, null, 2)}\n`, 'utf8')
+  // ── MOBILE ──────────────────────────────────────────────────────────────
+  // A 390px no hay sidebar: el Slot vive en el flujo, dentro de un `.ag-slot`
+  // con `overflow: hidden`. La caja de 448 no entra, pero la TINTA si —lo unico
+  // que se recorta es el margen transparente—. Es el caso mas ajustado, asi que
+  // se mide con `explain`, la pose mas ancha.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForTimeout(320)
+  await page.evaluate(() => {
+    const capa = document.querySelector('.dico-pose-capa--actual') as HTMLImageElement
+    capa.src = '/brand/dico/physical/dico-3d-explain.webp'
+  })
+  await page.waitForFunction(() => {
+    const c = document.querySelector('.dico-pose-capa--actual') as HTMLImageElement
+    return Boolean(c && c.complete && c.naturalWidth > 0)
+  })
+  const enMobile = await page.evaluate(() => {
+    const capa = document.querySelector('.dico-pose-capa--actual') as HTMLImageElement
+    const c = document.createElement('canvas')
+    c.width = capa.naturalWidth; c.height = capa.naturalHeight
+    const ctx = c.getContext('2d', { willReadFrequently: true })!
+    ctx.drawImage(capa, 0, 0)
+    const d = ctx.getImageData(0, 0, c.width, c.height).data
+    let minX = 1e9; let maxX = -1
+    for (let y = 0; y < c.height; y += 2) {
+      for (let x = 0; x < c.width; x += 2) {
+        if (d[(y * c.width + x) * 4 + 3] < 8) continue
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+      }
+    }
+    const caja = capa.getBoundingClientRect()
+    // Lo que recorta de verdad es el ancestro con `overflow: hidden`.
+    const recorte = document.querySelector('.ag-slot')?.getBoundingClientRect()
+    return {
+      tintaIzq: +(caja.x + (minX / c.width) * caja.width).toFixed(1),
+      tintaDer: +(caja.x + ((maxX + 1) / c.width) * caja.width).toFixed(1),
+      recorte: recorte ? { x: +recorte.x.toFixed(1), fin: +(recorte.x + recorte.width).toFixed(1) } : null,
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      navInferior: Boolean(document.querySelector('.ag-bottom-nav')),
+    }
+  })
+  await page.screenshot({ path: join(SALIDA, 'mobile-explain.png'), caret: 'hide' })
+  console.log(`mobile 390: ${JSON.stringify(enMobile)}`)
+
+  expect(enMobile.overflowX, 'mobile con scroll horizontal').toBe(false)
+  if (enMobile.recorte) {
+    expect(enMobile.tintaIzq, 'la tinta se corta por izquierda en mobile')
+      .toBeGreaterThanOrEqual(enMobile.recorte.x)
+    expect(enMobile.tintaDer, 'la tinta se corta por derecha en mobile')
+      .toBeLessThanOrEqual(enMobile.recorte.fin)
+  }
+
+  await writeFile(join(SALIDA, 'poses.json'), `${JSON.stringify({ escritorio: filas, mobile: enMobile }, null, 2)}\n`, 'utf8')
   console.log(JSON.stringify(filas.map((f) => ({ pose: f.pose, caja: f.caja })), null, 2))
 })
