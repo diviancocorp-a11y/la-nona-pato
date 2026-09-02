@@ -1,0 +1,229 @@
+/* ────────────────────────────────────────────────────────
+ * Sidebar desktop del edificio.
+ *
+ * Existe SOLO por encima de la frontera desktop. Por debajo manda
+ * `NavInferior`, que no se toca: son dos chasis para dos formas de usar el
+ * panel, no una migracion a medias.
+ *
+ * ── LA FRONTERA ──
+ * `min-width: 769px`, que NO es un breakpoint nuevo: es la unica frontera
+ * "telefono vs no-telefono" que el repo ya tenia (`dev-phone-preview.css`
+ * usa exactamente 768/769). Inventar 1024 habria dejado la tablet en
+ * apaisado sin sidebar y con una tercera frontera para mantener.
+ * ──────────────────────────────────────────────────────── */
+
+:root {
+  /* El riel. Es tambien el ancho de la columna de iconos, y esa igualdad es
+     la que mantiene los iconos quietos al expandir. */
+  --ag-sidebar-riel: 64px;
+  --ag-sidebar-abierta: 224px;
+}
+
+/* Nombre accesible para lectores sin ocupar espacio. No existia una utilidad
+   asi en el shell; se define aca porque la sidebar la necesita para titular
+   su `nav` sin agregar texto visible al riel. */
+.ag-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ag-sidebar { display: none; }
+
+@media (min-width: 769px) {
+  .ag-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--ag-z-nav);
+    display: flex;
+    flex-direction: column;
+    /* Colapsada mide el riel. Expandida CRECE POR ENCIMA del contenido: el
+       workspace conserva su ancho y no se re-maqueta al rozar el borde. */
+    width: var(--ag-sidebar-riel);
+    background: var(--ag-chassis);
+    border-right: 1px solid var(--ms-zinc-800);
+    overflow: hidden;
+    transition: width .18s var(--ag-ease);
+  }
+
+  /* Hover Y foco de teclado. `focus-within` no es un extra: sin el, quien
+     navega con tabulador ve rotulos que aparecen y desaparecen sin causa
+     visible, o directamente nunca los ve. */
+  .ag-sidebar:hover,
+  .ag-sidebar:focus-within {
+    width: var(--ag-sidebar-abierta);
+    box-shadow: 0 0 32px rgba(0, 0, 0, .32);
+  }
+
+  /* El workspace se corre SOLO el riel, nunca el ancho expandido. */
+  .ag-root {
+    padding-left: var(--ag-sidebar-riel);
+  }
+
+  /* Arriba del todo. La altura es FIJA en los dos estados: si creciera al
+     revelar el wordmark, los iconos de abajo bajarian con ella. */
+  .ag-sidebar-marca {
+    display: grid;
+    grid-template-columns: var(--ag-sidebar-riel) 1fr;
+    align-items: center;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  .ag-sidebar-presencia {
+    display: grid;
+    place-items: center;
+  }
+
+  /* El wordmark aparece A LA DERECHA de Dico, no en su lugar. Reemplazarlo
+     haria que el mismo pixel sea dos controles distintos segun el estado. */
+  .ag-sidebar-wordmark {
+    font-family: var(--font-heading, var(--ag-font));
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: .14em;
+    color: var(--ag-chassis-ink);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity .16s var(--ag-ease), transform .18s var(--ag-ease);
+    white-space: nowrap;
+  }
+
+  .ag-sidebar:hover .ag-sidebar-wordmark,
+  .ag-sidebar:focus-within .ag-sidebar-wordmark {
+    opacity: 1;
+    transform: none;
+  }
+
+  .ag-sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+  .ag-sidebar-nav::-webkit-scrollbar { display: none; }
+
+  .ag-sidebar-lista {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0 12px;
+  }
+
+  /* DOS COLUMNAS, la primera del ancho exacto del riel. El icono vive en la
+     columna 1 y por eso no se mueve —ni en X ni en Y— al expandir; el rotulo
+     vive en la 2, que colapsada esta fuera del `overflow: hidden`. */
+  .ag-sidebar-item {
+    display: grid;
+    grid-template-columns: var(--ag-sidebar-riel) 1fr;
+    align-items: center;
+    width: var(--ag-sidebar-abierta);
+    min-height: 48px;      /* con el icono de 44 adentro, ver abajo */
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ag-chassis-ink-2);
+    font-family: var(--ag-font);
+    font-weight: var(--ms-w-nav);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    transition: color var(--ag-t-fast) var(--ag-ease), background-color var(--ag-t-fast) var(--ag-ease);
+  }
+
+  .ag-sidebar-item:hover { color: var(--ag-chassis-ink); }
+
+  .ag-sidebar-item:focus-visible {
+    outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+    outline-offset: -2px;
+  }
+
+  /* El area tactil real: 44x44 dentro de la columna del riel, aunque el
+     rotulo no se vea. Colapsada la sidebar sigue cumpliendo el minimo. */
+  .ag-sidebar-icono {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .ag-sidebar-icono .ag-nav-icon {
+    width: 22px;
+    height: 22px;
+    display: block;
+  }
+
+  .ag-sidebar-label {
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity .16s var(--ag-ease), transform .18s var(--ag-ease);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .ag-sidebar:hover .ag-sidebar-label,
+  .ag-sidebar:focus-within .ag-sidebar-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* El estado activo se ve COLAPSADA: un rail de oro sobre el borde
+     izquierdo, no un rotulo. Es el mismo lenguaje que la nav inferior. */
+  .ag-sidebar-item.active { color: var(--ag-chassis-ink); }
+
+  .ag-sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    border-radius: 0 3px 3px 0;
+    background: var(--ag-c-terra, #e0ac3c);
+  }
+
+  .ag-sidebar-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--ag-c-danger, #c0392b);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  /* Un solo chasis a la vez. La nav inferior no se elimina: se oculta donde
+     la sidebar la sustituye. */
+  .ag-root .ag-bottom-nav { display: none; }
+
+  /* Sin la barra de abajo, el hueco que le reservaba el main sobra. */
+  .ag-root main { padding-bottom: 24px !important; }
+}
+
+/* Expandir es decorativo: quien pidio menos movimiento ve el mismo cambio de
+   ancho, sin transicion. */
+@media (prefers-reduced-motion: reduce) {
+  .ag-sidebar,
+  .ag-sidebar-label,
+  .ag-sidebar-wordmark {
+    transition: none;
+  }
+}

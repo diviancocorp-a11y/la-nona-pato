@@ -25,6 +25,7 @@ import DicoPresence from '../components/dico/DicoPresence';
 import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
+import NavLateral from '../components/admin/platform/NavLateral';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -116,6 +117,7 @@ import '../styles/admin-shared.css';
 // Machine Soul (Phase 3B): reemplaza la capa visual del shell. Va ultimo
 // a proposito, para pisar la de admin-topbar/bottomnav sin tocar su markup.
 import '../styles/admin-shell.css';
+import '../styles/admin-sidebar.css';
 
 // El registry es data pura (sin JSX) para poder leerlo desde services y tests.
 // Los iconos se mapean aca, por id de modulo.
@@ -881,9 +883,13 @@ export default function PlatformAdmin() {
           )}
         </main>
 
-        {/* La nav sale a su propio modulo porque ahora tiene estado (el
-            desborde) y un contrato de accesibilidad propio. La lista de
-            secciones sigue siendo `tabs`: una sola fuente. */}
+        {/* DOS CHASIS, UNA FUENTE. Las dos navegaciones reciben el MISMO
+            `tabs` —rubro, modulos y permisos ya cruzados— y cual se ve lo
+            decide el CSS por ancho, no un `if` en JS: asi no hay un momento
+            en que el usuario se quede sin ninguna mientras React decide.
+            La nav inferior NO se elimina; se oculta donde la sidebar la
+            sustituye. */}
+        <NavLateral tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
         <NavInferior tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
       </div>
     </ConfirmSlideProvider>
