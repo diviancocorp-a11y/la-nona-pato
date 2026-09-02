@@ -85,8 +85,13 @@
     opacity: 0;
   }
 
-  /* El workspace se corre SOLO el riel, nunca el ancho expandido. */
-  .ag-root {
+  /* El workspace se corre SOLO el riel, nunca el ancho expandido.
+   *
+   * VA SOBRE LA CLASE, NO SOBRE `.ag-root`. Esta hoja es global una vez
+   * cargada, y `.ag-root` lo usan tambien el admin legacy (`Admin.jsx`) y el
+   * POS, que NO montan sidebar: la regla suelta les corria el contenido 64px
+   * y les escondia la nav inferior, dejandolos sin navegacion. */
+  .ag-root--con-sidebar {
     padding-left: var(--ag-sidebar-riel);
   }
 
@@ -306,11 +311,11 @@
   }
 
   /* Un solo chasis a la vez. La nav inferior no se elimina: se oculta donde
-     la sidebar la sustituye. */
-  .ag-root .ag-bottom-nav { display: none; }
+     la sidebar la sustituye —y solo ahi—. */
+  .ag-root--con-sidebar .ag-bottom-nav { display: none; }
 
   /* Sin la barra de abajo, el hueco que le reservaba el main sobra. */
-  .ag-root main { padding-bottom: 24px !important; }
+  .ag-root--con-sidebar main { padding-bottom: 24px !important; }
 }
 
 /* Expandir es decorativo: quien pidio menos movimiento ve el mismo cambio de

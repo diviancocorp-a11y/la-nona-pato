@@ -115,7 +115,28 @@ describe('NavLateral — contrato de layout', () => {
 
   it('la nav inferior se OCULTA donde la sidebar la sustituye, no se elimina', () => {
     const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
-    expect(desktop).toContain('.ag-root .ag-bottom-nav { display: none; }');
+    expect(desktop).toContain('.ag-root--con-sidebar .ag-bottom-nav { display: none; }');
+  });
+
+  it('no le toca el layout a los roots que NO montan sidebar', () => {
+    // `.ag-root` lo comparten el admin legacy y el POS. Una regla suelta sobre
+    // el les corria el contenido 64px y les escondia la nav inferior: se
+    // quedaban sin navegacion por una hoja que no les corresponde.
+    //
+    // Sin regex a proposito: alcanza con mirar la parte de selector de cada
+    // regla, que es lo que hay antes de la llave.
+    const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
+    const sueltas = desktop
+      .split('{')
+      .map((tramo) => tramo.split('}').pop().split(';').pop().trim())
+      .filter((selector) => selector.split(',').some((parte) => {
+        const limpio = parte.trim();
+        if (!limpio.startsWith('.ag-root')) return false;
+        // `.ag-root--con-sidebar` si; `.ag-root` pelado o con descendientes no.
+        const resto = limpio.slice('.ag-root'.length);
+        return !resto.startsWith('--');
+      }));
+    expect(sueltas, `reglas sobre .ag-root sin acotar: ${sueltas.join(' | ')}`).toEqual([]);
   });
 
   it('la columna del icono mide lo mismo que el riel: por eso no se mueve', () => {
@@ -131,7 +152,12 @@ describe('NavLateral — contrato de layout', () => {
     // Si el padding usara el ancho abierto, la pantalla de trabajo perderia
     // 224px para siempre; si la sidebar empujara al expandirse, saltaria.
     const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
-    expect(desktop).toMatch(/\.ag-root \{\s*padding-left: var\(--ag-sidebar-riel\);\s*\}/);
+    // El padding sale del RIEL, no del ancho abierto, y va sobre la clase que
+    // marca a los roots que si montan sidebar.
+    const padding = desktop.match(/\.ag-root--con-sidebar\s*\{([^}]*)\}/);
+    expect(padding, 'no hay regla de padding para el root con sidebar').not.toBeNull();
+    expect(padding[1]).toContain('padding-left: var(--ag-sidebar-riel)');
+    expect(padding[1]).not.toContain('--ag-sidebar-abierta');
     expect(desktop).toContain('position: fixed');
   });
 

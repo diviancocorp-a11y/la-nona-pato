@@ -633,7 +633,11 @@ export default function PlatformAdmin() {
 
   return (
     <ConfirmSlideProvider>
-      <div className={`ag-root ${themeClass}`} style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* `ag-root--con-sidebar` marca a los roots que SI montan la sidebar. El
+          admin legacy y el POS comparten `.ag-root` y no la montan: sin esta
+          clase, las reglas de la sidebar les corrian el contenido y les
+          escondian la nav inferior. */}
+      <div className={`ag-root ag-root--con-sidebar ${themeClass}`} style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <AdminBackdrop />
 
         {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}

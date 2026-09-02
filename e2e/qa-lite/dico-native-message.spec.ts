@@ -38,6 +38,11 @@ async function geometry(page: import('@playwright/test').Page) {
       const element = document.querySelector(selector)
       if (!element) return null
       const box = element.getBoundingClientRect()
+      // Un elemento con `display: none` sigue en el DOM y devuelve una caja de
+      // ceros en el origen. Tratarla como geometria real hacia que "Dico no
+      // pisa la nav inferior" fallara en desktop, donde la nav inferior no
+      // existe: comparaba contra un borde en y=0.
+      if (box.width === 0 && box.height === 0) return null
       return {
         x: box.x,
         y: box.y,
