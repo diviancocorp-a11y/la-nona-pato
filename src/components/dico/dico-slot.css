@@ -1,4 +1,14 @@
-/* The Slot — frontera fisica, no tarjeta ni boton SaaS. */
+/* The Slot — frontera fisica, no tarjeta ni boton SaaS.
+ *
+ * UN SOLO INVOCADOR. Con Physical guardado el Slot no tiene nada que mostrar:
+ * el invocador es Dico 2D, en desktop y en mobile. La ranura suelta era una
+ * segunda forma de traer al personaje —redundante— y ademas quedaba flotando
+ * sobre la navegacion. Solo aparece cuando Physical esta afuera, que es
+ * cuando si hace falta: ahi es el control para guardarlo. */
+.dico-slot:not(.dico-slot--visible) {
+  display: none;
+}
+
 .dico-slot {
   --slot-zinc-0: #0c0e11;
   --slot-zinc-1: #171a1f;

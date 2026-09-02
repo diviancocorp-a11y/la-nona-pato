@@ -162,8 +162,65 @@ describe('NavLateral — contrato de layout', () => {
   });
 
   it('se expande por hover Y por foco de teclado', () => {
-    expect(sidebarCss).toContain('.ag-sidebar:hover,');
+    expect(sidebarCss).toContain('.ag-sidebar:hover');
     expect(sidebarCss).toContain('.ag-sidebar:focus-within');
+  });
+
+  it('DICO NUNCA LE SACA CAPACIDADES A LA NAVEGACION', () => {
+    // La regla contractual: la presencia se adapta a la interfaz, no al
+    // reves. Hubo una version donde la sidebar dejaba de expandirse y
+    // apagaba los rotulos mientras Physical estaba afuera o el aviso
+    // abierto, para evitar que se pisaran. Eso es la interfaz perdiendo
+    // capacidad por culpa de Dico.
+    //
+    // Se mira que NINGUNA regla condicionada al estado de Dico toque el
+    // ancho de la sidebar ni la opacidad de sus rotulos.
+    const bloques = sidebarCss.split('}');
+    const culpables = bloques.filter((bloque) => {
+      const selector = bloque.split('{')[0] || '';
+      const cuerpo = bloque.split('{')[1] || '';
+      const miraADico = selector.includes(':has(.dico') || selector.includes(':has(.ag-dico');
+      if (!miraADico) return false;
+      return /(^|\s)(width|opacity)\s*:/.test(cuerpo);
+    });
+    expect(culpables, `reglas que recortan la navegacion por Dico: ${culpables.join(' | ')}`).toEqual([]);
+  });
+
+  it('la posicion de Dico deriva del ancho REAL de la sidebar', () => {
+    // Un solo numero: `--ag-sidebar-ancho`. Si el aviso y Physical repitieran
+    // 64 y 224 por su cuenta, cambiar el riel los dejaria desalineados y la
+    // unica forma de notarlo seria mirando.
+    const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
+    // Sin regex: se busca el selector y se lee el cuerpo hasta la llave.
+    const cuerpoDe = (selector) => {
+      const abre = desktop.indexOf(selector + ' {');
+      if (abre < 0) return null;
+      return desktop.slice(abre, desktop.indexOf('}', abre));
+    };
+    for (const parte of ['.ag-sidebar .dico-avisos-mensaje', '.ag-sidebar .dico-slot']) {
+      const cuerpo = cuerpoDe(parte);
+      expect(cuerpo, 'no hay regla de posicion para ' + parte).not.toBeNull();
+      expect(cuerpo, parte + ' no deriva del ancho de la sidebar').toContain('var(--ag-sidebar-ancho)');
+      // Solo se mueve en X: transicionar el eje vertical seria un salto.
+      expect(cuerpo, parte + ' transiciona el eje vertical').not.toContain('top .');
+      expect(cuerpo, parte + ' no acompania la expansion').toContain('transition: left');
+    }
+    // El ancho sale de las dos medidas declaradas, no de literales sueltos.
+    expect(sidebarCss).toContain('--ag-sidebar-ancho: var(--ag-sidebar-riel)');
+    expect(sidebarCss).toContain('--ag-sidebar-ancho: var(--ag-sidebar-abierta)');
+  });
+
+  it('el hover va detras de un puntero fino; el foco de teclado no', () => {
+    // En touch el `:hover` queda pegado despues del tap y la sidebar se
+    // quedaria abierta sola. Pero `focus-within` tiene que funcionar en
+    // cualquier dispositivo: si viviera adentro de la misma media query,
+    // quien navega con teclado en una tablet no veria un solo rotulo.
+    const conPuntero = sidebarCss.split('@media (hover: hover) and (pointer: fine)').slice(1).join('');
+    expect(conPuntero, 'el hover no esta acotado a puntero fino').toContain('.ag-sidebar:hover');
+
+    const sinMediaQuery = sidebarCss.split('@media (hover: hover)')[0];
+    expect(sinMediaQuery, 'focus-within quedo adentro de la media query de hover')
+      .toContain('.ag-sidebar:focus-within');
   });
 
   it('reduced motion apaga la transicion, no el estado', () => {

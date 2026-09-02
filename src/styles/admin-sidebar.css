@@ -37,7 +37,19 @@
 .ag-sidebar { display: none; }
 
 @media (min-width: 769px) {
+  /* ── UNA SOLA GEOMETRIA ──────────────────────────────────────────────
+   * `--ag-sidebar-ancho` es EL ancho actual de la sidebar, y de el derivan
+   * las tres cosas que dependen de el: su propio `width`, donde arranca el
+   * aviso y donde se para Physical. Sin esta variable habria que repetir 64 y
+   * 224 en cada regla y mantenerlos sincronizados a mano.
+   *
+   * DICO SE ADAPTA A LA INTERFAZ, NO AL REVES. La sidebar se expande siempre
+   * —con Physical afuera, con el aviso abierto, con foco de teclado—; lo que
+   * se corre es Dico. Una presencia de IA no puede sacarle capacidades a la
+   * navegacion. */
   .ag-sidebar {
+    --ag-sidebar-ancho: var(--ag-sidebar-riel);
+
     position: fixed;
     inset: 0 auto 0 0;
     z-index: var(--ag-z-nav);
@@ -45,44 +57,28 @@
     flex-direction: column;
     /* Colapsada mide el riel. Expandida CRECE POR ENCIMA del contenido: el
        workspace conserva su ancho y no se re-maqueta al rozar el borde. */
-    width: var(--ag-sidebar-riel);
+    width: var(--ag-sidebar-ancho);
     background: var(--ag-chassis);
     border-right: 1px solid var(--ms-zinc-800);
     overflow: hidden;
     transition: width .18s var(--ag-ease);
   }
 
-  /* Hover Y foco de teclado. `focus-within` no es un extra: sin el, quien
-     navega con tabulador ve rotulos que aparecen y desaparecen sin causa
-     visible, o directamente nunca los ve. */
-  .ag-sidebar:hover,
+  /* Foco de teclado. Va SUELTO, fuera de cualquier media query de puntero:
+     quien navega con tabulador tiene que ver los rotulos en cualquier
+     dispositivo. */
   .ag-sidebar:focus-within {
-    width: var(--ag-sidebar-abierta);
+    --ag-sidebar-ancho: var(--ag-sidebar-abierta);
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
 
-  /* MIENTRAS DICO ESTA AFUERA, LA SIDEBAR NO SE ABRE.
-     Physical mide 184px y sale justo a la derecha del riel: si la sidebar se
-     expandiera al pasar el mouse, el personaje quedaria peleando con los
-     rotulos de navegacion. Medido: Physical ocupa x 44..228 y la sidebar
-     abierta 0..224. Se resuelve donde nace el conflicto y no moviendo a
-     Physical lejos, que romperia la lectura de que sale del Slot.
-
-     Vale igual para el aviso abierto: el globo arranca en x=109 y con la
-     sidebar expandida taparia los rotulos. Colapsada no toca nada. */
-  .ag-sidebar:has(.dico-slot--visible):hover,
-  .ag-sidebar:has(.dico-slot--visible):focus-within,
-  .ag-sidebar:has(.dico-avisos--abierto):hover,
-  .ag-sidebar:has(.dico-avisos--abierto):focus-within {
-    width: var(--ag-sidebar-riel);
-    box-shadow: none;
-  }
-
-  .ag-sidebar:has(.dico-slot--visible) .ag-sidebar-label,
-  .ag-sidebar:has(.dico-slot--visible) .ag-sidebar-wordmark,
-  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-label,
-  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-wordmark {
-    opacity: 0;
+  /* Hover, solo donde hay un puntero fino de verdad. En touch el `:hover`
+     queda pegado despues del tap y la sidebar se quedaria abierta sola. */
+  @media (hover: hover) and (pointer: fine) {
+    .ag-sidebar:hover {
+      --ag-sidebar-ancho: var(--ag-sidebar-abierta);
+      box-shadow: 0 0 32px rgba(0, 0, 0, .32);
+    }
   }
 
   /* El workspace se corre SOLO el riel, nunca el ancho expandido.
@@ -129,10 +125,16 @@
     white-space: nowrap;
   }
 
-  .ag-sidebar:hover .ag-sidebar-wordmark,
   .ag-sidebar:focus-within .ag-sidebar-wordmark {
     opacity: 1;
     transform: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ag-sidebar:hover .ag-sidebar-wordmark {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   /* ── Dico dentro del riel ────────────────────────────────────────────
@@ -167,17 +169,14 @@
 
   /* Physical emerge SOBRE el workspace, a la derecha del riel. Dentro de la
      sidebar no entra: el escenario mide 184px. */
-  /* Con Physical guardado, el Slot no tiene nada que mostrar: la ranura suelta
-     quedaba flotando sobre los iconos de navegacion. En desktop el invocador
-     es Dico 2D, asi que la ranura solo hace falta cuando el personaje esta
-     afuera —ahi es el control para guardarlo—. */
-  .ag-sidebar .dico-slot:not(.dico-slot--visible) {
-    display: none;
-  }
-
   .ag-sidebar .dico-slot {
     position: fixed;
-    left: calc(var(--ag-sidebar-riel) + 8px);
+    /* Se corre con la sidebar: mismo ancho, misma transicion. Physical mide
+       184px y antes salia clavado a la derecha del riel, asi que al
+       expandirse la sidebar le pasaba por encima. Ahora se reancla hacia el
+       workspace en vez de impedir la expansion. */
+    left: calc(var(--ag-sidebar-ancho) + 8px);
+    transition: left .18s var(--ag-ease);
     /* El escenario de Physical mide 184px y CRECE HACIA ARRIBA desde
        `bottom: 23px` del Slot. Con el Slot arriba del todo el personaje
        quedaba en y=-79, o sea fuera de la pantalla. El piso tiene que estar
@@ -192,7 +191,10 @@
      al vacio en vez de a quien habla. */
   .ag-sidebar .dico-avisos-mensaje {
     position: fixed;
-    left: var(--ag-sidebar-riel);
+    /* Igual que Physical: el globo queda SIEMPRE fuera del area expandida.
+       Solo se mueve en X — el `top` es fijo, asi que no hay salto vertical. */
+    left: var(--ag-sidebar-ancho);
+    transition: left .18s var(--ag-ease);
     /* Debajo de la topbar, no encima: la topbar es chrome persistente y el
        globo taparia el nombre del negocio. Medida: la barra mide 57px.
        Queda igual "a la derecha y un poco mas abajo" que Dico, que arranca
@@ -270,10 +272,16 @@
     overflow: hidden;
   }
 
-  .ag-sidebar:hover .ag-sidebar-label,
   .ag-sidebar:focus-within .ag-sidebar-label {
     opacity: 1;
     transform: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ag-sidebar:hover .ag-sidebar-label {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   /* El estado activo se ve COLAPSADA: un rail de oro sobre el borde
@@ -323,7 +331,9 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-sidebar,
   .ag-sidebar-label,
-  .ag-sidebar-wordmark {
+  .ag-sidebar-wordmark,
+  .ag-sidebar .dico-slot,
+  .ag-sidebar .dico-avisos-mensaje {
     transition: none;
   }
 }

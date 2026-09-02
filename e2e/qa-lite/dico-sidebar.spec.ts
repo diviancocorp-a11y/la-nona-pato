@@ -131,6 +131,80 @@ test('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
       await page.screenshot({ path: join(SALIDA, `${w}-mobile.png`), caret: 'hide' })
     }
 
+    // ── DICO NO LE SACA CAPACIDADES A LA NAVEGACION ──────────────────────
+    // Con el aviso abierto y con Physical afuera, la sidebar tiene que seguir
+    // expandiendose —por hover Y por teclado— y Dico tiene que correrse solo.
+    if (sidebarViva) {
+      const anchoDe = () => page.locator('.ag-sidebar').evaluate((el) => el.getBoundingClientRect().width)
+      const izquierdaDe = (sel: string) => page.locator(sel).evaluate((el) => (
+        +el.getBoundingClientRect().x.toFixed(1)
+      )).catch(() => null)
+      const alejar = async () => { await page.mouse.move(w - 40, h - 40); await page.waitForTimeout(300) }
+
+      await alejar()
+      const riel = await anchoDe()
+
+      // 1. Con el aviso abierto.
+      await page.locator('button.dico-avisos-trigger').click()
+      await expect(page.locator('.dico-burbuja')).toBeVisible()
+      const globoColapsada = await izquierdaDe('.dico-avisos-mensaje')
+      await page.locator('.ag-sidebar').hover()
+      await page.waitForTimeout(360)
+      const anchoConAviso = await anchoDe()
+      expect(anchoConAviso, `${w}px: no expande con el aviso abierto`).toBeGreaterThan(riel)
+      const globoExpandida = await izquierdaDe('.dico-avisos-mensaje')
+      expect(globoExpandida, `${w}px: el globo no se corrio`).toBeGreaterThan(globoColapsada as number)
+      expect(globoExpandida, `${w}px: el globo quedo adentro del area expandida`)
+        .toBeGreaterThanOrEqual(anchoConAviso - 1)
+      // Y los rotulos siguen visibles: no se apagan por culpa del aviso.
+      expect(await page.locator('.ag-sidebar-label').first().evaluate((el) => (
+        Number(getComputedStyle(el).opacity)
+      )), `${w}px: el aviso apago los rotulos`).toBeGreaterThan(0.9)
+      await page.screenshot({ path: join(SALIDA, `${w}-aviso-expandida.png`), caret: 'hide' })
+
+      // 2. Con Physical afuera. El click en Dico cierra el aviso y lo invoca.
+      await page.getByRole('button', { name: 'Traer a Dico' }).click()
+      await expect(page.locator('.dico-physical')).toHaveCount(1)
+      await expect.poll(() => page.evaluate(() => (
+        document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
+      ))).toBe('physical_open')
+      await alejar()
+      const physicalColapsada = await izquierdaDe('.dico-slot')
+      await page.locator('.ag-sidebar').hover()
+      await page.waitForTimeout(360)
+      const anchoConPhysical = await anchoDe()
+      expect(anchoConPhysical, `${w}px: no expande con Physical afuera`).toBeGreaterThan(riel)
+      const physicalExpandida = await izquierdaDe('.dico-slot')
+      expect(physicalExpandida, `${w}px: Physical no se reanclo`).toBeGreaterThan(physicalColapsada as number)
+      expect(physicalExpandida, `${w}px: Physical quedo adentro del area expandida`)
+        .toBeGreaterThanOrEqual(anchoConPhysical - 1)
+      await page.screenshot({ path: join(SALIDA, `${w}-physical-expandida.png`), caret: 'hide' })
+
+      // 3. Teclado CON Physical afuera: la sidebar responde igual.
+      await alejar()
+      let saltos = 0
+      let enSidebar = false
+      while (saltos < 40 && !enSidebar) {
+        await page.keyboard.press('Tab')
+        saltos += 1
+        enSidebar = await page.evaluate(() => Boolean(document.activeElement?.closest('.ag-sidebar-item')))
+      }
+      expect(enSidebar, `${w}px: con Physical afuera no se llega a la sidebar con Tab`).toBe(true)
+      await page.waitForTimeout(320)
+      expect(await anchoDe(), `${w}px: con Physical afuera el teclado no expande`).toBeGreaterThan(riel)
+      await page.screenshot({ path: join(SALIDA, `${w}-teclado-physical.png`), caret: 'hide' })
+
+      // Guardar a Physical y volver al estado limpio para el proximo ancho.
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+      await page.locator('button.dico-slot-control').click()
+      await expect.poll(() => page.evaluate(() => (
+        document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
+      ))).toBe('native_idle')
+      await alejar()
+      fila.expandeConAviso = anchoConAviso
+      fila.expandeConPhysical = anchoConPhysical
+    }
+
     // La navegacion nunca se pierde: las secciones son las mismas.
     const secciones = await page.evaluate(() => (
       [...document.querySelectorAll('[data-section]')].map((e) => (e as HTMLElement).dataset.section)
