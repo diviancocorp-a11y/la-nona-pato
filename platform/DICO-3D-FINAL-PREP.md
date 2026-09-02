@@ -16,14 +16,16 @@ runtime, no cambia `DicoSlot`, `DicoPresence`, sidebar ni `DicoPulso`.
   opaco. No se intenta recuperar alfa por luminancia.
 - `dico-3d-idle.png` pasó el contrato final y queda declarado
   **`CANONICAL_3D_FRAME_REFERENCE`**.
-- Las otras siete poses todavía requieren re-export RGBA contra esa referencia.
+- `dico-3d-explain.png` y `dico-3d-point-up.png` pasaron el contrato contra la
+  referencia canónica. Quedan validados los extremos horizontal y vertical.
+- Las otras cinco poses todavía requieren re-export RGBA contra esa referencia.
 - `error` tiene una escala de moneda aproximadamente 13,7 % mayor que la
   mediana de las otras siete poses y requiere reencuadre.
 - `processing` y `question` están disponibles, pero quedan fuera del vocabulario
   `physicalPose` cerrado.
 
-> **FINAL_3D_ALPHA_EXPORT_REQUIRED: RESUELTO PARA `idle`; ABIERTO PARA LAS
-> OTRAS SIETE POSES.**
+> **FINAL_3D_ALPHA_EXPORT_REQUIRED: RESUELTO PARA `idle`, `explain` Y
+> `pointUp`; ABIERTO PARA LAS OTRAS CINCO POSES.**
 
 ## 1. Vocabulario y nombres finales
 
@@ -152,10 +154,38 @@ No mostró halo sobre blanco, Zinc ni damero. El Blue conserva la misma mediana
 RGB del render opaco de origen (`#3B406F`) y contiene 0 píxeles Volt iguales o
 cercanos a `#3D6BFF`.
 
+### 5.1 Extremos de framing validados
+
+Validación: 2026-09-02. Ambos archivos se midieron sin modificar contra
+`CANONICAL_3D_FRAME_REFERENCE`. La región central de radio 250 px es idéntica
+byte a byte al `idle`; gesto, brazos y manos cambian fuera de esa región.
+
+| Pose | SHA-256 | Canvas / alfa | Bbox personaje | Padding T/R/B/L | Centro moneda | Ø moneda | Desvío Ø | Ø Blue | Resultado |
+|---|---|---|---|---|---:|---:|---:|---:|---|
+| `explain` | `d366d9772426bac0cf8f35956f3033d7ff5f150a81623b19b3a19e3e6e7b81c1` | 1600×1136 · RGBA real | 272,288–1311,806 (1040×519) | 288/288/329/272 | 800,546,5 | 515,52 px | −1,50 px (−0,29 %) | 453,5 px | **PASS** |
+| `pointUp` | `d117ff936ffc15b38ddbc9c4b663e7e15622e7bb4ef50fc7f6f302d3209a582d` | 1600×1136 · RGBA real | 405,282–1124,875 (720×594) | 282/475/260/405 | 800,546,5 | 517,02 px | 0 px | 453,5 px | **PASS** |
+
+La máscara Blue estricta ocupa en los tres masters el mismo rango útil:
+`572,317–1028,776`, centro `(800,546,5)`. El `318` de la comprobación
+preliminar correspondía al umbral/redondeo de borde; aplicado el mismo
+predicado al canónico y a los candidatos, el extremo real es `317` en los
+tres. La caja robusta usada por el validador es también idéntica:
+`574,319–1026,774`.
+
+En `explain` hay 1.569.534 píxeles transparentes, 7.613 parciales y 240.453
+opacos. En `pointUp`, 1.572.975 transparentes, 8.356 parciales y 236.269
+opacos. Ambos tienen 0 píxeles RGB residuales bajo alfa 0 y 0 píxeles iguales
+o cercanos a Volt `#3D6BFF` (radio RGB 36). Las composiciones sobre blanco,
+Zinc y damero no muestran matte negro, halo ni clipping.
+
+Con este doble PASS queda autorizado producir `pointDown`, `thinking`,
+`worried`, `success` y `error` usando el mismo canvas, moneda y registro.
+
 ## 6. Especificación exacta del re-export
 
-Producción debe conservar el `idle` canónico byte a byte y entregar las otras
-siete poses con los nombres de §1 y estas condiciones:
+Producción debe conservar el `idle` canónico y los dos extremos validados byte
+a byte, y entregar las otras cinco poses con los nombres de §1 y estas
+condiciones:
 
 1. PNG 8-bit RGBA (`color type 6`), 1600×1136, no interlazado.
 2. Alfa real: fondo en alfa 0, sujeto opaco, borde con alfa parcial de
@@ -248,7 +278,7 @@ clipping y framing. No es una nueva dirección artística.
 
 ## 11. Bloqueos para la implementación
 
-1. Re-export de las siete poses restantes con alfa verdadero.
+1. Re-export de las cinco poses restantes con alfa verdadero.
 2. Reencuadre de `error` contra la referencia canónica.
 3. Confirmación visual final de material e iluminación después del re-export.
 4. Derivación WebP sólo después de que el master pase el validador.
