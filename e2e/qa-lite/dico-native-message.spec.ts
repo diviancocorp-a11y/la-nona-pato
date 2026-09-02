@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './fixtures'
+import { test, expect, aplicarMovimiento } from './fixtures'
 import { freezeContinuousDecorativeMotion, openAdmin } from './surfaces'
 
 type ViewportCase = {
@@ -16,8 +16,6 @@ const VIEWPORTS: ViewportCase[] = [
   { name: 'mobile-375', width: 375, height: 812, screenshots: true },
   { name: 'mobile-320', width: 320, height: 800, screenshots: false },
 ]
-
-test.use({ reducedMotion: 'no-preference' })
 
 function outputRoot() {
   const root = process.env.QA_ARTIFACT_DIR
@@ -91,6 +89,9 @@ function stableBox(value: Awaited<ReturnType<typeof geometry>>) {
 
 for (const viewport of VIEWPORTS) {
   test(`mensaje Native estable en ${viewport.width}px`, async ({ page }) => {
+  // Estos specs miran el movimiento a proposito, asi que lo piden. El
+  // `test.use({ reducedMotion })` que habia aca no llegaba a la pagina.
+  await aplicarMovimiento(page, 'no-preference')
     await openAdmin(page, 'light', { width: viewport.width, height: viewport.height })
     await freezeContinuousDecorativeMotion(page, {
       requireDicoMotion: true,

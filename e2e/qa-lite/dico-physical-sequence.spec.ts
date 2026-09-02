@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { test, expect } from './fixtures'
+import { test, expect, aplicarMovimiento } from './fixtures'
 import { DESKTOP, openAdmin } from './surfaces'
 
 /**
@@ -13,8 +13,6 @@ import { DESKTOP, openAdmin } from './surfaces'
  */
 const SALIDA = join(process.cwd(), '.qa-lite', 'artifacts', 'phase-b6r-native', 'secuencia')
 
-test.use({ reducedMotion: 'no-preference' })
-
 async function foto(page: import('@playwright/test').Page, nombre: string) {
   await mkdir(SALIDA, { recursive: true })
   await page.screenshot({ path: join(SALIDA, `${nombre}.png`), caret: 'hide' })
@@ -25,6 +23,9 @@ const estado = (page: import('@playwright/test').Page) => page.evaluate(() => (
 ))
 
 test('click en Dico -> Physical -> vuelve', async ({ page }) => {
+  // Estos specs miran el movimiento a proposito, asi que lo piden. El
+  // `test.use({ reducedMotion })` que habia aca no llegaba a la pagina.
+  await aplicarMovimiento(page, 'no-preference')
   await openAdmin(page, 'light', DESKTOP)
   const native = page.locator('[data-dico-native]')
   const physical = page.locator('.dico-physical')

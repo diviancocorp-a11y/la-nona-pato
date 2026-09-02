@@ -49,6 +49,22 @@ export const test = base.extend<{ networkAudit: NetworkAudit }>({
       await route.abort('blockedbyclient')
     })
 
+    // ── LA PREFERENCIA DECLARADA TIENE QUE LLEGAR A LA PAGINA ──────────
+    //
+    // El config declara `reducedMotion: 'reduce'` y la pagina reportaba
+    // `false`: la opcion del contexto no estaba surtiendo efecto, mientras que
+    // `page.emulateMedia` si. O sea que TODA la QA corria con el movimiento
+    // encendido, incluidos los tres specs que ponen `no-preference` a
+    // proposito —una distincion que no existia—.
+    //
+    // Consecuencia concreta: el carrusel del catalogo auto-avanzaba en cada
+    // superficie, y por eso aparecian dos capas a la vez.
+    //
+    // Se fuerza y se VERIFICA. Un `emulateMedia` que dejara de funcionar
+    // volveria a fallar en silencio; esta comprobacion lo convierte en un
+    // error inmediato.
+    await aplicarMovimiento(page, 'reduce')
+
     const fixedTime = new Date(fixedNow).getTime()
     if (!Number.isFinite(fixedTime)) throw new Error('QA_FIXED_NOW no es una fecha valida')
     await page.clock.setFixedTime(new Date(fixedTime))
@@ -72,6 +88,36 @@ export const test = base.extend<{ networkAudit: NetworkAudit }>({
 })
 
 export { expect }
+
+/**
+ * Aplica —y COMPRUEBA— la preferencia de movimiento en la pagina.
+ *
+ * `reducedMotion` declarado en el `use` del config no surtia efecto: la pagina
+ * reportaba `false` con el config pidiendo `reduce`, mientras que
+ * `page.emulateMedia` si funcionaba. O sea que toda la QA corria con el
+ * movimiento encendido, y los `test.use({ reducedMotion })` de tres specs eran
+ * no-ops silenciosos. Consecuencia concreta: el carrusel del catalogo
+ * auto-avanzaba en cada superficie y aparecian dos capas a la vez.
+ *
+ * Se aplica explicitamente y se verifica. Un `emulateMedia` que dejara de
+ * funcionar volveria a fallar en silencio; la comprobacion lo vuelve un error
+ * inmediato.
+ */
+export async function aplicarMovimiento(
+  page: import('@playwright/test').Page,
+  preferencia: 'reduce' | 'no-preference',
+) {
+  await page.emulateMedia({ reducedMotion: preferencia })
+  const reduceEnLaPagina = await page.evaluate(() => (
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ))
+  if (reduceEnLaPagina !== (preferencia === 'reduce')) {
+    throw new Error(
+      `QA Lite no pudo aplicar prefers-reduced-motion: pidio "${preferencia}", `
+      + `la pagina reporta reduce=${reduceEnLaPagina}`,
+    )
+  }
+}
 
 export async function stabilizePage(page: import('@playwright/test').Page) {
   await page.evaluate(async () => {
