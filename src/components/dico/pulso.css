@@ -6,32 +6,39 @@
  *
  * ───────────────────────── LOS DOS AZULES ─────────────────────────
  *
- * Se midieron los tres azules que hay en el arte final antes de asignar nada:
+ * Se midieron los azules que hay en el arte antes de asignar nada:
  *
- *   aro del render 3D      #2A3369  luminancia 53   <- el material del objeto
+ *   aro del asset 2D final #192B6C  luminancia 44   <- 93% de sus pixeles azules
+ *   aro del render 3D      #2A3369  luminancia 53   <- el mismo aro, sombreado
  *   aro del isologo plano  #0957E6  luminancia 81
  *   declarado en la lamina #3D6BFF  luminancia 108
  *
- * Y se midio el contraste del pulso contra cada candidato a base:
+ * Y el contraste del pulso contra cada candidato a base:
  *
- *   #2A3369 vs #3D6BFF  ->  2,67:1   el pulso se ve
+ *   #192B6C vs #3D6BFF  ->  2,96:1   el pulso se ve bien
+ *   #2A3369 vs #3D6BFF  ->  2,67:1   se ve
  *   #0957E6 vs #3D6BFF  ->  1,35:1   el pulso desaparece
  *
- * De ahi salen los dos tokens: #3D6BFF es el VOLT —la senial— y la base tiene
- * que ser el navy opaco del arte, no el azul brillante de la lamina. Usar el
- * mismo hex para las dos cosas dejaria un pulso invisible.
+ * De ahi salen los dos tokens: #3D6BFF es el VOLT —la senial— y la base es el
+ * navy del ARTE FINAL 2D, que es el mas oscuro y el que manda. Usar el azul
+ * brillante de la lamina para las dos cosas dejaria un pulso invisible.
  *
- * `#0957E6` queda documentado como el aro PLANO del isologo: es la version
- * vectorial del mismo aro, y no es ni la base 3D ni el Volt.
+ * EL TOKEN DESCRIBE EL ARTE, NO AL REVES. No se recolorea ningun PNG para que
+ * coincida con un token: el overlay se adapta al arte. `#2A3369` es el mismo
+ * aro con el sombreado del render 3D y `#0957E6` la version vectorial del
+ * isologo; quedan documentados y no son la base.
  */
 
 :root {
-  /* El material del aro. Opaco y oscuro: sobre esto se lee la senial. */
-  --dico-blue-base: #2A3369;
+  /* El material del aro, medido sobre el asset 2D final. Opaco y oscuro:
+     sobre esto se lee la senial. */
+  --dico-blue-base: #192B6C;
   /* La senial. Nunca es fondo, nunca es relleno grande. */
   --dico-blue-volt: #3D6BFF;
   /* El aro plano del isologo, para cuando se dibuja el aro en vector. */
   --dico-blue-flat: #0957E6;
+  /* El mismo aro con el sombreado del render 3D. Documentado, no usado. */
+  --dico-blue-render: #2A3369;
 }
 
 /* ── El contenedor ──────────────────────────────────────────────────────
@@ -51,9 +58,15 @@
   pointer-events: none;
 }
 
-/* El aro base es OPCIONAL: cuando el pulso va sobre el arte final, el aro ya
-   esta pintado en el asset y dibujarlo de nuevo lo ensuciaria. Se enciende solo
-   donde no hay arte debajo (la O del logo, un placeholder, el probe). */
+/* DOS ANILLOS CON TRABAJOS DISTINTOS.
+ *
+ * `.dico-pulso-aro` dibuja el aro BASE y solo existe donde no hay arte debajo:
+ * la O del logo, un placeholder, el probe. Sobre el asset final el aro ya esta
+ * pintado en el PNG y repintarlo seria recolorear el arte.
+ *
+ * `.dico-pulso-brillo` es la SENIAL de idle y active: Volt a baja opacidad
+ * ENCIMA del aro que ya existe. Por eso puede encenderse siempre, con arte o
+ * sin arte, sin tocar un pixel del PNG. */
 .dico-pulso-aro {
   stroke: var(--dico-blue-base);
   fill: none;
@@ -62,6 +75,13 @@
 
 .dico-pulso--con-aro .dico-pulso-aro {
   opacity: calc(1 * var(--dico-pulso-intensidad));
+}
+
+.dico-pulso-brillo {
+  stroke: var(--dico-blue-volt);
+  fill: none;
+  opacity: 0;
+  transition: opacity .3s ease;
 }
 
 /* ── La senial ──────────────────────────────────────────────────────────
@@ -90,27 +110,25 @@
 /* ── idle: el sistema esta vivo y nada mas ──────────────────────────────
  * Sin recorrido. Un respiro largo sobre todo el aro: a 24px se percibe como
  * que la moneda "esta encendida", no como que algo esta cargando. */
-.dico-pulso--idle .dico-pulso-aro {
-  opacity: calc(.85 * var(--dico-pulso-intensidad));
+.dico-pulso--idle .dico-pulso-brillo {
   animation: dico-pulso-respiro 5.4s ease-in-out infinite;
 }
 
 @keyframes dico-pulso-respiro {
-  0%, 100% { stroke: var(--dico-blue-base); }
-  50%      { stroke: color-mix(in srgb, var(--dico-blue-base) 76%, var(--dico-blue-volt)); }
+  0%, 100% { opacity: calc(.10 * var(--dico-pulso-intensidad)); }
+  50%      { opacity: calc(.30 * var(--dico-pulso-intensidad)); }
 }
 
 /* ── active: invocado ───────────────────────────────────────────────────
  * Presencia, no proceso. El aro entero sube a Volt tenue y respira mas corto.
  * Sigue sin haber recorrido: recorrido significa trabajo. */
-.dico-pulso--active .dico-pulso-aro {
-  opacity: calc(1 * var(--dico-pulso-intensidad));
+.dico-pulso--active .dico-pulso-brillo {
   animation: dico-pulso-activo 2.8s ease-in-out infinite;
 }
 
 @keyframes dico-pulso-activo {
-  0%, 100% { stroke: color-mix(in srgb, var(--dico-blue-base) 55%, var(--dico-blue-volt)); }
-  50%      { stroke: var(--dico-blue-volt); }
+  0%, 100% { opacity: calc(.42 * var(--dico-pulso-intensidad)); }
+  50%      { opacity: calc(.85 * var(--dico-pulso-intensidad)); }
 }
 
 /* ── processing: trabajo en curso ───────────────────────────────────────
@@ -166,22 +184,21 @@
 @media (prefers-reduced-motion: reduce) {
   .dico-pulso-giro,
   .dico-pulso-aro,
+  .dico-pulso-brillo,
   .dico-pulso-estela,
   .dico-pulso-punta {
     animation: none !important;
     transition: none !important;
   }
 
-  /* idle: aro base, apenas encendido. */
-  .dico-pulso--idle .dico-pulso-aro {
-    opacity: calc(.85 * var(--dico-pulso-intensidad));
-    stroke: color-mix(in srgb, var(--dico-blue-base) 82%, var(--dico-blue-volt));
+  /* idle: el brillo queda encendido bajo, sin respirar. */
+  .dico-pulso--idle .dico-pulso-brillo {
+    opacity: calc(.20 * var(--dico-pulso-intensidad));
   }
 
-  /* active: el aro entero en Volt. Mas brillo, sin recorrido. */
-  .dico-pulso--active .dico-pulso-aro {
-    opacity: calc(1 * var(--dico-pulso-intensidad));
-    stroke: var(--dico-blue-volt);
+  /* active: el mismo brillo, mas fuerte. Se distingue de idle sin moverse. */
+  .dico-pulso--active .dico-pulso-brillo {
+    opacity: calc(.70 * var(--dico-pulso-intensidad));
   }
 
   /* processing: segmento quieto arriba, brillante y corto. */

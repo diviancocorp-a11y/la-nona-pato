@@ -192,6 +192,46 @@ describe('B6R — DicoPulso: los cinco modos', () => {
       .toContain('49.9 48.05');
   });
 
+  it('sobre el arte final NUNCA repinta el aro: eso seria recolorear el PNG', () => {
+    // El aro base solo se dibuja donde no hay arte debajo. Si `idle` o `active`
+    // lo encendieran igual, el overlay estaria pintando encima del aro del
+    // asset con otro color, que es exactamente lo prohibido: el arte manda.
+    for (const modo of ACTIVITIES) {
+      const re = new RegExp(`\\.dico-pulso--${modo} \\.dico-pulso-aro\\s*\\{`);
+      expect(pulsoCss, `${modo} enciende el aro base`).not.toMatch(re);
+    }
+    // Fuera del bloque de reduced motion, el aro base solo aparece con --con-aro.
+    // Se quitan los comentarios primero: sin eso el regex arrastra el bloque de
+    // texto anterior y ninguna regla parece empezar por su propio selector.
+    const sinComentarios = pulsoCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const sinReduce = sinComentarios.split('@media (prefers-reduced-motion')[0];
+    const reglasAro = [...sinReduce.matchAll(/([^{}]*)\.dico-pulso-aro\s*\{/g)].map(m => m[0]);
+    for (const r of reglasAro) {
+      const esBase = r.trim().startsWith('.dico-pulso-aro');
+      expect(esBase || r.includes('--con-aro'), `regla suelta sobre el aro: ${r.slice(-60)}`).toBe(true);
+    }
+  });
+
+  it('idle y active senializan con Volt encima, no repintando', () => {
+    for (const modo of ['idle', 'active']) {
+      const re = new RegExp(`\\.dico-pulso--${modo} \\.dico-pulso-brillo\\s*\\{[^}]*\\}`);
+      expect(pulsoCss, `${modo} sin brillo Volt`).toMatch(re);
+    }
+    const brillo = pulsoCss.match(/\.dico-pulso-brillo\s*\{([^}]*)\}/)[1];
+    expect(brillo).toContain('var(--dico-blue-volt)');
+    expect(brillo).not.toContain('--dico-blue-base');
+  });
+
+  it('el token base describe el ARTE 2D, medido, no el render ni la lamina', () => {
+    // 93% de los pixeles azules del asset final son #192B6C. El token lo copia;
+    // el PNG no se toca.
+    const base = pulsoCss.match(/--dico-blue-base:\s*(#[0-9a-fA-F]{6});/)[1];
+    expect(base.toUpperCase()).toBe('#192B6C');
+    // Y los otros dos azules quedan documentados, no usados como base.
+    expect(pulsoCss).toContain('--dico-blue-render');
+    expect(pulsoCss).toContain('--dico-blue-flat');
+  });
+
   it('el aro base es opcional: sobre arte final no se redibuja', () => {
     const sin = render(React.createElement(DicoPulso, { activity: 'idle' }));
     expect(sin.container.querySelector('.dico-pulso')).not.toHaveClass('dico-pulso--con-aro');

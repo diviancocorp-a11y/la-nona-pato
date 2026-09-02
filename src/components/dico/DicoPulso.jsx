@@ -96,6 +96,13 @@ export default function DicoPulso({
         cx={cx} cy={cy} r={radio}
         strokeWidth={grosor}
       />
+      {/* La senial de idle y active: Volt ENCIMA del aro que ya trae el arte.
+          No repinta el PNG, se superpone. */}
+      <circle
+        className="dico-pulso-brillo"
+        cx={cx} cy={cy} r={radio}
+        strokeWidth={grosor}
+      />
       <g className="dico-pulso-giro">
         <circle
           className="dico-pulso-estela"
