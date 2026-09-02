@@ -45,6 +45,30 @@ limpio salieron dos causas más, ninguna del lote:
 
 **1 de 4 corridas falla** (antes 2 de 3). Mejoró, no alcanza.
 
+### Normalización de alfa de los assets 2D
+
+Los masters traían el cuerpo en **alfa 251-254**, un export casi-opaco. Se
+normalizó **sólo el canal alfa** —`a==0` queda en 0, `1..244` intacto porque es
+el antialiasing, `a>=245` pasa a 255— sin tocar un byte de RGB.
+
+Medido sobre damero: el mismo píxel de oro daba **0,378-0,400** de diferencia
+según cayera en cuadro claro u oscuro; después, **0,000**.
+
+Verificado sobre blanco, Zinc oscuro y damero, con el borde ampliado ×10: sin
+halo (0 píxeles con alfa 0 y RGB residual), sin borde duro, sin lavado de Gold ni
+Blue, ojos y cejas idénticos, caja idéntica. **No hizo falta mover el umbral.**
+
+La verificación destapó un bug mío: el reductor a 256 px usaba el alfa sin
+redondear para invertir la premultiplicación y dejaba 223 píxeles con alfa 0 y
+color residual. Corregido.
+
+Todo queda reproducible en `scripts/dico-2d-derivar.mjs`, con `--check` para que
+nadie edite un derivado a mano. Masters intactos en `platform/brand/`,
+productivos en `public/brand/dico/` (392 KB contra 4,8 MB).
+
+**Ojo:** Vite copia `public/` tal cual, así que esos archivos no pasan por el
+grafo de imports y el gate de B5 no los cubre.
+
 ### Lo que sí se hizo, sin montar nada
 
 Se verificaron los 7 assets: alfa RGBA real, cuerpo en 251-254 (menos del 2 % de

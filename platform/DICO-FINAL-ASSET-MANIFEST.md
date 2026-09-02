@@ -549,3 +549,79 @@ tiene contratos propios de Phase 3B, y eso ya es una decisión de alcance.
 
 Ninguna de las tres es «el botón Registrar gasto», que es lo que este bloque
 pedía y quedó hecho.
+
+---
+
+# Dico 2D — normalización de alfa (previa al montaje)
+
+Los masters venían con el cuerpo pintado en **alfa 251-254** en vez de 255. El
+histograma no bloquea los assets: el fondo es transparente de verdad —51 % del
+canvas en alfa 0— y no hay checkerboard ni fondo incrustado. Es un export
+casi-opaco.
+
+## Lo que se le hizo, y lo que no
+
+| | |
+|---|---|
+| `a == 0` | queda en 0 |
+| `1..244` | **intacto** — es el antialiasing del borde |
+| `a >= 245` | pasa a 255 |
+| RGB | **no se toca** — verificado byte a byte, 0 diferencias en los siete |
+
+No se redibujó, no se regeneró, no se modificaron ojos ni cejas.
+
+## Por qué importaba, medido
+
+Sobre damero técnico, el mismo píxel de oro daba distinto según cayera sobre
+cuadro claro u oscuro:
+
+| Archivo | Master (medio/máx sobre 255) | Normalizado |
+|---|---|---|
+| los siete | **0,378 – 0,400 / 1** | **0,000 / 0** |
+
+Era imperceptible a ojo —máximo 1 sobre 255— pero es lo que separa un master
+limpio de uno que arrastra el fondo.
+
+## Verificación sobre los tres fondos
+
+Blanco, Zinc/Carbon oscuro y damero, a tamaño completo y con el borde ampliado
+×10:
+
+| Criterio | Resultado |
+|---|---|
+| Halo | **no** — 0 píxeles con alfa 0 y RGB residual |
+| Borde duro | **no** — el AA 1-244 quedó intacto |
+| Gold y Blue lavados | **no** — RGB idéntico |
+| Ojos y cejas idénticos | sí, por construcción |
+| Geometría idéntica | caja `988x974 @ (132,116)` antes y después |
+
+**No hizo falta mover el umbral.** Si hubiera aparecido halo, el lote se detenía.
+
+## Un bug propio que la verificación destapó
+
+El reductor a 256 px calculaba el inverso de la premultiplicación con el alfa
+**sin redondear**, así que un píxel cuyo alfa cae a 0 al redondear conservaba
+RGB amplificado: **223 píxeles** con alfa 0 y color residual. Al componer no
+molestan —alfa 0 no pinta— pero es basura que un visor que ignore el alfa
+convertiría en halo. Ahora el inverso usa el alfa ya redondeado: **0**.
+
+## Dónde quedó cada cosa
+
+| Ruta | Qué | Peso |
+|---|---|---|
+| `platform/brand/dico-2d-masters/` | los 7 masters, **intactos** | 4,8 MB |
+| `public/brand/dico/` | los 7 productivos: alfa normalizado + 256 px | **392 KB** |
+| `scripts/dico-2d-derivar.mjs` | la derivación, reproducible | — |
+
+`node scripts/dico-2d-derivar.mjs --check` falla si alguien editó un derivado a
+mano. Verificado: los siete SHA coinciden.
+
+Se quitó el set sin normalizar que estaba en `src/components/dico/native/` para
+no dejar dos familias del mismo asset.
+
+## Nota que conviene no perder
+
+Vite copia `public/` tal cual: estos archivos se referencian **por URL y no pasan
+por el grafo de imports**, así que el gate de B5 —el que impide que un asset
+legacy entre al bundle— **no los cubre**. Si se suman más assets ahí, conviene
+extenderlo.
