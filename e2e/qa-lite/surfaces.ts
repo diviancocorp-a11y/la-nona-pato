@@ -158,11 +158,53 @@ async function expectStableLayout(page: Page, locators: Locator[]) {
       height: box.height,
     }
   })))
+  // ESPERAR A QUE TERMINE DE ENTRAR ANTES DE MEDIR.
+  //
+  // El panel de cobro entra con una animacion. Medir apenas aparece agarra el
+  // ultimo tramo —se lo vio a 0,06px de su posicion final— y la comparacion
+  // contra el frame siguiente da "layout inestable" cuando en realidad estaba
+  // terminando de asentarse. Se esperan las animaciones de los propios nodos
+  // medidos, con tope: si algo no termina nunca, tiene que fallar, no colgar.
+  await Promise.all(locators.map((locator) => locator.evaluate(async (element) => {
+    const enCurso = element.getAnimations({ subtree: true })
+      .filter((a) => a.playState === 'running' && Number.isFinite(Number(a.effect?.getComputedTiming()?.endTime)))
+    await Promise.race([
+      Promise.all(enCurso.map((a) => a.finished.catch(() => undefined))),
+      new Promise((r) => setTimeout(r, 2000)),
+    ])
+  }).catch(() => undefined)))
+
   const before = await measure()
   await page.evaluate(() => new Promise<void>((resolveFrame) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))
   }))
-  expect(await measure()).toEqual(before)
+  const after = await measure()
+  if (JSON.stringify(after) !== JSON.stringify(before)) {
+    // El gemelo positivo: "se movio" no alcanza para arreglarlo. Que se diga
+    // QUE estaba corriendo en ese momento y en que ancestro, que es lo unico
+    // que convierte una deriva de 0,1px en algo accionable.
+    const vivo = await page.evaluate(() => document.getAnimations().map((a) => {
+      const efecto = a.effect
+      const target = efecto instanceof KeyframeEffect && efecto.target instanceof Element
+        ? efecto.target : null
+      return {
+        nombre: a instanceof CSSAnimation ? a.animationName
+          : (a instanceof CSSTransition ? a.transitionProperty : a.id),
+        tipo: a.constructor.name,
+        estado: a.playState,
+        elemento: target
+          ? `${target.tagName.toLowerCase()}.${Array.from(target.classList).join('.')}`
+          : null,
+      }
+    }).filter((x) => x.estado === 'running'))
+    throw new Error(
+      `LAYOUT INESTABLE entre dos frames.
+corriendo: ${JSON.stringify(vivo, null, 2)}
+`
+      + `antes: ${JSON.stringify(before)}
+despues: ${JSON.stringify(after)}`,
+    )
+  }
 }
 
 export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
