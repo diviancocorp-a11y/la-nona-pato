@@ -113,9 +113,8 @@ Se conserva el typewriter, la fuente accesible única y la reserva de geometría
 **Tres choques resueltos, todos medidos:**
 
 - Con la sidebar expandida, el globo (desde x=109) y Physical (x 44..228)
-  tapaban los rótulos. Mientras Dico está afuera o el aviso abierto, la
-  sidebar **no se expande** — se resuelve donde nace el conflicto, no alejando
-  a Physical, que rompería la lectura de que sale del Slot.
+  tapaban los rótulos. **Se corre Dico, no se recorta la navegación** — ver
+  §9.
 - El globo estaba en y=26, encima de una topbar de 57px: tapaba el nombre del
   negocio. Bajó a 64.
 - La ranura vacía del Slot flotaba sobre los iconos de navegación. En desktop
@@ -170,20 +169,87 @@ hice ninguno.
 
 **Lo que propongo, para decidir:**
 
-1. **Dico como único invocador, también en mobile.** Hoy en mobile hay *dos*
-   formas de traer a Physical: la ranura del Slot (que se ve siempre) y Dico
-   2D. En desktop la ranura sólo aparece cuando el personaje está afuera, para
-   guardarlo. Unificar el gesto es una línea de CSS, pero cambia lo que el
-   usuario ve en la pantalla de entrada, así que va como propuesta.
+1. ~~Dico como único invocador, también en mobile.~~ **Hecho.** La ranura del
+   Slot se ve solamente cuando Physical está afuera —ahí es el control para
+   guardarlo—, en desktop y en mobile. El modelo queda igual en los dos:
+   *tap en Dico → Physical*, *tap en el contador → aviso*.
 2. **Guardar los hover detrás de `@media (hover: hover)`.** No hay ni uno en
    `src/`, así que en touch el hover de la ranura
    (`.dico-slot-control:hover .dico-slot-luz`) queda pegado después del tap.
    No es copiar el hover: es que el dedo tenga una respuesta inmediata
    (`:active`) donde el mouse tenía una anticipada.
-3. **El tap sobre Dico enciende el pulso en `active` antes de que Physical
-   termine de salir.** La firma visual ya existe y comunica "te escuché"
-   durante los ~700ms de la animación, que en mobile se sienten.
+3. ~~El tap enciende el pulso en `active`.~~ **Descartado.** `activity`
+   describe el estado de Dico, no el estado del dedo: usar la señal del
+   sistema como feedback de presión la vacía de significado. Si hace falta
+   respuesta táctil inmediata, va por `:active` en CSS y se acabó.
 
 **Lo que NO propongo:** long-press, swipe ni gestos nuevos. No hay ninguno hoy
 en el panel y agregarlos sobre el único elemento de marca es donde peor se
 descubren.
+
+---
+
+## 9. REVIEW A — Dico se corre, la navegación no se recorta
+
+La primera versión resolvió la colisión al revés: cuando Physical estaba
+afuera o el aviso abierto, la sidebar **dejaba de expandirse** y apagaba los
+rótulos. La interfaz perdía capacidad por culpa de una presencia de IA, que es
+exactamente lo contrario de la regla.
+
+**Ahora la sidebar se expande siempre** —hover, teclado, con Dico activo o
+no— y lo que se mueve es Dico.
+
+### Una sola geometría
+
+`--ag-sidebar-ancho` es *el* ancho actual, y de él derivan las tres cosas que
+dependen de él:
+
+| Qué | De dónde sale |
+|---|---|
+| ancho de la sidebar | `width: var(--ag-sidebar-ancho)` |
+| dónde arranca el aviso | `left: var(--ag-sidebar-ancho)` |
+| dónde se para Physical | `left: calc(var(--ag-sidebar-ancho) + 8px)` |
+
+y el propio ancho sale de las dos medidas declaradas
+(`--ag-sidebar-riel: 64px`, `--ag-sidebar-abierta: 224px`). Antes el aviso y
+Physical repetían el riel por su cuenta, así que al expandirse la sidebar les
+pasaba por encima. Se mueven **sólo en X** y con la misma duración: sin salto
+vertical y sin reflow del workspace, que sigue corriéndose el riel y nada más.
+
+Medido en el panel real, los cuatro anchos de sidebar:
+
+| | 1440 | 1280 | 1024 | 900 |
+|---|---|---|---|---|
+| expande con el aviso abierto | 224 | 224 | 224 | 224 |
+| expande con Physical afuera | 224 | 224 | 224 | 224 |
+| rótulos visibles con Dico activo | sí | sí | sí | sí |
+| Tab llega a la sidebar con Physical afuera | sí | sí | sí | sí |
+
+### Foco de teclado, no de click
+
+Se usa `:has(:focus-visible)` y no `:focus-within`. Con `focus-within`, hacer
+click con el mouse en un item deja el foco adentro y la sidebar se quedaba
+abierta indefinidamente, aunque el mouse ya estuviera en el workspace —
+rompía la regla de que salir al workspace la colapsa. `:focus-visible` es
+justo la distinción que hace falta: el navegador sólo lo marca cuando el foco
+vino del teclado.
+
+Lo encontró el QA nuevo, midiendo el globo "con la sidebar colapsada" y
+obteniendo 224.
+
+### Hover
+
+Las reglas de hover **de esta sidebar** van dentro de
+`@media (hover: hover) and (pointer: fine)`; en touch el `:hover` queda pegado
+después del tap y la sidebar se quedaría abierta sola. El foco de teclado
+queda **afuera** de esa media query a propósito: adentro, quien navega con
+teclado en una tablet no vería un solo rótulo.
+
+No se abrió la migración global de los `:hover` del repo.
+
+### Dos contratos que fijan el principio
+
+1. Ninguna regla condicionada al estado de Dico (`:has(.dico…)`) puede tocar
+   el `width` de la sidebar ni la `opacity` de sus rótulos.
+2. La posición del aviso y de Physical tiene que derivar de
+   `--ag-sidebar-ancho`, y no puede transicionar el eje vertical.
