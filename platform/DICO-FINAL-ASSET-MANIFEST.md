@@ -625,3 +625,95 @@ Vite copia `public/` tal cual: estos archivos se referencian **por URL y no pasa
 por el grafo de imports**, así que el gate de B5 —el que impide que un asset
 legacy entre al bundle— **no los cubre**. Si se suman más assets ahí, conviene
 extenderlo.
+
+---
+
+# B6R.QA1 — CERRADO. Cinco corridas verdes.
+
+| Corrida | DOM | Bloqueantes | Scroll | Red externa |
+|---|---|---|---|---|
+| 1 | igual | **0** | identical | 0 |
+| 2 | igual | **0** | identical | 0 |
+| 3 | igual | **0** | identical | 0 |
+| 4 | igual | **0** | identical | 0 |
+| 5 | igual | **0** | identical | 0 |
+
+Antes de arreglar nada: **2 de 3 fallaban**. Después del primer arreglo: 1 de 4.
+Ahora: **0 de 5**.
+
+## Las tres causas, y ninguna era la que parecía
+
+### 1. El CTA «Registrar gasto» — `line-height` fraccionario
+
+`14px × 1.45 = 20,3px` de caja de línea. Los 0,3 se acumulaban, la burbuja
+terminaba en `h: 149,891` y el CTA heredaba `y: 772,797`; su `border-radius`
+rasterizaba las esquinas con fase distinta.
+
+Se localizó comparando **todos** los bordes verticales de la zona: filas 200,
+240 y 330 con 91, 4 y 8 bordes y **ninguno corrido**; sólo las dos filas donde
+el botón curva.
+
+**El arreglo:** `line-height: 20px`. Una declaración.
+
+### 2. El título del catálogo — **no era una carrera de fuente**
+
+`<RotatingVerb>` corría un `setInterval` de 2500 ms. El gate congela movimiento
+por `getAnimations()`, y un timer de JS no aparece ahí: no había forma de
+congelarlo.
+
+Despistaba porque `minWidth: 5ch` mantenía el ancho. El texto medía **idéntico**
+—x 24..298, ancho 275 en las dos puntas— y sólo cambiaba la densidad de tinta
+(1359 contra 1318) y las franjas de subpixel. Se veía tipográfico; era de fase.
+
+**El arreglo:** las tres palabras al DOM, apiladas, con **una animación CSS** de
+delay escalonado. Declarable en el registro y congelable como el resto.
+Verificado recorriendo el ciclo por `currentTime`: nunca hay dos visibles a la
+vez y en `freezeAt: 1000` queda la primera sola.
+
+**De paso, un bug de accesibilidad real:** no respetaba
+`prefers-reduced-motion`. Una palabra que se cambia sola para siempre es lo que
+WCAG 2.2.2 pide poder frenar. Ahora con la preferencia hay **0 animaciones**.
+
+### 3. `.ag-dico-stack` — **no era el estado del aviso**
+
+| | x | width | margin-left |
+|---|---|---|---|
+| cerrado inicial | 505 | 430 | **0px** |
+| cerrado +600ms | 505 | 430 | **0px** |
+| abierto | 505 | 430 | **463px** |
+| **cerrado de nuevo** | 505 | 430 | **463px** |
+
+Mismo estado que el primero, misma posición usada, **margen computado
+distinto**. El valor computado de un `margin: auto` no es estable entre pasadas
+de layout: el contrato de DOM leía un número que fluctúa sin que el layout
+cambie.
+
+**El arreglo:** el Slot centra a sus hijos con `display: grid` y
+`justify-items: center`; el stack deja de usar `margin: auto`. Los márgenes del
+hijo son **0px en las cuatro mediciones y en 390/900/1440**, con la posición
+intacta.
+
+**Dos defectos reales que `width: max-content` tapaba:**
+
+1. A 390 px el stack medía **346 dentro de un slot de 306**: el
+   `overflow: hidden` le cortaba **40 px al aviso**.
+2. A 390 px la presencia **saltaba 20 px** al costado al abrir el aviso, porque
+   el stack cambiaba de ancho con el estado.
+
+## Lo que queda, y no es cero
+
+Las cinco corridas tienen **0 bloqueantes**, pero no todas tienen 0 crudos:
+
+| Superficie | Crudos | En cuántas de 5 |
+|---|---|---|
+| `catalog--carbon` | 34 | 4 |
+| `admin--dark` | 46 | 2 |
+| `admin--light` | 50 | 1 |
+| `catalog--noche` | 24 | 2 |
+
+Son diferencias que el filtro clasifica como antialiasing y redondeo, y nunca
+cruzan el umbral. **`catalog--ambar`, que era el que fallaba con 451
+bloqueantes, quedó en 0 en las cinco.**
+
+No se subió ningún umbral, no se excluyó ninguna diferencia y no se neutralizó
+nada del producto para que pasara.

@@ -8,6 +8,50 @@
 
 ---
 
+## 2/sep/2026 — B6R.QA1 CERRADO: same-ref determinista (sesión Claude)
+
+**Cinco corridas consecutivas verdes**: DOM igual, `blockingDiffPixels: 0`,
+scroll trace identical, red externa 0. Antes de empezar fallaban 2 de 3.
+
+Eran **tres** causas, y ninguna era la que parecía.
+
+1. **El CTA «Registrar gasto»**: `line-height: 1.45` sobre 14 px = 20,3 px de
+   caja de línea. La fracción se acumulaba y el `border-radius` del botón
+   rasterizaba sus esquinas con fase distinta. Arreglo: `line-height: 20px`.
+2. **El título del catálogo**: **no era carrera de fuente.** `<RotatingVerb>`
+   corría un `setInterval`, y el gate sólo puede congelar lo que aparece en
+   `getAnimations()`. `minWidth: 5ch` mantenía el ancho idéntico, así que se
+   veía tipográfico. Ahora es una animación CSS declarada en el registro. De
+   paso se arregló que no respetaba `prefers-reduced-motion` (WCAG 2.2.2).
+3. **`.ag-dico-stack`**: **no era el estado del aviso.** El valor *computado* de
+   un `margin: auto` no es estable entre pasadas de layout — medido en el mismo
+   estado y con la misma posición usada, `getComputedStyle` devolvía 0px en una
+   pasada y 463px en otra. Ahora el Slot centra desde el contenedor con
+   `display: grid` y no queda nada fluctuante que leer.
+
+**Dos defectos reales que la tercera causa tapaba**, los dos en 390 px: el aviso
+perdía **40 px** recortados por el `overflow: hidden` del Slot, y la presencia
+**saltaba 20 px** al abrirlo.
+
+### Lo que queda y conviene no olvidar
+
+Las cinco corridas tienen 0 bloqueantes pero **no 0 crudos**: `catalog--carbon`
+34 en 4 de 5, `admin--dark` 46 en 2 de 5, `admin--light` 50 en 1 de 5,
+`catalog--noche` 24 en 2 de 5. El filtro los clasifica como antialiasing y
+redondeo y nunca cruzan el umbral. `catalog--ambar`, que fallaba con 451, quedó
+en 0 en las cinco.
+
+### Gate de assets públicos
+
+`public/` no pasa por el grafo de imports de Vite, así que los siete assets 2D
+quedaban sin cubrir. El contrato nuevo es **positivo, no sólo negativo** —un
+gate que sólo dice «no hay legacy» pasa igual con la carpeta vacía—: declara los
+siete que tienen que estar, los ata al vocabulario `nativeState`, exige RGBA
+real y corre `scripts/dico-2d-derivar.mjs --check` para que nadie edite un
+derivado a mano. Cinco mutaciones, las cinco fallan.
+
+---
+
 ## 1/sep/2026 — B6R.QA1: el botón reparado, el gate todavía no (sesión Claude)
 
 Llegó el brief de Opción A con los siete assets finales de Dico 2D. Su primer
