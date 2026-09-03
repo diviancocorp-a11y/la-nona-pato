@@ -8,6 +8,164 @@
 
 ---
 
+## 3/sep/2026 — PHASE 8 CLOSED · PHASE 9 V1 CLOSED / QA CERTIFIED
+
+**Baseline actual: `feat/dico-panorama-v1 @ 98db946`.** Son 17 commits sobre
+`237aba3` (el cierre del paquete 3D). Physical dejó de ser un pack de assets y
+pasó a ser runtime conectado a dos eventos reales.
+
+| Fase | Estado |
+|---|---|
+| Phase 8 — Dico Native 2D | **CLOSED / certified** |
+| Phase 9 — Slot / Physical (V1) | **CLOSED / QA CERTIFIED** |
+| Event contract | **CLOSED** (auditado, 2 eventos) |
+| Primer lote de intervenciones | **CLOSED / certified** |
+| Responsive Physical | **CLOSED** |
+
+### Hecho
+
+**1. Physical runtime (`0c67a14`, `4086d57`).** `DicoPhysical` es un primitive
+de dos capas con crossfade de 140ms, sin morphing, sin rig y sin lipsync. La
+caja sale del contrato del pack (canvas 1600×1136), no de tantear: 448×318,08
+px, elegidos para que la moneda quede en ~139,7px, **el mismo tamaño en
+pantalla que tenía Dico antes**. No se eligió una escala nueva.
+
+**2. Anclaje por la tinta, no por la caja (`dfacae2`, `613aae4`).** El 40% del
+canvas es personaje y el resto margen transparente. Anclar por la caja dejaba
+al personaje flotando; anclar `pointDown` por el centro hacía que el dedo
+apuntara al costado, porque Dico señala con la mano izquierda. Las constantes
+del Slot (`--pose-bajo-pies`, `--pose-tinta-izq`, `--pose-dedo`,
+`--pose-dedo-y`) salen de medir píxeles alpha del asset. **Si alguien las
+"redondea", el dedo deja de caer sobre el CTA.**
+
+**3. Event contract (`371617c`, `platform/DICO-PHYSICAL-EVENT-CONTRACT.md`).**
+Se inventariaron las señales reales del runtime **antes** de conectar nada. El
+hallazgo que ordena todo el lote: casi todas las señales ya tienen a Dico
+encima (el aviso 2D, las oportunidades, los toasts), así que sacar a Physical
+para esas sería decir lo mismo dos veces, más grande. De muchos candidatos
+sobrevivieron **dos**.
+
+**4. Primer lote de intervenciones (`71b12ce`).**
+`src/modules/dico/intervenciones.js` es puro, sin React, al estilo de
+`reglas.js`. **Recibe un EVENTO, no un estado** — la regla que ordena el
+módulo: "hay cero productos visibles" es cierto todo el tiempo en una cuenta
+vacía, así que dispararlo por lectura de estado sacaría al personaje encima
+del workspace en cada login y en cada re-render.
+
+- `catalogo-vacio` → `pointDown`, anclaje `target`, una vez por sesión.
+- `nada-visible` → `worried`, anclaje `presence`, **sólo por transición**
+  (`visiblesAntes > 0 && visiblesAhora === 0`).
+
+Dos placements semánticos y **cero coordenadas libres**: `presence` (donde Dico
+ya vive) y `target` (un nodo real que el objetivo publica, al que Physical
+viaja por portal). `target` es exclusivo de poses direccionales: anclar al
+objetivo con una pose que no señala no significa nada.
+
+La transición se calcula **en el handler**, no en un efecto: es la única forma
+de distinguir "el usuario apagó el último" de "esta cuenta ya estaba en cero".
+Un efecto no sabe quién causó el cambio.
+
+**5. La carrera de cierre (`b50efab`) — el bug más caro del lote.** La máquina
+sólo acepta `CLOSE_PHYSICAL` desde `physical_open`. Si el productor retiraba la
+intervención mientras Physical todavía estaba **abriendo** (780ms), el cierre
+se tragaba y **Dico quedaba afuera para siempre**. Se arregló reconciliando
+contra el ESTADO, no sólo contra el cambio de prop, más un ref
+`porIntervencion` para no cerrar las invocaciones manuales. El test que lo
+cubre resuelve el estado *dentro* de la animación de entrada, a propósito.
+
+**6. QA flake stabilization (`6e74961`, `97c79af`, `28ac616`).** Se separó
+producto de harness midiendo, no deduciendo:
+
+- *Typewriter*: era **harness**. La aserción leía un nombre accesible
+  transitorio que existe 1,93s mientras tipea. Se ancló a un selector
+  permanente.
+- *`data-cp-theme` vacío*: era **producto real**. El anti-flash de
+  `index.html` sólo escribía el atributo si había cache: **en primera visita
+  real el catálogo se pintaba sin tema**. Ahora siempre pinta un default y
+  `applyCatalogTheme` marca `data-cp-theme-listo='1'` cuando el tema es el de
+  verdad. Los tests esperan esa señal semántica en vez de esperar N ms.
+- `use.reducedMotion` del config de Playwright **no surte efecto tras
+  navegación**; se aplica y se verifica con `page.emulateMedia` en
+  `aplicarMovimiento()`. Es un bug de harness medido, no una preferencia.
+
+**7. Phase 9 — responsive (`98db946`).** La auditoría visual en 7 viewports
+con catálogo **realmente** vacío (`applyFixtureState('empty')`, no simulado)
+encontró dos defectos reales: la burbuja se salía del viewport, y a ≤768px la
+caja de 448px del personaje **no entra** en el ancho disponible.
+
+La decisión de producto (de Ricky) fue no sacrificar semántica por clipping:
+**por debajo de 769px `catalogo-vacio` no monta Physical** y la pantalla se
+queda con la escena Native 2D que `ProductsPanel` ya sabía mostrar. No se
+degrada a `presence` ni se cambia la pose: *una pose direccional sólo puede
+existir si señala realmente a su objetivo*. 769px no es un breakpoint nuevo —
+es el mismo de `admin-sidebar.css`, el que ya decide sidebar vs flujo.
+
+La burbuja se corrigió **sólo con CSS**: `max-width` elástico en `vw`, derivado
+de medir dónde cae el Slot en el layout real (`ranura.x = 0,5·vp + 38`,
+constante en las cuatro resoluciones de escritorio medidas). Sin coordenadas
+JS, sin mover el personaje, sin tocar dónde cae el dedo, sin tercer placement.
+
+### Verificado (sobre `98db946`, no sobre "debería andar")
+
+| Qué | Resultado |
+|---|---|
+| Suite completa (`--pool=threads`) | **1172/1172** |
+| Harness QA Lite (`qa:lite:test`) | **28/28** |
+| Validator 3D (`dico:3d:validate`) | **8/8 · 8/8 · 21/21** |
+| `phase9-visual.spec.ts` (7 viewports + 769 + cruce 768↔769 en ambos sentidos) | verde |
+| `dico-intervenciones.spec.ts` · `dico-physical-poses.spec.ts` | verdes |
+| same-ref gate (`--base HEAD --candidate HEAD`) | **5/5**; DOM igual, píxeles bloqueantes 0, scroll identical, red externa 0 |
+| `git diff --check` | limpio |
+
+Todo lo visual se midió en Chromium real vía Playwright (geometría por bbox de
+píxeles alpha), no en jsdom, que no hace layout.
+
+### Lo que NO se hizo, a propósito
+
+- **No hay tercer evento Physical.** Sólo `catalogo-vacio` y `nada-visible`.
+  `margen-negativo` no se implementó. No se buscó uso para `success`, `error`,
+  `thinking` ni `pointUp`: existen en el pack, no en el runtime.
+- **Deuda visual del Slot: NO BLOQUEANTE.** Con anclaje `target` la ranura
+  queda visualmente entre el personaje y el CTA. Se decidió dejarla como está
+  y evaluarla en el cierre general de primitives/presencia, no ahora.
+- Deuda conocida: `DicoPresence` **se remonta** al cruzar 769px (en desktop
+  vive en la sidebar y en mobile en el flujo) y su máquina arranca de cero. Por
+  eso la carga vive en el productor (`PlatformAdmin`, que no se remonta) y la
+  reconciliación vuelve a abrir Physical del otro lado sin re-despachar nada.
+  Hay un test que lo ancla.
+
+### Pendiente inmediato, en orden
+
+1. **Gate A3 de Phase 3B** — es lo que desbloquea Golden Screen. Phase 3B está
+   *implementada* (`9e77b0a`, merge `cf8f47c`) pero **no certificada**:
+   verificado con `git log --all`, el commit
+   `chore(dico): close integrated phase3 shell` **no existe en ninguna rama**.
+   El gate cubre browser, light/dark, mobile, navegación, focus y overflow.
+2. Si A3 queda verde: commit formal de cierre + actualizar esta matriz.
+3. **Phase 4 — Golden Screen**, recién ahí, con brief propio.
+4. Phase 5 (primitives) sigue atada: *extraer sólo lo demostrado por Golden
+   Screen*. No crear una librería UI paralela por adelantado.
+
+### Bloqueado por Ricky
+
+- **`feat/dico-panorama-v1` NO tiene upstream: nunca se pusheó.** Los 17
+  commits de este lote existen **sólo en la máquina de Ricky**. Fue deliberado
+  ("sin push, sin deploy" durante todo el lote), pero un commit local no
+  protege de nada: si el disco se muere, se pierde Phase 8 y Phase 9 enteras.
+  Decidir cuándo se publica la rama.
+- Sin deploy. Nada de este lote está en producción.
+
+### Trampa de infraestructura que costó un ciclo
+
+`scripts/qa-lite/captura-secuencia.mjs` y `compare-refs.mjs` construyen desde
+una **worktree de un ref de git** (`git worktree add --detach <sha>`), no desde
+el working tree. **Los cambios sin commitear son invisibles para el harness**:
+corrí un spec contra una corrección recién escrita y el resultado fue el del
+código viejo, sin ningún aviso. Hay que commitear (o apuntar `--ref`) antes de
+medir.
+
+---
+
 ## 2/sep/2026 — PAQUETE 3D INTEGRADO (assets, no runtime)
 
 **Tag `DICO_3D_ASSET_PACKAGE_INTEGRATED` en `4ce334f`.** Integrado sobre la
