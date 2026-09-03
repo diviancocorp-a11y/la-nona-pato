@@ -8,6 +8,72 @@
 
 ---
 
+## 3/sep/2026 (b) — PHASE 3B CLOSED · GOLDEN SCREEN DESBLOQUEADA
+
+Se ejecutó el gate **A3**, que era lo único que separaba a Phase 3B de
+`CLOSED` y, por transitividad, lo único que bloqueaba **Phase 4 — Golden
+Screen**. Detalle completo en `platform/PHASE-3B-A3-CLOSURE.md`.
+
+**Verde en las seis dimensiones** (browser, light/dark, mobile, navegación,
+focus, overflow), medido en Chromium real sobre el shell **ya integrado** —con
+Machine Soul, el recovery Presence/Slot, Native 2D, Physical y Phase 9 encima—,
+que es lo único que "cierre integrado" puede significar:
+
+- desborde `scrollWidth − clientWidth` = **0** en las 6 combinaciones tema ×
+  viewport (contra los 151px a 390 y 181px a 360 del síntoma de 3A);
+- nav con **target mínimo 46px** y **0** secciones fuera del viewport en
+  390×844 y 360×800;
+- diálogo con foco adentro, backdrop **800** / panel **810**, **0 de 5** ítems
+  de nav clickeables y Escape cerrando, en los dos temas;
+- contraste del par del shell **19,90:1** en claro y **16,12:1** en oscuro.
+
+Suite **1172/1172**, build y typecheck verdes.
+
+### El hallazgo que casi lo hace fallar mal
+
+La primera corrida falló en `--ag-surface`: `#fff` en claro y `#18181b` en
+oscuro contra los `#FFFDF7`/`#262626` de la tabla de 3A. **No era regresión**:
+verificado en `admin-tokens.css`, son `var(--ms-white)` y `var(--ms-zinc-900)`,
+o sea la re-base a Zinc/Carbon que 3B **declaró** en su sección 0. Exigir los
+hexes de 3A habría hecho fallar al shell por cumplir 3B.
+
+El contrato real de 3A no era un hex: era que el token **siguiera al tema** en
+vez de caer a un literal fijo (ese era el 1,24:1 en oscuro, y sobrevivió meses
+porque `var()` con fallback nunca falla). Esa firma se mide sin depender de la
+paleta: el valor tiene que **diferir** entre claro y oscuro. Es lo que el gate
+mide ahora, más el contraste real resuelto por el navegador contra el mismo
+4,5:1 de AA que usó 3A. **Ningún umbral se subió.**
+
+Lección para el próximo gate: cuando una aserción anclada a un número histórico
+falla, primero hay que ver si el número fue **reemplazado a propósito** por una
+fase posterior. Aquí lo estaba, y estaba escrito.
+
+### Pendiente inmediato
+
+1. **Phase 4 — Golden Screen**, ya desbloqueada, con brief propio. Sigue
+   necesitando aprobación visual humana: ese es el gate de la propia Phase 4.
+2. Phase 5 (primitives) sigue atada a Golden Screen: *extraer sólo lo
+   demostrado*. No crear una librería UI paralela por adelantado.
+
+### Bloqueado por Ricky
+
+- **La rama sigue sin upstream: nada de esto está pusheado.** Ver la sección
+  anterior; el riesgo no cambió, ahora con más commits encima.
+
+### Nota de entorno (costó ~25 min)
+
+Docker Desktop crashea al arrancar si quedan **sockets huérfanos** de una
+instancia anterior: `starting services: ... remove <algo>.sock: The file cannot
+be accessed by the system`. Son stubs de 0 bytes que no se pueden borrar ni sin
+procesos Docker vivos. **No usar "Reset to factory defaults"** del diálogo: eso
+borra imágenes y volúmenes, incluido el stack local de Supabase del harness.
+Lo que sirve es **renombrar el directorio que los contiene** y relanzar; Docker
+lo recrea. Aparecieron en dos lugares —`%LOCALAPPDATA%\Docker\run` y
+`%LOCALAPPDATA%\docker-secrets-engine`— y quedaron en cuarentena como
+`*-huerfano-20260903*`, borrables cuando se quiera.
+
+---
+
 ## 3/sep/2026 — PHASE 8 CLOSED · PHASE 9 V1 CLOSED / QA CERTIFIED
 
 **Baseline actual: `feat/dico-panorama-v1 @ 98db946`.** Son 17 commits sobre
