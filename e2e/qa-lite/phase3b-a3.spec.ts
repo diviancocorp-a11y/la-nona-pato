@@ -63,10 +63,35 @@ const medirShell = (page: import('@playwright/test').Page) => page.evaluate(() =
         // Los tokens que Phase 3A definio POR TEMA porque antes caian a su
         // fallback fijo y abrian el contraste a 1,24:1 en oscuro.
         surface: cs.getPropertyValue('--ag-surface').trim(),
+        ink: cs.getPropertyValue('--ag-ink').trim(),
         ok: cs.getPropertyValue('--ag-ok').trim(),
         bad: cs.getPropertyValue('--ag-bad').trim(),
         warn: cs.getPropertyValue('--ag-warn').trim(),
         accentBorder: cs.getPropertyValue('--ag-accent-border').trim(),
+        // Contraste REAL del par del shell, resuelto por el navegador. Es el
+        // mismo par que 3A midio en 1,24:1: tinta sobre superficie.
+        contraste: (() => {
+          const canal = (c: number) => {
+            const v = c / 255
+            return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+          }
+          const lum = (color: string) => {
+            const sonda = document.createElement('span')
+            sonda.style.color = color
+            document.body.appendChild(sonda)
+            const rgb = getComputedStyle(sonda).color.match(/\d+(\.\d+)?/g)
+            sonda.remove()
+            if (!rgb) return null
+            const [r2, g2, b2] = rgb.slice(0, 3).map(Number)
+            return 0.2126 * canal(r2) + 0.7152 * canal(g2) + 0.0722 * canal(b2)
+          }
+          const a = lum(cs.getPropertyValue('--ag-ink').trim())
+          const b = lum(cs.getPropertyValue('--ag-surface').trim())
+          if (a === null || b === null) return null
+          const hi = Math.max(a, b)
+          const lo = Math.min(a, b)
+          return +(((hi + 0.05) / (lo + 0.05))).toFixed(2)
+        })(),
       }
     })(),
   }
@@ -78,6 +103,8 @@ test('A3 — navegacion, overflow y tokens por tema, en los dos temas y los dos 
 
   const filas: Array<Record<string, unknown>> = []
   const problemas: string[] = []
+  /** Los tokens de cada tema, para compararlos ENTRE SI al final. */
+  const contraste: Record<string, { surface: string; ink: string; contraste: number | null }> = {}
 
   for (const tema of TEMAS) {
     // ── Escritorio: overflow y tokens ────────────────────────────────────
@@ -99,13 +126,20 @@ test('A3 — navegacion, overflow y tokens por tema, en los dos temas y los dos 
         if (token === 'clases') continue
         if (!valor) problemas.push(`${tema}/1440: --ag-${token} no resuelve (volvio al fallback)`)
       }
-      // El unico valor que la tabla fija distinto por tema y que se puede leer
-      // sin ambiguedad: `--ag-surface` es #262626 en oscuro y #FFFDF7 en claro.
-      const surface = escritorio.raizAdmin.surface.toUpperCase().replace(/\s/g, '')
-      const esperado = tema === 'dark' ? '#262626' : '#FFFDF7'
-      if (surface !== esperado) {
-        problemas.push(`${tema}/1440: --ag-surface es ${surface}, la tabla de 3A dice ${esperado}`)
-      }
+      // OJO CON LOS HEXES DE 3A: no se comparan contra la tabla.
+      //
+      // Phase 3B re-baso la escala neutra a Zinc/Carbon y lo dejo declarado en
+      // su seccion 0 ("Divergencia declarada"), asi que hoy `--ag-surface` es
+      // `var(--ms-white)` en claro y `var(--ms-zinc-900)` en oscuro. Exigir
+      // #FFFDF7/#262626 seria hacer fallar al shell por cumplir 3B.
+      //
+      // Lo que SI sigue vigente es el defecto que 3A vino a matar: los tokens
+      // no existian, cada `var(--ag-surface, #fffdf7)` caia a su literal fijo,
+      // y en oscuro el fondo quedaba congelado en el crema del claro mientras
+      // el texto seguia al tema — 1,24:1. La firma de esa falla no es un hex
+      // concreto: es que el token valga LO MISMO en los dos temas. Eso es lo
+      // que se mide, mas el contraste real del par del shell.
+      contraste[tema] = escritorio.raizAdmin
     }
 
     // ── Mobile: navegacion y overflow en los dos anchos medidos por 3A ───
@@ -130,6 +164,32 @@ test('A3 — navegacion, overflow y tokens por tema, en los dos temas y los dos 
       }
       if (!m.nav.length) problemas.push(`${etiqueta}: no hay navegacion inferior`)
     }
+  }
+
+  // ── La firma del defecto de 3A, medida entre temas ──────────────────────
+  // Si `--ag-surface` vuelve a valer lo mismo en claro y en oscuro, es que
+  // volvio a caer a un literal fijo: exactamente el bug que abrio el par a
+  // 1,24:1 y que sobrevivio meses porque `var()` con fallback nunca falla.
+  if (contraste.light && contraste.dark) {
+    if (contraste.light.surface === contraste.dark.surface) {
+      problemas.push(`--ag-surface vale lo mismo en los dos temas (${contraste.light.surface}): volvio al fallback fijo`)
+    }
+    if (contraste.light.ink === contraste.dark.ink) {
+      problemas.push(`--ag-ink vale lo mismo en los dos temas (${contraste.light.ink})`)
+    }
+    // Y el par real del shell —tinta sobre superficie, el que 3A midio en
+    // 1,24:1— tiene que pasar AA. 4,5:1 no es un umbral nuevo: es el que 3A
+    // uso para declarar que 20 de 23 elementos "incumplian".
+    for (const tema of TEMAS) {
+      const c = contraste[tema]?.contraste
+      if (c === null || c === undefined) {
+        problemas.push(`${tema}: no se pudo medir el contraste del par del shell`)
+      } else if (c < 4.5) {
+        problemas.push(`${tema}: tinta sobre superficie da ${c}:1, AA pide 4.5:1`)
+      }
+    }
+  } else {
+    problemas.push('no se pudieron leer los tokens en los dos temas')
   }
 
   await writeFile(join(SALIDA, 'shell.json'), `${JSON.stringify(filas, null, 2)}\n`, 'utf8')
