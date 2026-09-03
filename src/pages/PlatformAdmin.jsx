@@ -668,6 +668,20 @@ export default function PlatformAdmin() {
   // que todavia no estan implementadas, asi que declarar "agenda" para
   // barberia no ensucia la nav hasta que exista.
 
+  // `catalogo-vacio` es la UNICA intervencion con `anclaje: target`: el dedo
+  // de `pointDown` tiene que caer sobre el CTA de verdad, y ese CTA vive en
+  // una tarjeta que a <=768px no tiene los ~247px de aire que Physical
+  // necesita arriba (medido en Phase 9). Achicar o mover al personaje ahi
+  // rompe el contrato de geometria; cambiarlo a `presence` le saca el sentido
+  // a `pointDown`, que solo existe para senalar. La salida que no sacrifica
+  // ninguna de las dos cosas es la que ya usa el resto del panel: Physical es
+  // EXCEPCIONAL, asi que bajo el breakpoint no sale, y la pantalla se queda
+  // con la escena Native 2D que `ProductsPanel` ya sabe mostrar sola (ver
+  // `intervencionActiva` mas abajo). Nada-visible no tiene este problema
+  // —ancla en `presence`, no depende de un CTA ajeno— y sigue saliendo en
+  // cualquier ancho.
+  const catalogoVacioAngosto = intervencion?.id === 'catalogo-vacio' && !esDesktop;
+
   // Una sola instancia, montada en un lugar o en el otro. El elemento se arma
   // aca —no en cada rama— para que sea literalmente el mismo nodo de React.
   const presenciaDico = (
@@ -682,7 +696,7 @@ export default function PlatformAdmin() {
       omitir={products.length === 0 ? ['catalogo-vacio'] : []}
       onIr={setTab}
       anclaje={esDesktop ? 'lateral' : 'arriba'}
-      intervencion={intervencion}
+      intervencion={catalogoVacioAngosto ? null : intervencion}
       objetivo={anclaDico}
       onIntervencionCta={(i) => {
         // El CTA de la intervencion hace lo mismo que haria el usuario a mano.
@@ -802,7 +816,7 @@ export default function PlatformAdmin() {
               onDelete={handleDeleteProduct}
               onSubirImagen={subirImagenProducto}
               showToast={msg}
-              intervencionActiva={intervencion?.id === 'catalogo-vacio'}
+              intervencionActiva={intervencion?.id === 'catalogo-vacio' && !catalogoVacioAngosto}
               anclaDico={setAnclaDico}
             />
           )}

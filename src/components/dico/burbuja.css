@@ -308,3 +308,44 @@
   left: 100%;
   top: 0;
 }
+
+/* El piso de 250px de `.dico-burbuja` (pensado para el aviso, que siempre
+ * tiene todo el ancho del panel) es lo que le gana al clamp de mas abajo si
+ * no se saca aca: sin esto, la burbuja de una intervencion se negaba a
+ * encoger por debajo de 250px aunque el clamp le pidiera menos, y volvia a
+ * salirse. El contenido decide su ancho minimo real, no un piso ajeno. */
+.dico-intervencion-mensaje .dico-burbuja {
+  min-width: 0;
+}
+
+/* Ancho elastico de la burbuja anclada al objetivo (Phase 9, catalogo-vacio).
+ *
+ * El personaje SIEMPRE entra desde 769px (medido); lo que no entra en el
+ * tramo angosto de escritorio (769-1024px) es la burbuja de 340px fija, que
+ * pisaba el borde del viewport. Por debajo de 769px esta intervencion ya no
+ * monta Physical —ver `PlatformAdmin.jsx`—, asi que esta regla es inerte ahi.
+ *
+ * La formula no es un numero libre: sale de medir donde cae el dedo del Slot
+ * en el layout real del panel (`ranura.x = 0,5*vp + 38`, constante en las
+ * cuatro resoluciones de escritorio medidas). El espacio que queda a la
+ * derecha del globo es entonces `0,5*vp - 160`; se resta un margen de
+ * seguridad de 20px contra el redondeo y el ancho de la scrollbar. Mover al
+ * personaje o el punto donde el dedo cae sobre el CTA NO cambia con esto: es
+ * solo el ancho de la burbuja el que cede. */
+.dico-anclado .dico-burbuja {
+  max-width: min(340px, calc(50vw - 180px));
+}
+
+/* La burbuja de `nada-visible` (anclaje `presence`) sigue las ocho poses a
+ * cualquier ancho; el tramo que no entraba era el mismo de siempre, mobile
+ * (<=768px, la frontera ya contractual de `admin-sidebar.css`), donde el Slot
+ * vive centrado en el flujo en vez de en la sidebar.
+ *
+ * Misma logica que arriba: el Slot queda centrado en el viewport (menos los
+ * 18px de margen de `.ag-slot`), asi que el espacio a la derecha del globo es
+ * `0,5*vp - 82`; se resta el mismo margen de seguridad. */
+@media (max-width: 768px) {
+  .dico-intervencion-mensaje .dico-burbuja {
+    max-width: min(320px, calc(50vw - 100px));
+  }
+}
