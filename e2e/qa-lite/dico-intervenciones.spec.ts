@@ -102,11 +102,11 @@ test('nada visible: apagar el ultimo saca a Dico worried', async ({ page }) => {
 
   // Recuperar el estado la cierra: sin timers, la resuelve la accion.
   await page.getByRole('button', { name: 'Mostrar' }).first().click()
-  const alRecuperar = await page.evaluate(() => ({
-    estado: document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state'),
-    intervencion: document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion'),
-  }))
-  await expect(page.locator('.dico-pose'), `quedo en ${alRecuperar.estado}`).toHaveCount(0)
-  expect(alRecuperar.intervencion, 'la intervencion quedo colgada').toBe('')
+  // Primero se ESPERA el cierre y despues se lee: leer antes captura el
+  // instante del click, cuando la intervencion todavia no se retiro.
+  await expect(page.locator('.dico-pose')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => (
+    document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion')
+  )), { message: 'la intervencion quedo colgada' }).toBe('')
   await page.screenshot({ path: join(SALIDA, 'nada-visible-resuelta.png'), caret: 'hide' })
 })
