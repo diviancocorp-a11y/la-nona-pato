@@ -57,8 +57,11 @@ fase posterior. Aquí lo estaba, y estaba escrito.
 
 ### Bloqueado por Ricky
 
-- **La rama sigue sin upstream: nada de esto está pusheado.** Ver la sección
-  anterior; el riesgo no cambió, ahora con más commits encima.
+- **Resuelto: la rama se publicó.** `origin/feat/dico-panorama-v1` =
+  `ba61504ec8af58c6cdaa85063a0f3136f785d209` al momento del push (3/sep/2026),
+  idéntico al local y con upstream configurado. Phase 8, Phase 9 V1 y el
+  cierre integrado de Phase 3B dejaron de existir sólo en disco.
+- Sigue sin deploy. Nada de este lote está en producción.
 
 ### Nota de entorno (costó ~25 min)
 
@@ -214,11 +217,11 @@ píxeles alpha), no en jsdom, que no hace layout.
 
 ### Bloqueado por Ricky
 
-- **`feat/dico-panorama-v1` NO tiene upstream: nunca se pusheó.** Los 17
-  commits de este lote existen **sólo en la máquina de Ricky**. Fue deliberado
-  ("sin push, sin deploy" durante todo el lote), pero un commit local no
-  protege de nada: si el disco se muere, se pierde Phase 8 y Phase 9 enteras.
-  Decidir cuándo se publica la rama.
+- ~~`feat/dico-panorama-v1` NO tiene upstream: nunca se pusheó.~~
+  **Resuelto el mismo día**: la rama se publicó en `ba61504`, ya con el cierre
+  de Phase 3B encima. Durante todo este lote fue deliberado ("sin push, sin
+  deploy"), pero un commit local no protege de nada — ver la sección
+  `3/sep/2026 (b)`.
 - Sin deploy. Nada de este lote está en producción.
 
 ### Trampa de infraestructura que costó un ciclo
