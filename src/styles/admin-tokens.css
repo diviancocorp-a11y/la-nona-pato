@@ -50,6 +50,17 @@ body[data-ui-owner="admin"],
   --ag-c-recipes: #D4894A;  --ag-c-recipes-soft: #F8E2CE;
   --ag-c-done:    #9B958F;  --ag-c-done-soft:    rgba(155, 149, 143, 0.18);
 
+  /* Los solidos de arriba son para RELLENO: fondo de barra, punto de serie,
+     borde superior de tarjeta. Como TEXTO no cumplen AA en claro: #2A9D6E da
+     3.42:1 y #E85A4A 3.50:1 sobre la tarjeta blanca, y el texto que los usa es
+     de 13px, que exige 4.5.
+     Estos dos son la version tinta del mismo tono. En claro se oscurecen hasta
+     igualar el contraste que el solido YA tiene en oscuro, asi que el color
+     pesa parecido en los dos temas; en oscuro el solido ya cumple y se usa tal
+     cual. Regla: relleno -> el solido; texto -> el -ink. */
+  --ag-c-sales-ink:  #217B57;   /* 5.20:1 sobre la tarjeta blanca */
+  --ag-c-orders-ink: #D22D1B;   /* 5.08:1 */
+
   /* Marca: el oro es accion, seleccion, foco y presencia. Nada mas. */
   --ag-c-terra:   var(--ms-gold);
   --ag-c-yellow:  var(--ms-gold);
@@ -207,6 +218,11 @@ body[data-ui-owner="admin"],
      claros del light theme (incompatibles con texto blanco). */
   --ag-c-sales-soft:   rgba(42, 157, 110, 0.18);
   --ag-c-orders-soft:  rgba(232, 90, 74, 0.18);
+  /* En oscuro el solido ya pasa AA sobre Zinc 900, asi que la tinta ES el
+     solido. Se declara igual para que el consumidor use SIEMPRE el -ink y no
+     tenga que saber en que tema esta. */
+  --ag-c-sales-ink:    #2A9D6E;   /* 5.19:1 sobre Zinc 900 */
+  --ag-c-orders-ink:   #E85A4A;   /* 5.06:1 */
   --ag-c-stock-soft:   rgba(232, 165, 58, 0.18);
   --ag-c-crm-soft:     rgba(107, 91, 214, 0.22);
   --ag-c-prep-soft:    rgba(58, 139, 159, 0.20);

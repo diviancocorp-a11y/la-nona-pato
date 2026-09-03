@@ -252,7 +252,13 @@ export default function ProductsPanel({
                       {m && (
                         <span style={{
                           marginLeft: 6,
-                          color: m.ganancia >= 0 ? 'var(--ag-c-sales, #3A7D44)' : 'var(--ag-c-orders, #C62828)',
+                          // Los -ink y no los solidos: esto es TEXTO de 13px, y
+                          // el solido da 3.42:1 en claro. Y sin fallback: un
+                          // `var(--x, #hex)` no falla nunca, asi que un token
+                          // renombrado se cae a un color fijo que deja de
+                          // seguir al tema y nadie se entera. Es la firma del
+                          // defecto que cazo Phase 3A.
+                          color: m.ganancia >= 0 ? 'var(--ag-c-sales-ink)' : 'var(--ag-c-orders-ink)',
                         }}>
                           · deja {money(m.ganancia)} ({m.pct.toFixed(0)}%)
                         </span>
