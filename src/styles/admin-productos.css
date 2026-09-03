@@ -1,0 +1,208 @@
+/* ────────────────────────────────────────────────────────────────────────
+ * Golden Screen — Productos (Phase 4)
+ *
+ * La pantalla se dibujaba casi entera con `style={{...}}` en JSX: ~40 objetos
+ * literales, cuatro clases reales y ni un valor anclado a una escala. Para una
+ * fase cuyo producto es "material del que extraer primitives" eso era el
+ * obstaculo central — de un objeto literal repetido seis veces con variaciones
+ * no se extrae nada.
+ *
+ * Todo lo de aca sale de tokens. Ningun px suelto de color, espaciado o radio.
+ * Los tamanios tipograficos NO se redefinen: se usan las clases que
+ * `admin-tokens.css` ya trae (.ag-h3, .ag-h4, .ag-body, .ag-meta).
+ *
+ * Brief: platform/PHASE-4-GOLDEN-SCREEN-BRIEF.md
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.ag-pantalla-productos {
+  position: relative;
+  z-index: var(--ag-z-content);
+  /* 18px a los lados, no 16: es el padding de `.ag-section-head` del shell.
+     La pantalla y el titulo de seccion tienen que arrancar en la MISMA
+     vertical o se lee como dos bloques pegados de cualquier manera. */
+  padding: var(--ag-sp-3) 18px var(--ag-sp-2);
+  /* A 1440 la fila medía 1290px: el nombre quedaba pegado a la izquierda y las
+     acciones a 1200px de distancia, con un vacio en el medio que obligaba a
+     cruzar la pantalla con la vista para relacionar un producto con su boton
+     de borrar. Se le pone ancho de lectura.
+     Alineado a la IZQUIERDA, no centrado: centrarlo lo separaba del titulo del
+     shell —que si esta a la izquierda— y la pantalla quedaba con dos ejes
+     distintos, peor que el problema que venia a resolver. */
+  max-width: 860px;
+}
+
+/* ── Barra de acciones: buscar + agregar ───────────────────────────────── */
+
+.ag-productos-barra {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-sp-2);
+  margin-bottom: var(--ag-sp-4);
+}
+
+.ag-productos-buscador {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-sp-2);
+  flex: 1;
+  min-width: 0;
+  /* El alto lo pone el input, no el contenedor: con `min-height` aca el input
+     quedaba en 42 (44 menos los dos bordes) y el target medido es el input.
+     Asi la caja da 46, el mismo numero que A3 midio en la nav. */
+  padding: 0 var(--ag-sp-3);
+  background: var(--ag-bg-card);
+  border: 1px solid var(--ag-line);
+  border-radius: var(--ag-r-md);
+}
+
+.ag-productos-buscador:focus-within {
+  border-color: var(--ag-accent-border);
+}
+
+.ag-productos-buscador svg { flex-shrink: 0; color: var(--ag-ink-3); }
+
+.ag-productos-buscador input {
+  flex: 1;
+  min-width: 0;
+  /* El input mide 44 por si mismo: es el elemento que recibe el foco y el
+     click, asi que es el que tiene que cumplir el minimo tactil. Medía 19,5. */
+  min-height: 44px;
+  align-self: stretch;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ag-ink);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* El CTA estaba centrado en su propia fila, flotando: era el unico elemento
+   centrado de una pantalla alineada a la izquierda. Pasa a la barra, al lado
+   de la busqueda, que es donde vive una accion primaria de lista. */
+.ag-pantalla-productos .ag-cta { flex-shrink: 0; }
+
+/* ── Categorias ────────────────────────────────────────────────────────── */
+
+.ag-productos-grupo { margin-bottom: var(--ag-sp-5); }
+
+.ag-productos-grupo-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ag-sp-1);
+  margin: 0 0 var(--ag-sp-2) var(--ag-sp-1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ag-ink-3);
+}
+
+/* El contador iba con `opacity: .6` sobre --ag-ink-3, que daba 2,27:1 en claro
+   y 3,4:1 en oscuro: por debajo de AA en los DOS temas. `opacity` sobre un
+   color ya terciario siempre termina asi. La jerarquia se consigue con el
+   peso, que no toca el contraste. */
+.ag-productos-grupo-cuenta { font-weight: 400; }
+
+/* ── Fila de producto ──────────────────────────────────────────────────── */
+
+.ag-productos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-sp-2);
+}
+
+.ag-producto {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-sp-3);
+  padding: var(--ag-sp-2) var(--ag-sp-3);
+  background: var(--ag-bg-card);
+  border: 1px solid var(--ag-line);
+  border-radius: var(--ag-r-md);
+}
+
+.ag-producto.esta-oculto { opacity: 0.55; }
+
+/* El nombre + precio es el target grande de la fila: abre el editor. */
+.ag-producto-abrir {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ag-producto-nombre {
+  color: var(--ag-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-producto-datos { color: var(--ag-ink-2); }
+
+.ag-producto-edad {
+  margin-left: var(--ag-sp-1);
+  color: var(--ag-ink-3);
+}
+
+/* Los -ink y no los solidos: esto es texto de 13px. Ver admin-tokens.css. */
+.ag-producto-margen { margin-left: var(--ag-sp-1); }
+.ag-producto-margen.gana { color: var(--ag-c-sales-ink); }
+.ag-producto-margen.pierde { color: var(--ag-c-orders-ink); }
+
+/* ── Acciones de la fila ───────────────────────────────────────────────── */
+
+/* 44px de alto, el minimo tactil de Phase 3A. Medían 30 (Ocultar) y 28x28
+   (Eliminar) — el boton mas chico de la fila era el que borra para siempre, y
+   estaba pegado al de al lado. */
+.ag-pantalla-productos .ag-btn-mini { min-height: 44px; }
+
+.ag-producto-eliminar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  border-radius: var(--ag-r-sm);
+  cursor: pointer;
+  color: var(--ag-ink-3);
+  line-height: 0;
+}
+
+.ag-producto-eliminar:hover {
+  color: var(--ag-c-orders-ink);
+  background: var(--ag-bg-soft);
+}
+
+/* ── Estados ───────────────────────────────────────────────────────────── */
+
+.ag-productos-estado {
+  color: var(--ag-ink-3);
+  text-align: center;
+  padding: var(--ag-sp-4) 0;
+}
+
+.ag-productos-vacio {
+  text-align: center;
+  padding: var(--ag-sp-3) var(--ag-sp-4) var(--ag-sp-5);
+  background: var(--ag-bg-card);
+  border: 1px solid var(--ag-line);
+  border-radius: var(--ag-r-lg);
+}
+
+/* Angosto: la barra se apila para que el CTA no quede de 80px de ancho. */
+@media (max-width: 560px) {
+  .ag-productos-barra { flex-wrap: wrap; }
+  .ag-pantalla-productos .ag-cta { width: 100%; justify-content: center; }
+}

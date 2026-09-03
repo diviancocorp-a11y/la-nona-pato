@@ -57,7 +57,7 @@ export default function ProductsPanel({
   const groups = useMemo(() => {
     const map = new Map();
     for (const p of filtered) {
-      const key = p.category || 'Sin categoria';
+      const key = p.category || 'Sin categoría';
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     }
@@ -76,7 +76,7 @@ export default function ProductsPanel({
   const handleDelete = async (p) => {
     const ok = await confirmSlide({
       title: `Eliminar ${p.name}`,
-      body: 'Se borra del catalogo para siempre. Si solo querés que deje de venderse, apagá "Visible" y listo.',
+      body: 'Se borra del catálogo para siempre. Si solo querés que deje de venderse, apagá "Visible" y listo.',
       label: 'Deslizá para eliminar',
     });
     if (!ok) return;
@@ -124,22 +124,22 @@ export default function ProductsPanel({
      engranaje y sin navegacion: los elementos se renderizaban y quedaban
      tapados. Los overlays de verdad —el formulario de abajo— si la usan. */
   return (
-    <div style={{ padding: '12px 16px 6px', position: 'relative', zIndex: 2 }}>
-      <div style={{ marginBottom: 14 }}>
-        <h2 style={{
-          fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 18,
-          margin: 0, color: 'var(--ag-ink)', letterSpacing: '-0.01em',
-        }}>{t.plural}</h2>
-      </div>
+    // `ag-pantalla-productos` es el limite de la Golden Screen. Dentro de
+    // `.ag-main` tambien viven las oportunidades y el aviso de Dico, que son de
+    // Phase 8/9 y tienen su propia deuda declarada; sin este ancla, el gate de
+    // Phase 4 les cobraria a ellos.
+    <div className="ag-pantalla-productos">
+      {/* NO va un <h2> con el nombre de la seccion.
+          El shell ya lo pone en `.ag-section-title` (PlatformAdmin), asi que
+          la pantalla mostraba "Productos" DOS VECES, una arriba de la otra y
+          en dos tipografias distintas: Butler el del shell, DM Sans clavado a
+          mano el de aca. Era el sintoma mas visible de "mezcla de eras" y el
+          unico lugar de la pantalla que forzaba una familia tipografica. */}
 
-      <div>
+      <div className="ag-productos-barra">
         {products.length > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '9px 14px', marginBottom: 14,
-            background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)', borderRadius: 12,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ag-ink-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <div className="ag-productos-buscador">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -147,158 +147,128 @@ export default function ProductsPanel({
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder={t.buscar}
               aria-label={t.buscar}
-              style={{
-                flex: 1, border: 0, outline: 'none', background: 'transparent',
-                color: 'var(--ag-ink)', fontFamily: 'inherit', fontSize: 13,
-              }}
             />
           </div>
         )}
 
         {(loading || products.length > 0) && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <button type="button" className="ag-cta" onClick={() => setEditing('new')}>
-              + Agregar {t.singular}
-            </button>
-          </div>
+          <button type="button" className="ag-cta" onClick={() => setEditing('new')}>
+            + Agregar {t.singular}
+          </button>
         )}
+      </div>
 
-        {loading && <p style={{ color: 'var(--ag-ink-3)', fontSize: 13, textAlign: 'center' }}>Cargando...</p>}
+      {loading && <p className="ag-productos-estado ag-body">Cargando...</p>}
 
-        {!loading && products.length === 0 && (
-          <div style={{
-            textAlign: 'center', padding: '12px 16px 20px',
-            background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)', borderRadius: 14,
-          }}>
-            {intervencionActiva ? (
-              <>
-                {/* El ancla. Physical viaja hasta aca y el dedo queda sobre el
-                    boton de abajo; el texto lo pone la burbuja de la
-                    intervencion, no esta pantalla. */}
-                <div className="dico-objetivo" data-dico-objetivo="catalogo-vacio" ref={anclaDico} />
+      {!loading && products.length === 0 && (
+        <div className="ag-productos-vacio">
+          {intervencionActiva ? (
+            <>
+              {/* El ancla. Physical viaja hasta aca y el dedo queda sobre el
+                  boton de abajo; el texto lo pone la burbuja de la
+                  intervencion, no esta pantalla. */}
+              <div className="dico-objetivo" data-dico-objetivo="catalogo-vacio" ref={anclaDico} />
+              <button
+                type="button"
+                className="ag-cta dico-cuadro-accion"
+                onClick={() => setEditing('new')}
+              >
+                {`+ Agregar ${t.singular}`}
+              </button>
+            </>
+          ) : (
+            <DicoCoreEscena
+              estado="pregunta"
+              lookY={0.65}
+              size={188}
+              texto={`Empecemos por tu primer ${t.singular}. Cargalo y queda publicado en tu catálogo.`}
+              accion={`+ Agregar ${t.singular}`}
+              onAccion={() => setEditing('new')}
+              title={`Dico mira el botón para agregar el primer ${t.singular}`}
+            />
+          )}
+        </div>
+      )}
+
+      {!loading && products.length > 0 && filtered.length === 0 && (
+        <p className="ag-productos-estado ag-body">
+          Nada coincide con “{search}”.
+        </p>
+      )}
+
+      {groups.map(([cat, items]) => (
+        <section key={cat} className="ag-productos-grupo">
+          <h3 className="ag-productos-grupo-titulo ag-meta">
+            {cat}
+            <span className="ag-productos-grupo-cuenta">· {items.length}</span>
+          </h3>
+
+          <div className="ag-productos-lista">
+            {items.map(p => {
+              // null cuando no hay receta cargada: sin insumos el costo da 0
+              // y el margen daria 100%, que es una mentira comoda.
+              const m = recetas ? margen(p, recetas.get(p.id), insumosPorId, settings) : null;
+              return (
+              <article key={p.id} className={`ag-producto${p.active ? '' : ' esta-oculto'}`}>
                 <button
                   type="button"
-                  className="ag-cta dico-cuadro-accion"
-                  onClick={() => setEditing('new')}
+                  className="ag-producto-abrir"
+                  onClick={() => setEditing(p)}
+                  aria-label={`Editar ${p.name}`}
                 >
-                  {`+ Agregar ${t.singular}`}
+                  <span className="ag-producto-nombre ag-body">
+                    {p.name}
+                    {p.requires_age_gate && (
+                      <span className="ag-producto-edad ag-meta">+18</span>
+                    )}
+                  </span>
+                  <span className="ag-producto-datos ag-body">
+                    {money(p.price)}
+                    {p.duration_min ? ` · ${p.duration_min} min` : ''}
+                    {!p.active && ' · oculto'}
+                    {m && (
+                      // Los -ink y no los solidos: esto es TEXTO de 13px, y el
+                      // solido da 3.42:1 en claro. Sin fallback: un
+                      // `var(--x, #hex)` no falla nunca, asi que un token
+                      // renombrado se cae a un color fijo que deja de seguir
+                      // al tema y nadie se entera. Es la firma del defecto que
+                      // cazo Phase 3A.
+                      <span className={`ag-producto-margen ${m.ganancia >= 0 ? 'gana' : 'pierde'}`}>
+                        · deja {money(m.ganancia)} ({m.pct.toFixed(0)}%)
+                      </span>
+                    )}
+                  </span>
                 </button>
-              </>
-            ) : (
-              <DicoCoreEscena
-                estado="pregunta"
-                lookY={0.65}
-                size={188}
-                texto={`Empecemos por tu primer ${t.singular}. Cargalo y queda publicado en tu catálogo.`}
-                accion={`+ Agregar ${t.singular}`}
-                onAccion={() => setEditing('new')}
-                title={`Dico mira el botón para agregar el primer ${t.singular}`}
-              />
-            )}
-          </div>
-        )}
 
-        {!loading && products.length > 0 && filtered.length === 0 && (
-          <p style={{ color: 'var(--ag-ink-3)', fontSize: 13, textAlign: 'center' }}>
-            Nada coincide con “{search}”.
-          </p>
-        )}
-
-        {groups.map(([cat, items]) => (
-          <section key={cat} style={{ marginBottom: 18 }}>
-            <h3 style={{
-              fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em',
-              color: 'var(--ag-ink-3)', margin: '0 0 8px 2px',
-            }}>
-              {cat} <span style={{ opacity: .6 }}>· {items.length}</span>
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {items.map(p => {
-                // null cuando no hay receta cargada: sin insumos el costo da 0
-                // y el margen daria 100%, que es una mentira comoda.
-                const m = recetas ? margen(p, recetas.get(p.id), insumosPorId, settings) : null;
-                return (
-                <article
-                  key={p.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '11px 13px',
-                    background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)',
-                    borderRadius: 12, opacity: p.active ? 1 : .55,
-                  }}
+                <button
+                  type="button"
+                  className="ag-btn-mini"
+                  onClick={() => onToggleActive(p)}
+                  title={p.active ? 'Ocultar del catálogo' : 'Mostrar en el catálogo'}
+                  aria-label={p.active ? `Ocultar ${p.name}` : `Mostrar ${p.name}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setEditing(p)}
-                    style={{
-                      flex: 1, minWidth: 0, textAlign: 'left', background: 'none',
-                      border: 0, padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit',
-                    }}
-                    aria-label={`Editar ${p.name}`}
-                  >
-                    <div style={{
-                      fontSize: 14, color: 'var(--ag-ink)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {p.name}
-                      {p.requires_age_gate && (
-                        <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--ag-ink-3)' }}>+18</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--ag-ink-2)', marginTop: 2 }}>
-                      {money(p.price)}
-                      {p.duration_min ? ` · ${p.duration_min} min` : ''}
-                      {!p.active && ' · oculto'}
-                      {m && (
-                        <span style={{
-                          marginLeft: 6,
-                          // Los -ink y no los solidos: esto es TEXTO de 13px, y
-                          // el solido da 3.42:1 en claro. Y sin fallback: un
-                          // `var(--x, #hex)` no falla nunca, asi que un token
-                          // renombrado se cae a un color fijo que deja de
-                          // seguir al tema y nadie se entera. Es la firma del
-                          // defecto que cazo Phase 3A.
-                          color: m.ganancia >= 0 ? 'var(--ag-c-sales-ink)' : 'var(--ag-c-orders-ink)',
-                        }}>
-                          · deja {money(m.ganancia)} ({m.pct.toFixed(0)}%)
-                        </span>
-                      )}
-                    </div>
-                  </button>
+                  {p.active ? 'Ocultar' : 'Mostrar'}
+                </button>
 
-                  <button
-                    type="button"
-                    className="ag-btn-mini"
-                    onClick={() => onToggleActive(p)}
-                    title={p.active ? 'Ocultar del catalogo' : 'Mostrar en el catalogo'}
-                    aria-label={p.active ? `Ocultar ${p.name}` : `Mostrar ${p.name}`}
-                  >
-                    {p.active ? 'Ocultar' : 'Mostrar'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(p)}
-                    title="Eliminar"
-                    aria-label={`Eliminar ${p.name}`}
-                    style={{
-                      background: 'none', border: 0, padding: 6, cursor: 'pointer',
-                      color: 'var(--ag-ink-3)', lineHeight: 0,
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M10 11v6" /><path d="M14 11v6" />
-                    </svg>
-                  </button>
-                </article>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
+                <button
+                  type="button"
+                  className="ag-producto-eliminar"
+                  onClick={() => handleDelete(p)}
+                  title="Eliminar"
+                  aria-label={`Eliminar ${p.name}`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6" /><path d="M14 11v6" />
+                  </svg>
+                </button>
+              </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

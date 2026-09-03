@@ -116,6 +116,9 @@ import '../styles/admin-topbar.css';
 import '../styles/admin-bottomnav.css';
 import '../styles/admin-cards.css';
 import '../styles/admin-shared.css';
+// Golden Screen de Phase 4. Va despues de admin-shared para poder ajustar
+// .ag-btn-mini y .ag-cta DENTRO de la pantalla sin tocarlos en el resto.
+import '../styles/admin-productos.css';
 // Machine Soul (Phase 3B): reemplaza la capa visual del shell. Va ultimo
 // a proposito, para pisar la de admin-topbar/bottomnav sin tocar su markup.
 import '../styles/admin-shell.css';
@@ -752,7 +755,11 @@ export default function PlatformAdmin() {
           </div>
         </header>
 
-        <main style={{
+        {/* `ag-main` no pinta nada: es el limite entre la PANTALLA y el shell.
+            Phase 4 mide contraste y targets de la Golden Screen, y sin un
+            ancla la medicion se llevaba puesto el topbar, la nav y Dico —
+            deuda real, pero de otras fases—. */}
+        <main className="ag-main" style={{
           position: 'relative', zIndex: 2, flex: 1,
           display: 'flex', flexDirection: 'column', minHeight: 0,
           paddingBottom: 'var(--ag-bottom-nav-h, 76px)',

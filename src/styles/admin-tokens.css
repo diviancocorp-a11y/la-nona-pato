@@ -117,6 +117,22 @@ body[data-ui-owner="admin"],
   --ag-sh-lg: 0 8px 24px rgba(26, 24, 23, 0.12);
 
   /* Radios */
+  /* ── Espaciado (Phase 4) ──────────────────────────────────────────────
+   * Faltaba. Habia escala de radios, de sombras, de tiempos y de capas, pero
+   * el espaciado se escribia a ojo: la Golden Screen usaba 6, 8, 9, 11, 12,
+   * 13, 14, 16, 18 y 20px sin nada donde anclarlos.
+   *
+   * Se declaran SOLO los pasos que esa pantalla demostro necesitar. Una
+   * escala completa inventada por adelantado es un catalogo de numeros que
+   * nadie uso nunca; los pasos que falten se agregan cuando una pantalla los
+   * pida. Base 4, que es la que ya seguian los valores pares del panel. */
+  --ag-sp-1: 4px;
+  --ag-sp-2: 8px;
+  --ag-sp-3: 12px;
+  --ag-sp-4: 16px;
+  --ag-sp-5: 20px;
+  --ag-sp-6: 24px;
+
   --ag-r-sm: 10px;
   --ag-r-md: 14px;
   --ag-r-lg: 16px;

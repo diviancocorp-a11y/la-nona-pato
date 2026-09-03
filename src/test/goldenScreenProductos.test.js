@@ -23,6 +23,7 @@ const leer = (...p) => readFileSync(join(raiz, ...p), 'utf8');
 const TOKENS = leer('src', 'styles', 'admin-tokens.css');
 const MACHINE_SOUL = leer('src', 'styles', 'machine-soul.css');
 const PANEL = leer('src', 'components', 'admin', 'platform', 'ProductsPanel.jsx');
+const CSS_PANTALLA = leer('src', 'styles', 'admin-productos.css');
 
 // Ver `sinComentarios` mas abajo: los tres se leen sin comentarios porque los
 // comentarios de estos mismos archivos rompen las dos busquedas.
@@ -64,6 +65,7 @@ const RAIZ_CLARO = bloque(CSS_TOKENS, 'body[data-ui-owner="admin"]');
 const RAIZ_OSCURO = bloque(CSS_TOKENS, '.ag-theme-dark');
 const BASE_MS = bloque(sinComentarios(MACHINE_SOUL), '.ag-root,');
 const PANEL_CODIGO = sinComentarios(PANEL, { linea: true });
+const CSS_PANTALLA_CODIGO = sinComentarios(CSS_PANTALLA);
 
 function valor(cuerpo, nombre) {
   const m = cuerpo.match(new RegExp(`${nombre}\\s*:\\s*([^;]+);`));
@@ -151,17 +153,40 @@ describe('Phase 4 · G1 — el margen por producto cumple AA en los dos temas', 
 /* ── G2: sin fallbacks ─────────────────────────────────────────────── */
 
 describe('Phase 4 · G2 — la pantalla no usa var() con fallback', () => {
-  it('ProductsPanel no tiene ni un var(--token, #hex)', () => {
+  it('ni el componente ni su CSS tienen un var(--token, #hex)', () => {
     // Un fallback no falla NUNCA: si el token se renombra, el color se cae a
     // un literal fijo que deja de seguir al tema y la pantalla sigue
     // andando. Es la firma del defecto de contraste que cazo Phase 3A y la
     // razon de que el margen estuviera en 3.42:1 sin que nada avisara.
-    const conFallback = PANEL_CODIGO.match(/var\(\s*--[\w-]+\s*,[^)]*\)/g) || [];
-    expect(conFallback).toEqual([]);
+    const patron = /var\(\s*--[\w-]+\s*,[^)]*\)/g;
+    expect(PANEL_CODIGO.match(patron) || []).toEqual([]);
+    expect(CSS_PANTALLA_CODIGO.match(patron) || []).toEqual([]);
   });
 
   it('el margen se pinta con los tokens de tinta, no con los solidos', () => {
-    expect(PANEL_CODIGO).toContain('var(--ag-c-sales-ink)');
-    expect(PANEL_CODIGO).toContain('var(--ag-c-orders-ink)');
+    // Phase 4 saco la presentacion del JSX: el color vive en el CSS de la
+    // pantalla y el componente solo elige la clase.
+    expect(CSS_PANTALLA_CODIGO).toContain('var(--ag-c-sales-ink)');
+    expect(CSS_PANTALLA_CODIGO).toContain('var(--ag-c-orders-ink)');
+    expect(PANEL_CODIGO).toContain('ag-producto-margen');
+  });
+
+  it('la pantalla no vuelve a clavar una familia tipografica a mano', () => {
+    // El unico `fontFamily` de la pantalla era el DM Sans del titulo que se
+    // eliminó. La familia la deciden los tokens, no el componente.
+    expect(PANEL_CODIGO).not.toMatch(/fontFamily/);
+    expect(CSS_PANTALLA_CODIGO).not.toMatch(/font-family:\s*(?!inherit)['"a-zA-Z]/);
+  });
+
+  it('el CSS de la pantalla no trae px sueltos de espaciado', () => {
+    // El espaciado sale de --ag-sp-*. Se permiten los px que son contratos
+    // medidos y no ritmo visual: los 44 del target tactil, el 18 que alinea
+    // con `.ag-section-head`, el ancho de lectura y los hairlines de 1-2px.
+    const permitidos = new Set(['44px', '18px', '860px', '1px', '2px', '0px']);
+    const decls = CSS_PANTALLA_CODIGO.match(/(?:padding|margin|gap)[^:]*:\s*[^;]+;/g) || [];
+    const sueltos = decls
+      .flatMap((d) => d.match(/\d+(?:\.\d+)?px/g) || [])
+      .filter((px) => !permitidos.has(px));
+    expect(sueltos).toEqual([]);
   });
 });

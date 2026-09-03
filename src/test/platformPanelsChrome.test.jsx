@@ -98,21 +98,35 @@ describe('las pestañas principales no tapan el chrome del panel', () => {
 });
 
 describe('terminología por rubro en las pestañas', () => {
-  it('gastro dice Productos', () => {
-    render(<ProductsPanel products={[]} vertical="gastro" loading={false}
-      onSave={vi.fn()} onToggleActive={vi.fn()} onDelete={vi.fn()} showToast={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: 'Productos' })).toBeTruthy();
-  });
+  // El contrato es "la pantalla habla el idioma del rubro", y sigue vigente.
+  // Lo que cambio en Phase 4 es DONDE se cumple: ProductsPanel ya no dibuja un
+  // <h2> con el plural, porque el shell (`.ag-section-title` en PlatformAdmin)
+  // ya ponia ese mismo titulo con la misma terminologia — la pantalla decia
+  // "Productos" dos veces, en dos tipografias. Aca se verifica el termino en
+  // los dos lugares del componente que siguen expresandolo: el CTA (singular)
+  // y el buscador (frase propia del rubro).
+  const casos = [
+    { vertical: 'gastro', singular: 'producto', buscar: 'Buscar producto...' },
+    { vertical: 'barber', singular: 'servicio', buscar: 'Buscar servicio...' },
+    { vertical: 'retail', singular: 'artículo', buscar: 'Buscar artículo...' },
+  ];
 
-  it('barbería dice Servicios', () => {
-    render(<ProductsPanel products={[]} vertical="barber" loading={false}
-      onSave={vi.fn()} onToggleActive={vi.fn()} onDelete={vi.fn()} showToast={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: 'Servicios' })).toBeTruthy();
-  });
+  for (const { vertical, singular, buscar } of casos) {
+    it(`${vertical} nombra lo que vende: ${singular}`, () => {
+      render(<ProductsPanel
+        products={[{ id: 'p1', name: 'Uno', price: 100, active: true, category: 'Cat' }]}
+        vertical={vertical} loading={false}
+        onSave={vi.fn()} onToggleActive={vi.fn()} onDelete={vi.fn()} showToast={vi.fn()} />);
+      expect(screen.getByRole('button', { name: `+ Agregar ${singular}` })).toBeTruthy();
+      expect(screen.getByPlaceholderText(buscar)).toBeTruthy();
+    });
 
-  it('retail dice Artículos', () => {
-    render(<ProductsPanel products={[]} vertical="retail" loading={false}
-      onSave={vi.fn()} onToggleActive={vi.fn()} onDelete={vi.fn()} showToast={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: 'Artículos' })).toBeTruthy();
-  });
+    it(`${vertical} NO repite el titulo de seccion que ya pone el shell`, () => {
+      render(<ProductsPanel products={[]} vertical={vertical} loading={false}
+        onSave={vi.fn()} onToggleActive={vi.fn()} onDelete={vi.fn()} showToast={vi.fn()} />);
+      // Si alguien vuelve a agregar el <h2>, la pantalla queda otra vez con el
+      // titulo duplicado y este caso lo agarra.
+      expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    });
+  }
 });
