@@ -4,7 +4,7 @@
  * Slot y avisos son vistas controladas. Ninguna de las dos decide que Dico
  * existe: solamente emiten eventos hacia esta maquina de estados.
  */
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import DicoAvisos from '../admin/platform/DicoAvisos';
 import BurbujaDico from './BurbujaDico';
@@ -49,17 +49,40 @@ export default function DicoPresence({
   const [reduceMotion] = useState(reduceMotionActivo);
   const visible = visibilidadDico(estado);
 
+  // Marca si Physical salio POR UNA INTERVENCION o porque el usuario toco a
+  // Dico. Sin esto, la reconciliacion de abajo cerraria de inmediato cualquier
+  // invocacion manual, que por definicion no tiene intervencion.
+  const porIntervencion = useRef(false);
+
   const abrirAviso = useCallback(() => enviar(E.OPEN_NOTICE), []);
   const cerrarAviso = useCallback(() => enviar(E.CLOSE_NOTICE), []);
-  const abrirPhysical = useCallback(() => enviar(E.OPEN_PHYSICAL), []);
+  // Invocacion manual: el usuario toco a Dico. No la reconcilia nadie.
+  const abrirPhysical = useCallback(() => {
+    porIntervencion.current = false;
+    enviar(E.OPEN_PHYSICAL);
+  }, []);
 
   // La intervencion es la CARGA de `OPEN_PHYSICAL`: cuando el productor manda
   // una, Physical sale; cuando la retira, se guarda. La maquina sigue siendo la
   // unica autoridad de visible/hidden y sigue hablando en estados, no en datos.
+  //
+  // SE RECONCILIA CONTRA EL ESTADO, no solo contra el cambio de prop. La
+  // maquina solo acepta `CLOSE_PHYSICAL` desde `physical_open`: si el productor
+  // retiraba la intervencion mientras Physical todavia estaba ABRIENDO, el
+  // cierre se tragaba y Dico quedaba afuera para siempre. Medido: pasaba cada
+  // vez que la accion que resuelve el estado llegaba dentro de los 780ms de la
+  // animacion de entrada.
   useEffect(() => {
-    if (intervencion) enviar(E.OPEN_PHYSICAL);
-    else enviar(E.CLOSE_PHYSICAL);
-  }, [intervencion]);
+    if (intervencion && (estado === S.NATIVE_IDLE || estado === S.NATIVE_NOTICE)) {
+      porIntervencion.current = true;
+      enviar(E.OPEN_PHYSICAL);
+      return;
+    }
+    if (!intervencion && porIntervencion.current && estado === S.PHYSICAL_OPEN) {
+      porIntervencion.current = false;
+      enviar(E.CLOSE_PHYSICAL);
+    }
+  }, [intervencion, estado]);
   const physicalAbierto = useCallback(() => enviar(E.PHYSICAL_OPENED), []);
   const cerrarPhysical = useCallback(() => enviar(E.CLOSE_PHYSICAL), []);
   const physicalCerrado = useCallback(() => enviar(E.PHYSICAL_CLOSED), []);

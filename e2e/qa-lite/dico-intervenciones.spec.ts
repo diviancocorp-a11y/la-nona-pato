@@ -70,6 +70,17 @@ test('nada visible: apagar el ultimo saca a Dico worried', async ({ page }) => {
   // El ultimo si.
   await page.getByRole('button', { name: 'Ocultar' }).first().click()
   await expect(page.locator('.dico-pose')).toHaveCount(1)
+
+  // LA CARRERA. Resolver el estado ENSEGUIDA —dentro de los 780ms de la
+  // animacion de entrada— tiene que cerrar igual. La maquina solo acepta
+  // `CLOSE_PHYSICAL` desde `physical_open`, asi que sin reconciliacion contra
+  // el estado el cierre se tragaba y Dico quedaba afuera para siempre.
+  await page.getByRole('button', { name: 'Mostrar' }).first().click()
+  await expect(page.locator('.dico-pose'), 'el cierre se trago durante la apertura').toHaveCount(0)
+
+  // Y se vuelve a poder: apagar el ultimo otra vez la trae de nuevo.
+  await page.getByRole('button', { name: 'Ocultar' }).first().click()
+  await expect(page.locator('.dico-pose')).toHaveCount(1)
   const pose = await page.locator('[data-dico-physical]').getAttribute('data-dico-physical')
   expect(pose, 'salio otra pose').toBe('worried')
 
@@ -91,16 +102,11 @@ test('nada visible: apagar el ultimo saca a Dico worried', async ({ page }) => {
 
   // Recuperar el estado la cierra: sin timers, la resuelve la accion.
   await page.getByRole('button', { name: 'Mostrar' }).first().click()
-  await page.waitForTimeout(1600)
   const alRecuperar = await page.evaluate(() => ({
     estado: document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state'),
-    poses: document.querySelectorAll('.dico-pose').length,
-    ocultarBtns: [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === 'Ocultar').length,
-    mostrarBtns: [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === 'Mostrar').length,
-    toast: document.querySelector('.toast')?.textContent || null,
     intervencion: document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion'),
   }))
-  console.log(`al recuperar: ${JSON.stringify(alRecuperar)}`)
   await expect(page.locator('.dico-pose'), `quedo en ${alRecuperar.estado}`).toHaveCount(0)
+  expect(alRecuperar.intervencion, 'la intervencion quedo colgada').toBe('')
   await page.screenshot({ path: join(SALIDA, 'nada-visible-resuelta.png'), caret: 'hide' })
 })
