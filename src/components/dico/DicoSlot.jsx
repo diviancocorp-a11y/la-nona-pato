@@ -22,6 +22,8 @@ export default function DicoSlot({
   onAperturaCompleta,
   onCerrar,
   onCierreCompleto,
+  /** Solo para observar desde QA: que intervencion esta atendiendo. */
+  intervencionId = '',
   /** Lo que Dico dice mientras esta en escena. Va ADENTRO del Slot porque es
    *  quien establece el contexto de posicionamiento en los dos anclajes. */
   children,
@@ -57,7 +59,7 @@ export default function DicoSlot({
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={clases} data-dico-presence-state={estado}>
+    <div className={clases} data-dico-presence-state={estado} data-dico-intervencion={intervencionId || ''}>
       <div className="dico-slot-stage" aria-live="polite">
         {visible && (
           <div

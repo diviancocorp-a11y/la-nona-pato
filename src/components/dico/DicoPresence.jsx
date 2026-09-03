@@ -86,6 +86,7 @@ export default function DicoPresence({
       <DicoSlot
         estado={estado}
         pose={intervencion?.pose}
+        intervencionId={intervencion?.id || ''}
         onAbrir={abrirPhysical}
         onAperturaCompleta={physicalAbierto}
         onCerrar={guardarPhysical}

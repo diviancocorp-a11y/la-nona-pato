@@ -91,6 +91,16 @@ test('nada visible: apagar el ultimo saca a Dico worried', async ({ page }) => {
 
   // Recuperar el estado la cierra: sin timers, la resuelve la accion.
   await page.getByRole('button', { name: 'Mostrar' }).first().click()
-  await expect(page.locator('.dico-pose')).toHaveCount(0)
+  await page.waitForTimeout(1600)
+  const alRecuperar = await page.evaluate(() => ({
+    estado: document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state'),
+    poses: document.querySelectorAll('.dico-pose').length,
+    ocultarBtns: [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === 'Ocultar').length,
+    mostrarBtns: [...document.querySelectorAll('button')].filter((b) => b.textContent?.trim() === 'Mostrar').length,
+    toast: document.querySelector('.toast')?.textContent || null,
+    intervencion: document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion'),
+  }))
+  console.log(`al recuperar: ${JSON.stringify(alRecuperar)}`)
+  await expect(page.locator('.dico-pose'), `quedo en ${alRecuperar.estado}`).toHaveCount(0)
   await page.screenshot({ path: join(SALIDA, 'nada-visible-resuelta.png'), caret: 'hide' })
 })
