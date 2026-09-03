@@ -32,7 +32,24 @@ test('catalogo vacio: el dedo cae sobre el CTA y no hay dos Dicos', async ({ pag
     physical: document.querySelectorAll('.dico-pose').length,
     native: document.querySelectorAll('[data-dico-native]').length,
   }))
-  await writeFile(join(SALIDA, 'catalogo-con-productos.json'), `${JSON.stringify(estado, null, 2)}\n`, 'utf8')
+  // Cuanto aire hay ARRIBA de donde caeria el CTA del empty state. El
+  // personaje mide 318px y su dedo esta a 71px del borde inferior de la caja,
+  // asi que necesita ~247px por encima del CTA para no cortarse.
+  const aire = await page.evaluate(() => {
+    const slot = document.querySelector('main .ag-slot')?.getBoundingClientRect()
+    const tarjetas = [...document.querySelectorAll('main div')]
+      .map((d) => d.getBoundingClientRect())
+      .filter((b) => b.width > 300 && b.height > 60)
+      .sort((a, b) => a.y - b.y)
+    return {
+      slotHasta: slot ? +(slot.y + slot.height).toFixed(1) : null,
+      primeraTarjetaY: tarjetas.length ? +tarjetas[0].y.toFixed(1) : null,
+      alto: window.innerHeight,
+    }
+  })
+  console.log(`aire arriba del empty state: ${JSON.stringify(aire)}`)
+  await writeFile(join(SALIDA, 'catalogo-con-productos.json'),
+    `${JSON.stringify({ ...estado, aire }, null, 2)}\n`, 'utf8')
 
   // Con catalogo cargado no hay intervencion ni escena: el empty state ni
   // siquiera se monta.
@@ -109,4 +126,41 @@ test('nada visible: apagar el ultimo saca a Dico worried', async ({ page }) => {
     document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion')
   )), { message: 'la intervencion quedo colgada' }).toBe('')
   await page.screenshot({ path: join(SALIDA, 'nada-visible-resuelta.png'), caret: 'hide' })
+})
+
+test('la intervencion sobrevive el cruce de 769px', async ({ page }) => {
+  // Deuda conocida: `DicoPresence` se remonta al cruzar la frontera y su
+  // maquina arranca de cero. Lo que se documenta aca es que la CARGA vive en
+  // el productor —que no se remonta— y que la reconciliacion contra el estado
+  // vuelve a abrir Physical del otro lado sin re-despachar nada.
+  await aplicarMovimiento(page, 'no-preference')
+  await openAdmin(page, 'light', DESKTOP)
+  await mkdir(SALIDA, { recursive: true })
+  await page.getByRole('button', { name: /^Productos/ }).click()
+  await page.waitForTimeout(400)
+
+  const ocultar = page.getByRole('button', { name: 'Ocultar' })
+  const cuantos = await ocultar.count()
+  for (let i = 0; i < cuantos; i += 1) {
+    await page.getByRole('button', { name: 'Ocultar' }).first().click()
+    await page.waitForTimeout(200)
+  }
+  await expect(page.locator('.dico-pose')).toHaveCount(1)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForTimeout(600)
+  const enMobile = await page.evaluate(() => ({
+    poses: document.querySelectorAll('.dico-pose').length,
+    interv: document.querySelector('[data-dico-intervencion]')?.getAttribute('data-dico-intervencion'),
+    estado: document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state'),
+  }))
+  await writeFile(join(SALIDA, 'cruce-769.json'), `${JSON.stringify(enMobile, null, 2)}
+`, 'utf8')
+  console.log(`al cruzar a mobile: ${JSON.stringify(enMobile)}`)
+
+  // La carga sobrevive SIEMPRE: la tiene el productor.
+  expect(enMobile.interv, 'la intervencion se perdio al remontar').toBe('nada-visible')
+  // Y Physical vuelve solo, sin que nadie re-dispare.
+  await expect(page.locator('.dico-pose'), 'Physical no volvio del otro lado').toHaveCount(1)
+  await page.screenshot({ path: join(SALIDA, 'cruce-769-mobile.png'), caret: 'hide' })
 })

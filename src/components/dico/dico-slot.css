@@ -56,6 +56,11 @@
      arco de la moneda. NO es el centro: Dico senala con la mano izquierda, asi
      que centrarlo sobre un boton haria que el dedo apunte al costado. */
   --pose-dedo: calc(var(--pose-ancho) * 0.335);
+  /* Y a que altura queda esa punta: y=882 de 1136, o sea 22,36% del alto por
+     encima del borde inferior de la caja. Es OTRO numero que el de los pies
+     (`--pose-bajo-pies`), y confundirlos deja al personaje sentado sobre el
+     boton en vez de senalandolo desde arriba. */
+  --pose-dedo-y: calc(var(--pose-alto) * 0.2236);
 }
 
 /* ── ANCLAJE `target` ────────────────────────────────────────────────────
@@ -80,6 +85,13 @@
      personaje— quede sobre el objetivo. */
   transform: translateX(calc(-50% + (var(--pose-ancho) / 2) - var(--pose-dedo)));
   pointer-events: none;
+}
+
+/* Anclado al objetivo, lo que se apoya en la linea del ancla es LA PUNTA DEL
+   DEDO, no los pies: es lo que hace que `pointDown` senale y no se siente
+   encima. Los 8px son el aire entre el dedo y el borde del CTA. */
+.dico-anclado .dico-slot-stage {
+  bottom: calc(8px - var(--pose-dedo-y));
 }
 
 /* El unico control que queda tocable es la ranura, que es como se guarda. */

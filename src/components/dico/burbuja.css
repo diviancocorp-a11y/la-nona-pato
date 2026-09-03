@@ -299,11 +299,12 @@
   max-width: 340px;
 }
 
-/* Anclada al objetivo el globo va ARRIBA del personaje: al costado se saldria
-   de la tarjeta del empty state. */
+/* Anclada al objetivo el globo va AL COSTADO, no arriba.
+ *
+ * Medido: el personaje necesita ~247px por encima del CTA para no cortarse, y
+ * en el panel el empty state arranca en y~300. Entra justo. Poner el globo
+ * ademas arriba lo mandaba fuera de pantalla. */
 .dico-anclado .dico-intervencion-mensaje {
-  left: 50%;
-  top: auto;
-  bottom: 100%;
-  transform: translateX(-50%);
+  left: 100%;
+  top: 0;
 }
