@@ -16,7 +16,7 @@ const specSuelto = (process.env.QA_SPEC || '').split(',').map((s) => s.trim()).f
 export default defineConfig({
   testDir: './e2e/qa-lite',
   testMatch: specSuelto.length ? specSuelto : sequenceOnly
-    ? ['dico-physical-sequence.spec.ts', 'dico-sidebar.spec.ts', 'dico-physical-poses.spec.ts', 'dico-intervenciones.spec.ts']
+    ? ['dico-physical-sequence.spec.ts', 'dico-sidebar.spec.ts', 'dico-physical-poses.spec.ts', 'dico-intervenciones.spec.ts', 'phase9-visual.spec.ts']
     : motionInventoryOnly
     ? ['motion-inventory.spec.ts']
     : [

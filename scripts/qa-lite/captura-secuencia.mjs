@@ -25,7 +25,10 @@ try {
   // acota a los specs de evidencia. Pasarlo filtraba a uno solo y el de la
   // sidebar nunca corria — sin fallar, que es peor.
   runCaptured(npx, ['playwright', 'test', '--config', 'playwright.qa-lite.config.ts',
-    '--max-failures=1'], {
+    // Sin `--max-failures`: este runner es de EVIDENCIA. Cortar en el primer
+    // fallo pierde las mediciones de los specs siguientes, que es justo lo
+    // que se vino a buscar. El gate real sigue cortando temprano.
+    ], {
     cwd: REPO_ROOT,
     label: 'Captura de la secuencia Physical',
     env: {
