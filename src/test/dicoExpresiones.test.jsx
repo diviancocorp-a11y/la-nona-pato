@@ -227,7 +227,10 @@ describe('B6 — Native y Physical hablan el mismo vocabulario', () => {
     // El alto sale del aspecto del canvas, no de un numero suelto.
     expect(declara.slice(0, declara.indexOf('}'))).toContain('1600 / 1136');
 
-    const bloque = slotCss.match(/\.dico-slot-stage\s*\{([^}]*)\}/);
+    // Anclado al comienzo de linea: `.dico-anclado .dico-slot-stage` tambien
+    // contiene ese texto y aparece antes, asi que sin anclar se leia el
+    // bloque equivocado y el contrato pasaba a preguntar por otra cosa.
+    const bloque = slotCss.match(/^\.dico-slot-stage\s*\{([^}]*)\}/m);
     expect(bloque).not.toBeNull();
     const cuerpo = bloque[1];
     // Sin regex: alcanza con partir por `;` y mirar cada declaracion.
