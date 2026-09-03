@@ -22,6 +22,14 @@ function money(n) {
 
 export default function ProductsPanel({
   products, vertical, loading, onSave, onToggleActive, onDelete, showToast,
+  /**
+   * Cuando Dico Physical esta atendiendo el catalogo vacio, esta pantalla NO
+   * monta su propia escena 2D: serian dos Dicos a la vez. Publica el nodo al
+   * que Physical se ancla —el dedo de `pointDown` cae ahi— y deja el CTA real
+   * debajo.
+   */
+  intervencionActiva = false,
+  anclaDico,
   ingredientes = [], recetas = null, settings = null, onSubirImagen = null,
 }) {
   const confirmSlide = useConfirm();
@@ -162,15 +170,31 @@ export default function ProductsPanel({
             textAlign: 'center', padding: '12px 16px 20px',
             background: 'var(--ag-bg-card)', border: '1px solid var(--ag-line)', borderRadius: 14,
           }}>
-            <DicoCoreEscena
-              estado="pregunta"
-              lookY={0.65}
-              size={188}
-              texto={`Empecemos por tu primer ${t.singular}. Cargalo y queda publicado en tu catálogo.`}
-              accion={`+ Agregar ${t.singular}`}
-              onAccion={() => setEditing('new')}
-              title={`Dico mira el botón para agregar el primer ${t.singular}`}
-            />
+            {intervencionActiva ? (
+              <>
+                {/* El ancla. Physical viaja hasta aca y el dedo queda sobre el
+                    boton de abajo; el texto lo pone la burbuja de la
+                    intervencion, no esta pantalla. */}
+                <div className="dico-objetivo" data-dico-objetivo="catalogo-vacio" ref={anclaDico} />
+                <button
+                  type="button"
+                  className="ag-cta dico-cuadro-accion"
+                  onClick={() => setEditing('new')}
+                >
+                  {`+ Agregar ${t.singular}`}
+                </button>
+              </>
+            ) : (
+              <DicoCoreEscena
+                estado="pregunta"
+                lookY={0.65}
+                size={188}
+                texto={`Empecemos por tu primer ${t.singular}. Cargalo y queda publicado en tu catálogo.`}
+                accion={`+ Agregar ${t.singular}`}
+                onAccion={() => setEditing('new')}
+                title={`Dico mira el botón para agregar el primer ${t.singular}`}
+              />
+            )}
           </div>
         )}
 

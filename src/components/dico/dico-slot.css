@@ -51,6 +51,41 @@
      x=491 de idle. Anclar por idle dejaria a `explain` pisando lo que tenga a
      la izquierda, y el salto solo se veria al cambiar de pose. */
   --pose-tinta-izq: calc(var(--pose-ancho) * 0.1706);
+  /* Donde cae la PUNTA DEL DEDO de `pointDown`, medida sobre el asset: la
+     tinta mas baja esta en x=536 de 1600 (33,5%) e y=882, bien por debajo del
+     arco de la moneda. NO es el centro: Dico senala con la mano izquierda, asi
+     que centrarlo sobre un boton haria que el dedo apunte al costado. */
+  --pose-dedo: calc(var(--pose-ancho) * 0.335);
+}
+
+/* ── ANCLAJE `target` ────────────────────────────────────────────────────
+ *
+ * Dos placements semanticos, cero coordenadas: `presence` es donde Dico ya
+ * vive, y `target` es un NODO REAL que el objetivo publica. Physical viaja
+ * hasta ahi con un portal, asi que no hay nada que medir en runtime.
+ *
+ * Lo unico que se calcula es el corrimiento que pone el dedo sobre el centro
+ * del objetivo, y sale de la medicion del asset. */
+.dico-objetivo {
+  position: relative;
+  display: block;
+  height: 0;
+}
+
+.dico-anclado {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  /* Centrar el Slot y despues correrlo para que el DEDO —no el centro del
+     personaje— quede sobre el objetivo. */
+  transform: translateX(calc(-50% + (var(--pose-ancho) / 2) - var(--pose-dedo)));
+  pointer-events: none;
+}
+
+/* El unico control que queda tocable es la ranura, que es como se guarda. */
+.dico-anclado .dico-slot-control,
+.dico-anclado .dico-burbuja {
+  pointer-events: auto;
 }
 
 .dico-slot-stage {

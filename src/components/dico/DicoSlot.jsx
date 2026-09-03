@@ -22,6 +22,9 @@ export default function DicoSlot({
   onAperturaCompleta,
   onCerrar,
   onCierreCompleto,
+  /** Lo que Dico dice mientras esta en escena. Va ADENTRO del Slot porque es
+   *  quien establece el contexto de posicionamiento en los dos anclajes. */
+  children,
 }) {
   const abriendo = estado === 'physical_opening';
   const abierto = estado === 'physical_open';
@@ -69,6 +72,8 @@ export default function DicoSlot({
           </div>
         )}
       </div>
+
+      {visible && children}
 
       <button
         type="button"

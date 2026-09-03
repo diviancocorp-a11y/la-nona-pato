@@ -285,3 +285,25 @@
 @media (prefers-reduced-motion: reduce) {
   .dico-burbuja-cursor { animation: none; }
 }
+
+/* ── La burbuja de una intervencion Physical ─────────────────────────────
+ * No es el aviso: no cuelga de Dico 2D sino del personaje en escena. Se
+ * posiciona a su lado y no participa del layout del Slot, que tiene su propia
+ * geometria derivada del canvas. */
+.dico-intervencion-mensaje {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: 340px;
+}
+
+/* Anclada al objetivo el globo va ARRIBA del personaje: al costado se saldria
+   de la tarjeta del empty state. */
+.dico-anclado .dico-intervencion-mensaje {
+  left: 50%;
+  top: auto;
+  bottom: 100%;
+  transform: translateX(-50%);
+}

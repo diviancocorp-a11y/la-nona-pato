@@ -13,7 +13,7 @@
  * AdminTopbar/AdminProfileMenu consultan `admin_users`, que en el edificio no
  * existe, y su menu apunta a pantallas legacy.
  */
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 
 import usePlatformTenant from '../hooks/usePlatformTenant';
 import LoginScreen from '../components/admin/LoginScreen';
@@ -27,6 +27,7 @@ import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
 import NavLateral from '../components/admin/platform/NavLateral';
 import useMediaQuery from '../lib/useMediaQuery';
+import { intervencionDe, sigueVigente } from '../modules/dico/intervenciones';
 import {
   fetchProducts, upsertProduct, setProductActive, deleteProduct,
   fetchOrders, setOrderStatus, OPEN_ORDER_STATUSES, PlatformOrderStatus,
@@ -481,15 +482,48 @@ export default function PlatformAdmin() {
     return saved;
   }, [tenant, loadProducts, loadRecetas]);
 
+  /* ── Dico Physical: quien decide que sale al plano ────────────────────
+   *
+   * El productor vive ACA y no adentro de `DicoPresence` a proposito: la
+   * presencia se remonta al cruzar los 769px y perderia la carga. Este
+   * componente no se remonta.
+   *
+   * La decision es de `modules/dico/intervenciones.js`, que es puro. Aca solo
+   * se detectan los eventos y se guarda lo que devuelve. */
+  const [intervencion, setIntervencion] = useState(null);
+  const [anclaDico, setAnclaDico] = useState(null);
+  // Una vez por sesion: entrar cinco veces al catalogo no lo trae cinco veces.
+  const intervencionesVistas = useRef([]);
+
+  const proponerIntervencion = useCallback((evento) => {
+    const propuesta = intervencionDe(evento, {
+      vistas: intervencionesVistas.current,
+      terminologia: terminologia(tenant?.vertical),
+    });
+    if (!propuesta) return;
+    intervencionesVistas.current = [...intervencionesVistas.current, propuesta.id];
+    setIntervencion(propuesta);
+  }, [tenant?.vertical]);
+
   const handleToggleActive = useCallback(async (p) => {
     // Optimista: el toggle tiene que sentirse instantaneo. Si falla, se revierte.
+    const visiblesAntes = products.filter(x => x.active !== false).length;
     setProducts(list => list.map(x => (x.id === p.id ? { ...x, active: !p.active } : x)));
     const ok = await setProductActive(p.id, !p.active);
     if (!ok) {
       setProducts(list => list.map(x => (x.id === p.id ? { ...x, active: p.active } : x)));
       msg('No se pudo cambiar la visibilidad');
+      return;
     }
-  }, [msg]);
+    // La transicion la reporta el HANDLER, no un efecto sobre el estado: es la
+    // unica forma de distinguir "el usuario apago el ultimo" de "esta cuenta ya
+    // estaba en cero". Un efecto no sabe quien causo el cambio.
+    proponerIntervencion({
+      tipo: 'cambio-visibilidad',
+      visiblesAntes,
+      visiblesAhora: visiblesAntes + (p.active === false ? 1 : -1),
+    });
+  }, [msg, products, proponerIntervencion]);
 
   const handleDeleteProduct = useCallback(async (id) => {
     const res = await deleteProduct(id);
@@ -561,6 +595,26 @@ export default function PlatformAdmin() {
       Icon: ICONOS[m.id],
     })), [tenant?.vertical, roles]);
 
+  // Entrar al catalogo es una ACCION del usuario, y es el disparador del caso
+  // 1. Se mira cuando cambia la pestania o cuando terminan de cargar los
+  // productos —antes de eso `products` esta vacio por no haber vuelto la
+  // consulta, no por estar vacio el catalogo—.
+  useEffect(() => {
+    if (tab !== 'products' || loadingProducts) return;
+    proponerIntervencion({ tipo: 'entro-al-catalogo', productos: products.length });
+  }, [tab, loadingProducts, products.length, proponerIntervencion]);
+
+  // Se cierra sola cuando la accion que esperaba resolvio el estado. No hay
+  // timers: las dos son "espera accion".
+  useEffect(() => {
+    if (!intervencion) return;
+    const vigente = sigueVigente(intervencion, {
+      productos: products.length,
+      visibles: products.filter(x => x.active !== false).length,
+    });
+    if (!vigente) setIntervencion(null);
+  }, [intervencion, products]);
+
   // Donde cae cada uno al entrar (6f). El duenio abre en su negocio, el cajero
   // en su caja, el mozo en sus mesas. Y si el tab en el que esta deja de estar
   // disponible —cambio de rol, negocio sin esa pantalla— se corrige solo en
@@ -628,6 +682,14 @@ export default function PlatformAdmin() {
       omitir={products.length === 0 ? ['catalogo-vacio'] : []}
       onIr={setTab}
       anclaje={esDesktop ? 'lateral' : 'arriba'}
+      intervencion={intervencion}
+      objetivo={anclaDico}
+      onIntervencionCta={(i) => {
+        // El CTA de la intervencion hace lo mismo que haria el usuario a mano.
+        if (i.cta?.accion === 'crear-producto') setTab('products');
+        setIntervencion(null);
+      }}
+      onIntervencionCerrada={() => setIntervencion(null)}
     />
   );
 
@@ -740,6 +802,8 @@ export default function PlatformAdmin() {
               onDelete={handleDeleteProduct}
               onSubirImagen={subirImagenProducto}
               showToast={msg}
+              intervencionActiva={intervencion?.id === 'catalogo-vacio'}
+              anclaDico={setAnclaDico}
             />
           )}
           {tab === 'orders' && (
