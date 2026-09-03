@@ -1091,6 +1091,12 @@ export async function openPos(page: Page, theme: 'light' | 'dark', viewport = DE
 export async function openCatalog(page: Page, theme: 'ambar' | 'noche' | 'carbon') {
   await page.setViewportSize(MOBILE)
   await page.goto('/')
+  // SENIAL SEMANTICA, no tiempo. `data-cp-theme` existe desde el primer frame
+  // con el default `ambar`, asi que esperar el atributo no dice nada: hay que
+  // esperar a que el valor haya salido de los settings REALES. Antes se
+  // esperaba el valor a secas y, cuando el RPC tardaba, el gate fallaba con
+  // "esperaba ambar, recibio ''" sin poder distinguir un stall de un bug.
+  await expect(page.locator('body')).toHaveAttribute('data-cp-theme-listo', '1')
   await expect(page.locator('body')).toHaveAttribute('data-cp-theme', theme)
   await expect(page.locator('.cp-arclogo-ring')).toHaveCount(0)
   await expect(page.locator('footer')).toBeVisible()

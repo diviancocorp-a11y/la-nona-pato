@@ -97,6 +97,12 @@ export function applyCatalogTheme(theme) {
   const owner = document.body.getAttribute('data-ui-owner');
   if (owner && owner !== 'catalog') return t;
   document.body.setAttribute('data-cp-theme', t);
+  // SENIAL DE LISTO. `data-cp-theme` existe desde el primer frame con el
+  // default; esto marca que el valor ya salio de los settings REALES y no del
+  // fallback. Sin esta distincion, cualquiera que espere el tema tiene que
+  // adivinar por tiempo: no hay forma de saber si "ambar" es el tema del
+  // negocio o el placeholder.
+  document.body.setAttribute('data-cp-theme-listo', '1');
   // Cache para el anti-flash de index.html: la proxima carga pinta el tema
   // correcto antes de que vuelva el RPC.
   try { localStorage.setItem('cp_theme', t); } catch { /* empty */ }

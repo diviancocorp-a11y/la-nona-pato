@@ -49,25 +49,17 @@ export const test = base.extend<{ networkAudit: NetworkAudit }>({
       await route.abort('blockedbyclient')
     })
 
-    // ── LA PREFERENCIA DECLARADA TIENE QUE LLEGAR A LA PAGINA ──────────
+    // ── MOVIMIENTO ENCENDIDO POR DEFECTO ───────────────────────────────
     //
-    // El config declara `reducedMotion: 'reduce'` y la pagina reportaba
-    // `false`: la opcion del contexto no estaba surtiendo efecto, mientras que
-    // `page.emulateMedia` si. O sea que TODA la QA corria con el movimiento
-    // encendido, incluidos los tres specs que ponen `no-preference` a
-    // proposito —una distincion que no existia—.
+    // Es lo que tiene la mayoria de la gente, y capturar todo bajo `reduce`
+    // esconderia del gate las animaciones productivas. Lo que congela el
+    // movimiento continuo es el registro de motion, no la preferencia. Un
+    // spec que quiera probar reduced motion lo pide explicitamente.
     //
-    // Consecuencia concreta: el carrusel del catalogo auto-avanzaba en cada
-    // superficie, y por eso aparecian dos capas a la vez.
-    //
-    // Se fuerza y se VERIFICA. Un `emulateMedia` que dejara de funcionar
-    // volveria a fallar en silencio; esta comprobacion lo convierte en un
-    // error inmediato.
-    // Movimiento ENCENDIDO por defecto: es lo que tiene la mayoria de la
-    // gente, y capturar todo bajo `reduce` esconderia del gate las animaciones
-    // productivas —que es justo lo que no hay que hacer—. Lo que congela el
-    // movimiento continuo es el registro de motion, no la preferencia.
-    // Un spec que quiera probar reduced motion lo pide explicitamente.
+    // Se aplica con `emulateMedia` y NO con el `use` del config, porque la
+    // opcion del contexto no surtia efecto: la pagina reportaba lo contrario
+    // de lo declarado. Se verifica que llego, para que no vuelva a fallar en
+    // silencio.
     await aplicarMovimiento(page, 'no-preference')
 
     const fixedTime = new Date(fixedNow).getTime()

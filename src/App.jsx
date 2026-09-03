@@ -24,6 +24,7 @@ import { useEffect } from 'react'
 import { fetchSettings } from './services/settings'
 import { supabase } from './lib/supabase'
 import { fetchActiveTheme, applyTheme, clearAppliedTheme } from './services/theme'
+import { applyCatalogTheme } from './lib/tenantHead'
 import { resolveThemeOwner, THEME_OWNERS } from './lib/themeOwnership'
 
 // lazy con auto-recuperacion (fix HERMES-GASTRO-8, 11/jun): si el usuario
@@ -104,10 +105,11 @@ export default function App() {
 
     let cancelled = false;
     const apply = (sett) => {
-      const t = ['ambar','noche','carbon'].includes(sett?.catalog_theme) ? sett.catalog_theme : 'ambar';
-      document.body.setAttribute('data-cp-theme', t);
-      // Cache para el anti-flash de index.html (proxima carga pinta el tema correcto)
-      try { localStorage.setItem('cp_theme', t); } catch { /* empty */ }
+      // Una sola implementacion: esto duplicaba las tres lineas de
+      // `applyCatalogTheme` —validacion, atributo y cache— y ahora ademas
+      // tendria que duplicar la senial de listo. Cuando hay dos escritores del
+      // mismo atributo, tarde o temprano uno se olvida de algo.
+      const t = applyCatalogTheme(sett?.catalog_theme);
       // Pestania del navegador: titulo y descripcion salen de settings
       // (Personalizacion), no del business.js de build. Asi el slogan que
       // carga el cliente afecta el catalogo Y la pestania, y en su idioma.

@@ -80,11 +80,17 @@
           if (owner !== 'catalog') return;
           var t = localStorage.getItem('cp_theme');
           var bgs = { ambar: '#FFFFFF', noche: '#161412', carbon: '#FAF5EE' };
-          if (t && bgs[t]) {
-            document.body.setAttribute('data-cp-theme', t);
-            document.body.style.background = bgs[t];
-            document.documentElement.style.background = bgs[t];
-          }
+          // SIEMPRE se pinta un tema, aunque no haya cache. Antes solo se
+          // escribia el atributo si el cache existia, asi que en la PRIMERA
+          // visita el catalogo se pintaba sin sus tokens —las variables viven
+          // en `body[data-cp-theme="X"] .cp-root`— hasta que volvia el RPC de
+          // settings. El default es el mismo que ya usa el resto del codigo
+          // cuando el valor no es valido, y se corrige solo en cuanto llegan
+          // los settings reales.
+          if (!bgs[t]) t = 'ambar';
+          document.body.setAttribute('data-cp-theme', t);
+          document.body.style.background = bgs[t];
+          document.documentElement.style.background = bgs[t];
         } catch (e) { /* sin storage: tema default */ }
       })();
     </script>

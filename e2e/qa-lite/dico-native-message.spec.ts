@@ -102,12 +102,17 @@ for (const viewport of VIEWPORTS) {
     await trigger.click()
     await expect(trigger).toHaveAttribute('aria-expanded', 'true')
     const bubble = page.locator('.dico-burbuja')
-    const control = page.getByRole('button', { name: 'Completar mensaje de Dico' })
+    // El BOTON de contenido, que existe siempre. Antes se buscaba por el
+    // nombre accesible "Completar mensaje de Dico", que solo existe MIENTRAS
+    // tipea: el texto son 107 caracteres a 18ms, o sea 1,93s de margen, y una
+    // maquina cargada lo agota. Que el tipeo sea progresivo y que el click lo
+    // complete ya esta cubierto en `src/test/burbujaDico.test.jsx`, donde el
+    // tiempo se controla; aca se afirma el contrato que SI es determinista.
+    const control = page.locator('button.dico-burbuja-contenido')
     const visibleText = page.locator('.dico-burbuja-texto')
     const fullText = page.locator('.dico-burbuja-lectura')
     await expect(bubble).toBeVisible()
     await expect(control).toBeVisible()
-    await expect(page.locator('.dico-burbuja-cursor')).toHaveCount(1)
     await expect(fullText).toHaveCount(1)
 
     const expectedText = (await fullText.textContent() || '').replace(/\s+/g, ' ').trim()
