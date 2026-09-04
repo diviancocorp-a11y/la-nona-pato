@@ -99,15 +99,37 @@ export function normalizar(sql) {
  * El cuerpo de `fn` segun la ULTIMA migracion que la define.
  * Devuelve null si ninguna la define (funcion creada fuera del repo).
  */
+/* Las migraciones se leen UNA VEZ por directorio.
+ *
+ * Antes cada llamada releia el directorio entero: con 7 funciones criticas y
+ * 61 migraciones eran 427 lecturas sincronicas de disco para responder una
+ * pregunta sobre archivos que no cambian durante la corrida. En una maquina
+ * tranquila no se notaba; con otro proyecto compilando al mismo tiempo, el
+ * test que recorre las criticas era el primero en morir por timeout — y
+ * quedaba como "flaky" cuando en realidad era el mas pesado en E/S de toda
+ * la suite.
+ *
+ * La clave es el directorio, asi que los directorios falsos de los tests
+ * —cada uno un `mkdtemp` distinto— no se pisan entre si. El proceso es
+ * efimero en los dos usos (CLI y test), asi que no hay invalidacion que
+ * mantener: nadie edita una migracion mientras el guard corre. */
+const cacheMigraciones = new Map();
+
+function migracionesDe(dir) {
+  if (cacheMigraciones.has(dir)) return cacheMigraciones.get(dir);
+  const leidas = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort() // 0001..0061: orden lexicografico == cronologico
+    .map((archivo) => ({ archivo, texto: readFileSync(join(dir, archivo), 'utf8') }));
+  cacheMigraciones.set(dir, leidas);
+  return leidas;
+}
+
 export function cuerpoSegunElRepo(fn, dir = MIGRACIONES) {
   if (!existsSync(dir)) return null;
-  const archivos = readdirSync(dir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort(); // 0001..0061: orden lexicografico == cronologico
 
   let ultimo = null;
-  for (const archivo of archivos) {
-    const texto = readFileSync(join(dir, archivo), 'utf8');
+  for (const { archivo, texto } of migracionesDe(dir)) {
     // `create or replace function public.fn(` — con o sin `public.`
     const re = new RegExp(
       `create\\s+or\\s+replace\\s+function\\s+(?:public\\.)?${fn}\\s*\\(`,
