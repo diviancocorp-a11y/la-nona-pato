@@ -17,6 +17,11 @@
      la que mantiene los iconos quietos al expandir. */
   --ag-sidebar-riel: 64px;
   --ag-sidebar-abierta: 224px;
+
+  /* El personaje. Dos medidas declaradas juntas, igual que el riel: la
+     posicion de Dico no puede quedar dispersa en literales sueltos. */
+  --ag-dico-riel: 60px;
+  --ag-dico-abierta: 88px;
 }
 
 /* Nombre accesible para lectores sin ocupar espacio. No existia una utilidad
@@ -49,6 +54,7 @@
    * navegacion. */
   .ag-sidebar {
     --ag-sidebar-ancho: var(--ag-sidebar-riel);
+    --ag-dico-tamanio: var(--ag-dico-riel);
 
     position: fixed;
     inset: 0 auto 0 0;
@@ -76,6 +82,11 @@
      expande tabulando y no expande al clickear. */
   .ag-sidebar:has(:focus-visible) {
     --ag-sidebar-ancho: var(--ag-sidebar-abierta);
+    /* El personaje crece con el riel. Va DENTRO de esta regla y no en una
+       propia con el mismo selector: `navLateral.test.jsx` lee el primer
+       cuerpo que encuentra por selector, y un segundo bloque le esconderia
+       el ancho que ese contrato exige. */
+    --ag-dico-tamanio: var(--ag-dico-abierta);
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
 
@@ -84,6 +95,7 @@
   @media (hover: hover) and (pointer: fine) {
     .ag-sidebar:hover {
       --ag-sidebar-ancho: var(--ag-sidebar-abierta);
+      --ag-dico-tamanio: var(--ag-dico-abierta);
       box-shadow: 0 0 32px rgba(0, 0, 0, .32);
     }
   }
@@ -105,8 +117,20 @@
     grid-template-columns: var(--ag-sidebar-riel) 1fr;
     align-items: start;
     /* Alto FIJO en los dos estados. Si creciera al revelar el wordmark, los
-       iconos de abajo bajarian con el. Incluye el lugar del contador. */
-    height: 116px;
+       iconos de abajo bajarian con el. Incluye el lugar del contador.
+     *
+     * PASS 3 — 116 pasa a 148 porque el bloque reserva su alto para el caso
+     * MAS GRANDE, que ahora es Dico expandido: 88 del personaje + 44 del
+     * contador + 10 de padding + 6 del respiro = 148. Con 116 el contador
+     * caia 26px por debajo del bloque y quedaba encima de `.ag-sidebar-nav`,
+     * que le intercepta el pointer — el mismo defecto que ya documenta el
+     * bloque de `.ag-sidebar-presencia`, esta vez por abajo.
+     *
+     * Fijo en los DOS estados, no solo en el expandido: si creciera al
+     * expandirse, los iconos de navegacion bajarian con el y se rompe la
+     * propiedad que mide `dico-sidebar` en los seis anchos. El costo es 32px
+     * de aire arriba con la sidebar colapsada. */
+    height: 148px;
     flex-shrink: 0;
     padding-top: 10px;
   }
@@ -121,6 +145,12 @@
   .ag-sidebar-wordmark {
     align-self: start;
     margin-top: 18px;
+    /* Le deja lugar al personaje grande. Con Dico a 88 y centrado sobre el
+       riel de 64, su borde derecho cae en 76: doce pixeles DENTRO de esta
+       columna, que arranca en 64. Sin esto la cabeza le tapaba la D de DICO
+       —medido en la captura de 1440 expandida—. Doce de invasion mas ocho de
+       aire; no es un numero a ojo, sale de las dos medidas declaradas. */
+    padding-left: 20px;
     font-family: var(--font-heading, var(--ag-font));
     font-weight: 800;
     font-size: 17px;
@@ -159,20 +189,53 @@
   .ag-sidebar .dico-avisos-presencia {
     flex-direction: column;
     gap: 0;
+    /* CLAVADA AL RIEL. Sin esto, el personaje de 88px estiraba a su propio
+       padre hasta 88 y el contador —centrado adentro— se corria de x=10 a
+       x=22 cada vez que la sidebar se abria. Lo agarro
+       `dico-native-message`, que compara la caja del control entre estados:
+       un control que se desplaza mientras lo vas a tocar es el mismo defecto
+       que ya habia costado el intento anterior, por otro lado. */
+    width: var(--ag-sidebar-riel);
   }
 
-  /* PASS 1 — el personaje crece en escritorio.
-     A 40px los ojos miden ~4px y las cejas menos de 2: a esa escala Dico era
-     una mancha con aro, no una cara, y toda la expresividad de B6 (siete
-     estados) no se leia. 56 es lo mas grande que entra en el riel de 64 con
-     aire a los dos lados, y es la caja VISUAL: el area clickeable ya vive en
-     el boton de 44+ y no depende de esto. */
+  /* El personaje crece en escritorio, y crece MAS al abrirse el riel.
+   *
+   * PASS 1 lo llevo de 40 a 56 porque a 40px los ojos miden ~4px y las cejas
+   * menos de 2: a esa escala Dico era una mancha con aro y los siete estados
+   * de B6 no se leian. PASS 3 muestra que 56 tampoco alcanzaba a distancia de
+   * monitor. Se fotografiaron tres variantes sobre la pantalla real —56, 88 y
+   * 112— y la elegida es 88: a 112 los ojos se leen igual de bien pero el
+   * personaje le pisa el wordmark.
+   *
+   * Colapsado queda en 60 y no en 88: el riel mide 64 y el resto es aire a
+   * los lados. El tamanio grande es el del riel ABIERTO, que es donde el
+   * pedido dice que tiene que leerse la expresion.
+   *
+   * Es la caja VISUAL. El area clickeable ya vive en el boton de 44+ y no
+   * depende de esto: crecer el personaje no agranda el target ni al reves. */
+  /* LO QUE CRECE ES EL PERSONAJE; EL LUGAR QUE OCUPA NO CAMBIA.
+   *
+   * Primer intento medido: hacer crecer tambien la caja exterior. El gate
+   * `dico-sidebar` lo agarro enseguida y es un defecto de verdad, no de test:
+   * el contador vive DEBAJO de Dico, asi que al pasar el mouse por encima
+   * para clickearlo, Dico crecia 28px y le empujaba el boton fuera del
+   * puntero. Un control que se corre justo cuando lo vas a tocar.
+   *
+   * Por eso la caja exterior reserva SIEMPRE el tamanio grande y solo el arte
+   * —`.dico-native-caja`, que es a lo que el pulso se ancla con `inset: 0`—
+   * va de 60 a 88 centrado adentro. Colapsada sobra caja transparente a los
+   * lados y el riel de 64 la recorta sin tocar el dibujo, que mide 60. */
   .ag-sidebar .dico-native-caja {
-    --dico-native-size: 56px;
+    --dico-native-size: var(--ag-dico-tamanio);
+    transition: width .18s var(--ag-ease), height .18s var(--ag-ease);
   }
+  /* El ALTO se reserva; el ANCHO no. Con `width: 88px` la caja empujaba a su
+     padre flex a 88 desde x=0, y como el riel mide 64 el personaje y el
+     contador quedaban corridos a la derecha y recortados por el `overflow:
+     hidden`. Medido: el contador arrancaba en x=22 en vez de x=10. */
   .ag-sidebar .dico-avisos-idle {
-    width: 56px;
-    height: 56px;
+    width: 100%;
+    height: var(--ag-dico-abierta);
   }
 
   /* El contador reserva su lugar SIEMPRE, haya avisos o no. Si apareciera y
@@ -402,7 +465,8 @@
   .ag-sidebar-label,
   .ag-sidebar-wordmark,
   .ag-sidebar .dico-slot,
-  .ag-sidebar .dico-avisos-mensaje {
+  .ag-sidebar .dico-avisos-mensaje,
+  .ag-sidebar .dico-native-caja {
     transition: none;
   }
 }
