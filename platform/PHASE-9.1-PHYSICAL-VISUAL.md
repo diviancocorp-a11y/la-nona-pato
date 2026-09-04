@@ -87,5 +87,9 @@ Dico», el chat con Physical, ni Dico 2D como la «O» del logo.
 
 - Defecto: **demostrado y medido**.
 - Loop: **cortado** en Phase 4, con re-medición.
+- El parche de `pointer-events`: **aceptado provisionalmente** (Ricky,
+  4/sep/2026), porque la causa se demostró, la amplitud quedó en 0 y no se
+  tocó motion.
+- Physical centrado: **diferido a esta fase**. No se implementa ahora.
 - Causa de fondo: **abierta**, documentada acá.
 - Phase 9.1: **no iniciada**. Necesita su propio brief y su propio gate.

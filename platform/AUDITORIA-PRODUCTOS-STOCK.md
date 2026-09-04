@@ -1,6 +1,6 @@
 # Auditoría — ¿Productos e Inventario son un solo workspace?
 
-Fecha: 2026-09-04 · Estado: **AUDITORÍA. No se implementó nada.**
+Fecha: 2026-09-04 · Estado: **DECISIÓN TOMADA. No se implementó nada, y no se sigue investigando.**
 Origen: Phase 4 · VISUAL CONVALIDATION PASS 2, punto 8.
 
 La pregunta: si conviene evolucionar hacia `CATÁLOGO → [ Productos ] [ Inventario ]`.
@@ -119,7 +119,19 @@ resuelve por rubro qué módulos existen (`modulosDe`); la fusión correcta es
 Hacerlo global forzaría a gastro y barbería a una metáfora que no es la suya
 para ahorrarle una pestaña a retail.
 
-## 5. STOP
+## 5. Decisión (2026-09-04)
+
+Aceptada por Ricky, y la investigación se cierra acá:
+
+- **No se fusionan globalmente.** No se hace el workspace `CATÁLOGO`.
+- **Retail puede justificar una unión futura** — es el único donde producto y
+  existencia son la misma fila.
+- **Gastronomía y barbería no.** No se vuelve sobre esto en Phase 4.
+
+Queda como decisión documentada, no como pendiente abierto: si alguna vez se
+retoma, se retoma para retail y con su propia fase.
+
+## 6. STOP
 
 Nada de esto está implementado. Requiere decisión de producto y, si se aprueba
 la variante de retail, su propia fase — toca navegación, el registry y la
