@@ -34,43 +34,52 @@
   right: -22vmax;
   animation: ag-glow-drift-1 38s ease-in-out infinite alternate;
 }
-.ag-bg-glow.g2 {
-  bottom: -30vmax;
-  left: -24vmax;
-  width: 60vmax;
-  height: 60vmax;
-  animation: ag-glow-drift-2 46s ease-in-out infinite alternate;
-}
 @keyframes ag-glow-drift-1 {
   from { transform: translate(0, 0) scale(1); }
   to   { transform: translate(-9vmax, 11vmax) scale(1.18); }
 }
-@keyframes ag-glow-drift-2 {
-  from { transform: translate(0, 0) scale(1.12); }
-  to   { transform: translate(10vmax, -9vmax) scale(0.94); }
-}
 
-/* — Theming — */
+/* — Theming —
+ *
+ * VISUAL CONVALIDATION PASS 1 (Phase 4): el ambar deja de ser el ambiente.
+ *
+ * Los dos resplandores estaban en 0,34-0,45 de alfa sobre 70vmax: en las
+ * capturas de 1440 el lienzo entero era una degrade ambar y las tarjetas de
+ * producto flotaban encima como si fueran lo secundario. El oro es accion,
+ * seleccion, foco y presencia —lo dice `admin-tokens.css`—, no fondo.
+ *
+ * Queda un ambient de marca, pero al borde de lo perceptible: un solo halo,
+ * arriba a la derecha, por debajo de 0,08. Si se nota, esta mal.
+ * El material del shell ahora lo da el zinc y la textura de la grilla.
+ */
 
-/* Light · lienzo blanco cálido, grilla gris suave, glow ámbar */
-.ag-theme-light .ag-bg-layer { background: #FDFCFA; }
+/* Light · lienzo zinc, grilla neutra */
+.ag-theme-light .ag-bg-layer { background: var(--ms-zinc-50, #FAFAFA); }
 .ag-theme-light .ag-bg-grid {
   background-image:
-    linear-gradient(to right, #ECE7DC 1px, transparent 1px),
-    linear-gradient(to bottom, #ECE7DC 1px, transparent 1px);
+    linear-gradient(to right, rgba(9, 9, 11, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(9, 9, 11, 0.05) 1px, transparent 1px);
 }
-.ag-theme-light .ag-bg-glow.g1 { background: radial-gradient(circle at center, rgba(245, 158, 11, 0.38), transparent 65%); }
-.ag-theme-light .ag-bg-glow.g2 { background: radial-gradient(circle at center, rgba(250, 204, 21, 0.45), transparent 65%); }
+.ag-theme-light .ag-bg-glow.g1 {
+  background: radial-gradient(circle at center, rgba(232, 185, 71, 0.07), transparent 62%);
+}
 
-/* Dark · lienzo carbón cálido, grilla sutil, glow ámbar bien presente */
-.ag-theme-dark .ag-bg-layer { background: #131110; }
+/* Dark · carbon, no marron. El #131110 anterior era un negro CALIDO: con el
+   ambar encima el panel entero viraba a sepia. Zinc 950 es neutro. */
+.ag-theme-dark .ag-bg-layer { background: var(--ms-zinc-950, #09090B); }
 .ag-theme-dark .ag-bg-grid {
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
 }
-.ag-theme-dark .ag-bg-glow.g1 { background: radial-gradient(circle at center, rgba(245, 158, 11, 0.34), transparent 65%); }
-.ag-theme-dark .ag-bg-glow.g2 { background: radial-gradient(circle at center, rgba(217, 119, 6, 0.26), transparent 65%); }
+.ag-theme-dark .ag-bg-glow.g1 {
+  background: radial-gradient(circle at center, rgba(232, 185, 71, 0.06), transparent 62%);
+}
+
+/* Queda UN resplandor. Con uno solo y al 6-7% la deriva ya no se lee como
+   "las luces se mueven": es material, no efecto. El segundo se elimino de
+   raiz —nodo, regla y keyframes— y no con `display: none`, para que el
+   inventario de motion del harness siga describiendo lo que existe. */
 
 /* — Reduce motion respect — */
 @media (prefers-reduced-motion: reduce) {

@@ -216,14 +216,10 @@ export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
     freezeAt: 0,
     expectedCount: 1,
   },
-  {
-    selector: '.ag-bg-glow.g2',
-    expectedName: 'ag-glow-drift-2',
-    duration: 46000,
-    iterations: Infinity,
-    freezeAt: 0,
-    expectedCount: 1,
-  },
+  // El segundo resplandor se ELIMINO en Phase 4 · PASS 1 (nodo, regla y
+  // keyframes). El fondo del shell dejo de ser ambar: dos glows al 34-45% de
+  // alfa tapaban el contenido operativo. Este inventario describe lo que
+  // existe, asi que la entrada se va con el elemento.
   // Dico ya no aporta movimiento INFINITO a esta superficie: el personaje es
   // una imagen y su pulso en `attention` corre dos vueltas y se detiene. Lo
   // que queda —entrada y pulso, los dos finitos— lo cubre
