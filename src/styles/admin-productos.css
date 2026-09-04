@@ -387,4 +387,18 @@
 @media (max-width: 560px) {
   .ag-productos-barra { flex-wrap: wrap; }
   .ag-pantalla-productos .ag-cta { width: 100%; justify-content: center; }
+
+  /* Y el HEADER tambien se apila.
+   *
+   * Faltaba esto y el resultado estaba a la vista en la captura de 390: el
+   * header seguia siendo una fila, y un CTA al 100% dentro de una fila deja
+   * al texto de contexto exprimido en una columna de cuatro renglones con el
+   * boton dorado encima. La regla es que ningun CTA pise datos del header, y
+   * en un telefono la unica forma de cumplirla es poner una cosa debajo de
+   * la otra: primero el contexto, despues la accion. */
+  .ag-productos-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--ag-sp-2);
+  }
 }
