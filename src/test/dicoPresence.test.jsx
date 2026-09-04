@@ -98,7 +98,7 @@ describe('DicoPresence', () => {
     // este contrato, la entrada de Physical con el aviso abierto dejaba un
     // globo flotando de un personaje que ya no estaba.
     const { container, rerender } = render(React.createElement(DicoPresence, datos));
-    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
     expect(container.querySelector('.dico-burbuja')).toBeInTheDocument();
 
@@ -124,7 +124,7 @@ describe('DicoPresence', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
     expect(screen.queryByRole('button', { name: 'Traer a Dico' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ver lo que dice Dico' }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
     expect(physicalDe(container)).not.toBeInTheDocument();
   });
@@ -138,7 +138,7 @@ describe('DicoPresence', () => {
 
   it('conserva Native al abrir un aviso', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
-    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
     expect(nativeDe(container)).toBeInTheDocument();
     expect(container.querySelector('.dico-avisos--abierto')).toBeInTheDocument();
@@ -188,7 +188,7 @@ describe('DicoPresence', () => {
 
   it('abrir Physical cierra cualquier notice Native', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
-    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
     abrirPhysical();
     expect(estadoDe(container)).toBe('physical_opening');
@@ -197,7 +197,7 @@ describe('DicoPresence', () => {
 
   it('no restaura el notice anterior cuando Physical termina de cerrar', () => {
     const { container } = render(React.createElement(DicoPresence, datos));
-    fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     abrirHastaPhysical(container);
     fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
     esperarMovimiento(physicalDe(container));

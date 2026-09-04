@@ -217,23 +217,45 @@
   padding: 2px 16px 8px;
 }
 
-/* Dos controles, uno al lado del otro: el personaje y el contador. Antes el
-   contador vivia ENCIMA del personaje y por eso no podia ser un boton — su
-   area habria robado el click de Dico. */
+/* UN solo control: el personaje, con su contador encima (ver `DicoAvisos`).
+ *
+ * `--dico-cara` es EL DIAMETRO DEL PERSONAJE en este contexto, y es de donde
+ * cuelga todo lo demas: el tamanio del arte y donde se para el badge. Cada
+ * chasis lo redefine —el riel lo hace crecer al abrirse, la topbar lo deja
+ * fijo— y ni el arte ni el badge necesitan enterarse de cual es cual. */
 .dico-avisos-presencia {
+  --dico-cara: 40px;
+
   display: flex;
   align-items: center;
-  gap: 2px;
   min-height: 44px;
 }
 
+/* Un solo lugar decide cuanto mide el arte. `DicoNative` trae su `size` por
+   prop para poder usarse suelto; adentro de la presencia manda el chasis. */
+.dico-avisos-presencia .dico-native-caja {
+  --dico-native-size: var(--dico-cara);
+}
+
+/* La caja del control RESERVA su lugar y no cambia de tamanio.
+ *
+ * Es a proposito que no siga a `--dico-cara`: en el riel el personaje crece
+ * al pasar el mouse, y si la caja creciera con el, el control se correria
+ * justo cuando lo vas a tocar —el defecto que ya costo dos vueltas en PASS 3—.
+ * Reserva el caso grande mas el aire que necesita el badge para caer adentro,
+ * y el arte crece centrado ahi.
+ *
+ * `min-width/height` en 44 y no `width/height`: el hit target minimo es un
+ * PISO, no una medida. Con el personaje en 60 u 88 la caja ya lo supera. */
 .dico-avisos-trigger,
 .dico-avisos-idle {
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  width: calc(var(--dico-cara-reserva, var(--dico-cara)) + 12px);
+  height: calc(var(--dico-cara-reserva, var(--dico-cara)) + 12px);
   padding: 0;
   background: transparent;
   border: 0;
@@ -255,23 +277,45 @@
   outline-offset: 3px;
 }
 
-/* El contador ya no se superpone al arte: vive en su propio control. Sobre el
-   Native de 36px el solape medido era de 13px y con el asset final de 40 pasaba
-   a 15,3px, o sea que le comia el aro al personaje. */
+/* El contador, montado en la esquina del personaje.
+ *
+ * SE ANCLA AL ARTE, NO A LA CAJA. La caja reserva el tamanio grande y no se
+ * mueve; el arte crece y se achica adentro. Si el badge colgara de la esquina
+ * de la caja, con el riel cerrado quedaria flotando a doce pixeles de la cara
+ * y volveria a leerse como una pastilla suelta. Se lo para en el centro y se
+ * lo empuja por el radio del ARTE, asi que queda pegado a los dos tamanios.
+ *
+ * Los factores son el punto a 45 grados sobre el borde del personaje: el arte
+ * ocupa 78,91% del canvas (ver `DicoNative`), o sea radio 0,3946; su
+ * proyeccion en cada eje es 0,3946 / raiz(2) = 0,279. Se usa 0,30 y -0,30
+ * —un pelo afuera— para que el badge muerda el aro en vez de taparlo.
+ *
+ * El borde del color del chasis es lo que lo despega de la cara: es el mismo
+ * recurso que usa cualquier icono de app con notificaciones, y sin el el rojo
+ * se confunde con el arte. */
 .dico-avisos-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate:
+    calc(var(--dico-cara) * 0.30 - 50%)
+    calc(var(--dico-cara) * -0.30 - 50%);
+
   min-width: 18px;
-  height: 16px;
+  height: 18px;
   padding: 0 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: var(--ag-c-danger, #c0392b);
+  border: 2px solid var(--ag-chassis, #18181b);
   color: #fff;
   font-size: 10px;
   line-height: 1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 .dico-avisos-mensaje {

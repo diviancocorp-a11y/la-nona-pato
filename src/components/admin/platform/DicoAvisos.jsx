@@ -197,35 +197,39 @@ export default function DicoAvisos({
             llamador de Physical; el boton de invocar volvera cuando exista el
             chat real. Con esto el personaje y el contador hacen LO MISMO, que
             es lo correcto: son la misma intencion. */}
+        {/* PASS 4 — EL CONTADOR VUELVE ENCIMA DEL PERSONAJE.
+         *
+         * Hasta acá eran dos controles pegados: el personaje y, al lado, una
+         * pastilla roja con su propia caja de 44. Se habían separado cuando
+         * Dico medía 36-40px y el badge le comía 13-15px del aro; y tenían
+         * nombres accesibles distintos porque hacían cosas distintas —uno
+         * abría el aviso, el otro traía a Physical—.
+         *
+         * Las dos razones se cayeron. PASS 2 dejó al personaje y al contador
+         * haciendo LO MISMO, y PASS 3 llevó a Dico a 60/88 en el riel: a ese
+         * tamaño el badge entra en la esquina sin tapar la cara. Separados
+         * leían como una notificación ajena flotando al lado de un dibujo, y
+         * no como que Dico tiene algo para decir.
+         *
+         * Ahora es UN control: el personaje, con su contador encima. Sigue
+         * teniendo su hit target de 44 como mínimo (`burbuja.css`) y el
+         * número entra en el nombre accesible, que es donde tiene que estar
+         * para quien no lo ve. */}
         {tieneAvisos ? (
           <button
             type="button"
-            className="dico-avisos-idle"
-            onClick={abierto ? onCerrar : onAbrir}
-            aria-expanded={abierto}
-            aria-label={abierto ? 'Cerrar el mensaje de Dico' : 'Ver lo que dice Dico'}
-          >
-            {personaje}
-          </button>
-        ) : (
-          <span className="dico-avisos-idle">{personaje}</span>
-        )}
-
-        {/* El contador es un CONTROL, no una calcomania. Tiene su propia area
-            de 44 y su propio nombre accesible: es la unica forma de que abrir
-            el aviso y traer a Dico sean dos gestos distintos. */}
-        {tieneAvisos && (
-          <button
-            type="button"
-            className="dico-avisos-trigger"
+            className="dico-avisos-idle dico-avisos-trigger"
             onClick={abierto ? onCerrar : onAbrir}
             aria-expanded={abierto}
             aria-label={abierto
-              ? 'Cerrar avisos de Dico'
-              : `Abrir ${avisos.length === 1 ? '1 aviso' : `${avisos.length} avisos`} de Dico`}
+              ? 'Cerrar el mensaje de Dico'
+              : `Ver lo que dice Dico (${avisos.length === 1 ? '1 aviso' : `${avisos.length} avisos`})`}
           >
-            <span className="dico-avisos-badge">{avisos.length}</span>
+            {personaje}
+            <span className="dico-avisos-badge" aria-hidden="true">{avisos.length}</span>
           </button>
+        ) : (
+          <span className="dico-avisos-idle">{personaje}</span>
         )}
       </div>
     </div>

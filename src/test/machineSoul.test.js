@@ -300,10 +300,15 @@ describe('el contrato de Phase 3A sigue en pie', () => {
   });
 
   it('el trigger Native reserva un hit target de 44 por 44', () => {
+    /* PASS 4 — el minimo pasa a ser un PISO y no una medida exacta.
+     * El control dejo de ser una pastilla de 44 al lado del personaje: ahora
+     * ES el personaje, que en el riel mide 60 u 88. Exigir `width: 44px`
+     * obligaria a achicarlo. Lo que el contrato queria garantizar —que nunca
+     * baje de 44— se dice mejor con `min-width`. */
     const i = burbuja.indexOf('.dico-avisos-trigger,');
     const bloque = burbuja.slice(i, burbuja.indexOf('}', i));
-    expect(bloque).toContain('width: 44px');
-    expect(bloque).toContain('height: 44px');
+    expect(bloque).toContain('min-width: 44px');
+    expect(bloque).toContain('min-height: 44px');
   });
 
   it('el shell respeta reduced motion', () => {

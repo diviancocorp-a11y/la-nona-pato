@@ -54,7 +54,7 @@ describe('DicoAvisos en el panel real', () => {
 
     expect(container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(screen.getAllByText(/está sin precio/)).toHaveLength(3);
     expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Poner precio' }));
@@ -67,7 +67,7 @@ describe('DicoAvisos en el panel real', () => {
     });
 
     expect(container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /abrir 2 avisos de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
     // `sin-receta` es una sugerencia: la cara baja de `alert` a `curious`.
     expect(container.querySelector('[data-dico-native="curious"]')).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('DicoAvisos en el panel real', () => {
     expect(container.querySelector('[data-dico-native="curious"]')).toBeInTheDocument();
     expect(container.querySelector('[data-dico-pulso]'))
       .toHaveAttribute('data-dico-pulso', 'attention');
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
     expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
   });
@@ -108,7 +108,7 @@ describe('DicoAvisos en el panel real', () => {
     const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })],
     });
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     fireEvent.click(screen.getByRole('button', { name: /cerrar lo que dice dico/i }));
     expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('DicoAvisos en el panel real', () => {
     const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })],
     });
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
 
     const avisos = container.querySelector('.dico-avisos');
     expect(avisos.firstElementChild).toHaveClass('dico-avisos-mensaje');
@@ -171,7 +171,7 @@ describe('DicoAvisos en el panel real', () => {
 
     expect(container.querySelector('.dico-burbuja')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ver lo que dice Dico' }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(container.querySelector('.dico-burbuja')).not.toBeNull();
     expect(screen.getAllByText(/está sin precio/).length).toBeGreaterThan(0);
 
@@ -179,23 +179,36 @@ describe('DicoAvisos en el panel real', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar el mensaje de Dico' }));
     expect(container.querySelector('.dico-burbuja')).toBeNull();
 
-    // El contador sigue siendo un control aparte, con su propia area: no
-    // volvio a ser una calcomania encima del arte.
-    const boton = container.querySelector('.dico-avisos-trigger');
-    expect(boton.querySelector('[data-dico-native]'), 'el contador envuelve al personaje').toBeNull();
-    expect(container.querySelector('.dico-avisos-idle [data-dico-native]')).toBeInTheDocument();
+    /* PASS 4 — SUPERSEDED. Hasta acá esto exigía lo contrario: que el contador
+     * fuera un control APARTE y que no envolviera al personaje. Esa regla
+     * existía por dos razones que ya no valen — el badge le comía el aro a un
+     * Dico de 36-40px, y personaje y contador hacían cosas distintas.
+     * PASS 2 los dejó haciendo lo mismo y PASS 3 llevó al personaje a 60/88.
+     * Separados, el contador se leía como una notificación ajena flotando al
+     * lado; el pedido de PASS 4 es que se lea como que Dico tiene algo para
+     * decir.
+     *
+     * Lo que se sigue exigiendo, y es lo que importaba de aquella regla: que
+     * sea UN control con el personaje adentro, y que el número esté en el
+     * nombre accesible y no solo dibujado. */
+    const boton = container.querySelector('button.dico-avisos-trigger');
+    expect(boton.querySelector('[data-dico-native]'), 'el control no envuelve al personaje').not.toBeNull();
+    expect(boton.querySelector('.dico-avisos-badge')).toBeInTheDocument();
+    expect(boton.getAttribute('aria-label')).toMatch(/aviso/);
+    // Y no quedan dos controles donde ahora hay uno.
+    expect(container.querySelectorAll('.dico-avisos-presencia button')).toHaveLength(1);
   });
 
   it('la cola del globo sale para el lado donde NO esta Dico', () => {
     // Anclado arriba, el globo esta encima de Dico y la cola baja. Anclado
     // al costado —Dico en la sidebar— una cola que baje apunta al vacio.
     const arriba = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(arriba.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
     arriba.unmount();
 
     const costado = renderAvisos({ ...sano, productos: [prod({ price: 0 })], anclaje: 'lateral' });
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(costado.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-lateral');
   });
 

@@ -325,15 +325,20 @@
   position: static;
 }
 
+/* En la barra el personaje no cambia de tamanio: no hay estado abierto que
+   seguir. 44 y no 40 porque desde PASS 4 el contador vive en su esquina y no
+   al lado — se recuperan los 44px que ocupaba el segundo control, asi que la
+   cara puede crecer y la barra igual queda mas angosta que antes. */
 .ag-topbar .dico-avisos-presencia {
-  gap: 0;
+  --dico-cara: 44px;
 }
 
 .ag-topbar { position: relative; }
 
-/* Dico suma 84px a la barra (personaje 40 + contador 44) y a 768 el documento
-   pasaba a 777 de scrollWidth: 9px de desborde. El que tiene que ceder es el
-   NOMBRE del negocio —se trunca y se sigue entendiendo— y no el layout. */
+/* Dico ocupa lugar en la barra —eran 84px con el contador aparte, ahora 56—
+   y a 768 el documento llegaba a 777 de scrollWidth: 9px de desborde. El que
+   tiene que ceder es el NOMBRE del negocio, que se trunca y se sigue
+   entendiendo, y no el layout. */
 .ag-root .ag-topbar-title {
   min-width: 0;
   overflow: hidden;
