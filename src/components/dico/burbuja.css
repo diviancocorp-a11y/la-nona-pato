@@ -149,7 +149,21 @@
   /* La cola del SVG baja 24px fuera del viewBox: el pie empieza despues para
      que nunca atraviese el CTA ni el enlace al siguiente aviso. */
   margin-top: 28px;
-  padding-left: 4px;
+  /* PASS 3 — el pie deja de ser transparente.
+   *
+   * Flotaba sobre la pantalla sin fondo propio. En escritorio, sobre papel
+   * claro, se leia igual; en mobile el globo baja desde la topbar y el pie
+   * caia justo encima del boton dorado «+ Agregar producto»: dos textos
+   * amarillos superpuestos, ilegibles los dos. Medido en la captura de 390.
+   *
+   * Se le da el mismo papel del globo, en una pastilla: el mensaje pasa a ser
+   * una sola pieza —lo que se dice y lo que se puede hacer— en vez de un
+   * dibujo con botones sueltos flotando abajo. */
+  padding: 6px 10px;
+  background: var(--bu-papel);
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 /* La cola lateral no baja: sale por el costado. Reservar los 24px de abajo
