@@ -43,6 +43,18 @@ export default function DicoPresence({
   objetivo = null,
   onIntervencionCta,
   onIntervencionCerrada,
+  /**
+   * Nodo donde montar la presencia NATIVE, si no va donde vive el resto.
+   *
+   * PASS 1 de Phase 4 pide a Dico 2D en la barra de arriba en mobile. Mover
+   * este componente entero alla arrastraba tambien el Slot, y el Slot dentro
+   * de un flex de 390px comprimia la burbuja de intervencion a 95px y
+   * desbordaba 162px a 768 — medido en `phase9-visual`. Asi que viaja SOLO
+   * Native, por portal, y el Slot se queda donde su geometria fue medida.
+   * La maquina de estados sigue siendo una sola: esto mueve un nodo, no
+   * duplica autoridad.
+   */
+  contenedorAvisos = null,
   ...avisos
 }) {
   const [estado, enviar] = useReducer(reduceDicoPresence, S.NATIVE_IDLE);
@@ -142,16 +154,19 @@ export default function DicoPresence({
         ? createPortal(<div className="dico-anclado">{escena}</div>, objetivo)
         : escena}
 
-      {visible.native && (
-        <DicoAvisos
-          {...avisos}
-          abierto={visible.notice}
-          onAbrir={abrirAviso}
-          onCerrar={cerrarAviso}
-          onInvocar={abrirPhysical}
-          anclaje={anclaje}
-        />
-      )}
+      {visible.native && (() => {
+        const nativo = (
+          <DicoAvisos
+            {...avisos}
+            abierto={visible.notice}
+            onAbrir={abrirAviso}
+            onCerrar={cerrarAviso}
+            onInvocar={abrirPhysical}
+            anclaje={anclaje}
+          />
+        );
+        return contenedorAvisos ? createPortal(nativo, contenedorAvisos) : nativo;
+      })()}
     </>
   );
 }

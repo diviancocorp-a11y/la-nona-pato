@@ -636,6 +636,10 @@ export default function PlatformAdmin() {
   // tempranas: el hook se saltaba en `checking`/`anon` y se ejecutaba recien
   // al entrar al panel, o sea que el orden de hooks cambiaba entre renders.
   const esDesktop = useMediaQuery('(min-width: 769px)');
+  // El hueco de la barra donde vive Dico 2D en mobile (PASS 1). Es un estado y
+  // no un ref crudo porque el portal necesita que el nodo YA exista: un ref no
+  // dispara re-render cuando se llena.
+  const [huecoDico, setHuecoDico] = useState(null);
 
   if (status === 'checking') return <Centered>Cargando...</Centered>;
   if (status === 'anon') return <LoginScreen onLogin={doLogin} />;
@@ -699,6 +703,7 @@ export default function PlatformAdmin() {
       omitir={products.length === 0 ? ['catalogo-vacio'] : []}
       onIr={setTab}
       anclaje={esDesktop ? 'lateral' : 'arriba'}
+      contenedorAvisos={esDesktop ? null : huecoDico}
       intervencion={catalogoVacioAngosto ? null : intervencion}
       objetivo={anclaDico}
       onIntervencionCta={(i) => {
@@ -724,6 +729,15 @@ export default function PlatformAdmin() {
         <header className="ag-topbar ms-trace">
           <div className="ag-topbar-title" style={{ flex: 1, textAlign: 'left' }}>{tenant?.name}</div>
           <div className="ag-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* PASS 1 — Dico 2D vive en la BARRA en mobile.
+                Antes se montaba en `.ag-dico-stack`, en el flujo del main: a
+                390px quedaba flotando a media altura entre el titulo y el
+                contenido, sin pertenecer a ninguna de las dos cosas.
+                Esto es solo el HUECO: `DicoPresence` sigue montado abajo y le
+                manda Native por portal. Mover el componente entero se probo y
+                arrastraba el Slot a la barra, que a 390 comprimia la burbuja
+                de intervencion a 95px. */}
+            {!esDesktop && <div className="ag-topbar-dico" ref={setHuecoDico} />}
             <button
               type="button"
               className="ag-theme-toggle"
@@ -790,25 +804,19 @@ export default function PlatformAdmin() {
               El contrato de layout vive en `.ag-slot` y nunca flota sobre
               navegacion, controles persistentes ni dialogos. */}
           <div className="ag-slot">
+          {/* El Slot y Physical siguen aca: solo Native se va a la barra, por
+              portal. La geometria de Physical se midio contra este contenedor
+              y no se toca. */}
           <div className="ag-dico-stack">
-            {!esDesktop && presenciaDico}
+            {/* `huecoDico &&` NO es defensivo: sin el, la presencia monta una
+                vez en su lugar (el hueco todavia no existe) y otra dentro del
+                portal cuando el ref se llena. Ese doble montaje se comia la
+                animacion de primera entrada — el primer montaje marcaba el
+                flag en localStorage y el segundo ya nacia sin ella, que es lo
+                que rompio `dico-native-message` bajo 769px. Se espera un frame
+                y se monta una sola vez, en su lugar definitivo. */}
+            {!esDesktop && huecoDico && presenciaDico}
           </div>
-          {/* 6g. Va DESPUES de los avisos: primero lo roto, despues lo que se
-              puede mejorar. Y solo para quien puede mirar los numeros del
-              negocio — a un mozo no le sirve saber que hay stock parado. */}
-          {tab === 'products' && puedeVer(roles, 'ventas') && (
-            <DicoOportunidades
-              listo={!loadingProducts && recetas !== null}
-              vertical={tenant?.vertical}
-              productos={products}
-              insumos={ings}
-              ventas={ventas}
-              clientes={clientes}
-              utilizacion={utilizacion}
-              esperaPerdida={esperaPerdida}
-              onIr={setTab}
-            />
-          )}
           </div>
           {tab === 'products' && (
             <ProductsPanel
@@ -827,6 +835,29 @@ export default function PlatformAdmin() {
               anclaDico={setAnclaDico}
             />
           )}
+          {/* 6g — DEBAJO del trabajo, no encima.
+              Estaba arriba de todo y ocupaba el tope del main: competia por el
+              mismo espacio que el globo de Dico —medido: los dos se encimaban
+              a 1440— y empujaba la lista de productos fuera de la primera
+              pantalla. Sigue siendo "primero lo roto, despues lo que se puede
+              mejorar": los avisos son los que salen por arriba, en el globo.
+              Esto es lo que se mira cuando ya terminaste, asi que va al final.
+              Y solo para quien puede mirar los numeros del negocio — a un mozo
+              no le sirve saber que hay stock parado. */}
+          {tab === 'products' && puedeVer(roles, 'ventas') && (
+            <DicoOportunidades
+              listo={!loadingProducts && recetas !== null}
+              vertical={tenant?.vertical}
+              productos={products}
+              insumos={ings}
+              ventas={ventas}
+              clientes={clientes}
+              utilizacion={utilizacion}
+              esperaPerdida={esperaPerdida}
+              onIr={setTab}
+            />
+          )}
+
           {tab === 'orders' && (
             <OrdersPanel
               orders={orders}

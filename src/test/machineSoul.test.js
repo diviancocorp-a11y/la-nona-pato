@@ -254,11 +254,38 @@ describe('el contrato de Phase 3A sigue en pie', () => {
     expect(bloque).toContain('max-height');
   });
 
-  it('los avisos Native viven en flujo y el Slot crece al abrirlos', () => {
-    const i = shell.indexOf('.ag-dico-stack .dico-avisos-mensaje {');
+  /**
+   * SUPERSEDED POR PHASE 4 · VISUAL CONVALIDATION PASS 1.
+   *
+   * B3 (Phase 8) exigia `position: relative` en
+   * `.ag-dico-stack .dico-avisos-mensaje`: el aviso iba EN FLUJO encima de
+   * Native porque Native vivia en el stack. PASS 1 mueve la presencia Native
+   * a la topbar en mobile, asi que en el stack ya no hay de quien colgar —
+   * exigir el flujo ahi seria pedirle a un globo que apunte a un personaje
+   * que se fue.
+   *
+   * Lo que B3 protegia de verdad NO era el `relative`: era que el aviso
+   * saliera de quien habla y no flotara tapando navegacion ni controles. Eso
+   * sigue siendo medible, y es lo que se mide ahora — mas el contrato del
+   * Slot, que no cambio.
+   *
+   * (Misma leccion que dejo escrita el gate A3: antes de dar por rota una
+   * asercion anclada a un valor historico, hay que ver si una fase posterior
+   * lo reemplazo a proposito. Aca lo hizo, y esta declarado.)
+   */
+  it('el aviso Native cuelga de donde vive Dico y el Slot crece al abrirlo', () => {
+    const i = shell.indexOf('.ag-topbar .dico-avisos-mensaje {');
+    expect(i).toBeGreaterThan(-1);
     const bloque = shell.slice(i, shell.indexOf('}', i));
-    expect(bloque).toContain('position: relative');
-    expect(bloque).not.toContain('position: absolute');
+    // Anclado al BORDE de la barra de la que cuelga, no a media pantalla y
+    // tampoco a un token con el alto: se probo con uno de 57px y la barra
+    // mide 65, asi que el globo invadia la topbar por 2px.
+    expect(bloque).toContain('position: absolute');
+    expect(bloque).toContain('top: calc(100% + 6px)');
+    // Por encima de la navegacion, por debajo de backdrop y dialogos (800/810).
+    expect(bloque).toMatch(/z-index:\s*calc\(var\(--ag-z-nav/);
+    expect(bloque).not.toMatch(/z-index:\s*(9\d\d|[1-9]\d{3,})/);
+    // El contrato del Slot no cambio.
     expect(shell).toContain('.ag-slot:has(.dico-avisos--abierto)');
     expect(shell).toMatch(/\.ag-slot:has\(\.dico-avisos--abierto\) \{[^}]*max-height: 70vh/);
   });

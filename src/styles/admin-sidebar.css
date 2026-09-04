@@ -161,9 +161,30 @@
     gap: 0;
   }
 
+  /* PASS 1 — el personaje crece en escritorio.
+     A 40px los ojos miden ~4px y las cejas menos de 2: a esa escala Dico era
+     una mancha con aro, no una cara, y toda la expresividad de B6 (siete
+     estados) no se leia. 56 es lo mas grande que entra en el riel de 64 con
+     aire a los dos lados, y es la caja VISUAL: el area clickeable ya vive en
+     el boton de 44+ y no depende de esto. */
+  .ag-sidebar .dico-native-caja {
+    --dico-native-size: 56px;
+  }
+  .ag-sidebar .dico-avisos-idle {
+    width: 56px;
+    height: 56px;
+  }
+
   /* El contador reserva su lugar SIEMPRE, haya avisos o no. Si apareciera y
      desapareciera con los datos, los iconos de navegacion subirian y bajarian
      solos mientras el usuario mira otra cosa. */
+  /* PASS 1 — NO bajar a Dico con `padding-top` aca.
+     Se probo con 48px para que el globo (clavado en `top: 64px`) le saliera a
+     la altura de los ojos y no del menton. Resultado medido: el contador de
+     avisos quedo DEBAJO de `.ag-sidebar-nav`, que le intercepta el pointer —
+     el control dejo de ser clickeable. Con Dico a 56px el globo ya sale antes
+     de que termine la cara; acercarlo mas exige decidir si puede solaparse
+     con la topbar, que es otra discusion. */
   .ag-sidebar-presencia {
     align-content: start;
     padding-top: 6px;

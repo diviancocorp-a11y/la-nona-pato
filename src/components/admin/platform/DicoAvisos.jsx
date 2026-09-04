@@ -81,6 +81,7 @@ export default function DicoAvisos({
   const [pagina, setPagina] = useState({ firma: '', indice: 0 });
   const [entrada] = useState(esPrimeraEntrada);
   const firmaAnterior = useRef(firma);
+  const raiz = useRef(null);
 
   const indice = pagina.firma === firma
     ? Math.min(pagina.indice, Math.max(avisos.length - 1, 0))
@@ -107,6 +108,24 @@ export default function DicoAvisos({
     try { localStorage.setItem(CLAVE_PRIMERA_ENTRADA, '1'); } catch { /* sin storage */ }
   }, [entrada]);
 
+  /* PASS 1 — el globo se cierra tocando afuera.
+   *
+   * Depender solo de la X obliga a apuntarle a un target de 22px para salir de
+   * algo que se abrio con un toque. `pointerdown` y no `click`: cierra al
+   * apoyar el dedo, sin esperar el `mouseup`, y el `capture` hace que se
+   * evalue antes de que el elemento de abajo se lo coma.
+   *
+   * La X SE CONSERVA: es la salida visible y la unica con nombre accesible.
+   * Esto es un camino ademas, no en reemplazo. */
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const afuera = (e) => {
+      if (raiz.current && !raiz.current.contains(e.target)) onCerrar?.();
+    };
+    document.addEventListener('pointerdown', afuera, true);
+    return () => document.removeEventListener('pointerdown', afuera, true);
+  }, [abierto, onCerrar]);
+
   useEffect(() => {
     if (firmaAnterior.current === firma) return;
     firmaAnterior.current = firma;
@@ -127,7 +146,7 @@ export default function DicoAvisos({
   );
 
   return (
-    <div className={`dico-avisos${abierto ? ' dico-avisos--abierto' : ''}`}>
+    <div ref={raiz} className={`dico-avisos${abierto ? ' dico-avisos--abierto' : ''}`}>
       {abierto && actual && (
         <div className="dico-avisos-mensaje">
           <BurbujaDico

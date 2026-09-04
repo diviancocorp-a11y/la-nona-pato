@@ -276,24 +276,99 @@
   padding: 3px 0 7px;
 }
 
-/* El mensaje pertenece a Native, no al Slot. Va en flujo encima de la
-   presencia y reserva su volumen; la cola centrada apunta al personaje.
-   Abrir un aviso mueve el contenido de forma deliberada. */
-.ag-dico-stack .dico-avisos-mensaje {
-  position: relative;
-  top: auto;
-  left: auto;
-  /* Al stack, no al viewport: con `100vw` el mensaje volvia a ser mas ancho
-     que su contenedor y lo recortaba el `overflow: hidden` del slot. */
-  width: min(430px, 100%);
-  margin: 0 0 5px;
-  transform: none;
+/* PASS 1 — Dico en la topbar (mobile) y la burbuja colgando de el.
+ *
+ * La presencia Native ya no vive en el stack: se monta en `.ag-topbar-right`.
+ * El globo la sigue, y sale HACIA ABAJO Y A LA IZQUIERDA desde la cara —no
+ * debajo del personaje ni centrado en la pantalla—, anclado al viewport para
+ * que no lo recorte el `overflow` de la barra.
+ *
+ * El pedido era "arriba a la derecha, desde la altura de la cara". Con Dico
+ * arriba a la derecha de la barra, lo que queda arriba de el es el borde de la
+ * pantalla: el globo cuelga inmediatamente debajo de la barra y su cola apunta
+ * al personaje, que es lo que hace legible "Dico tiene algo que decir". */
+/* PASS 1 — un globo abierto en la sidebar EMPUJA el contenido, no lo tapa.
+ *
+ * Al bajar las oportunidades la lista subio ~150px y quedo debajo del globo
+ * de la sidebar: Playwright midio que `.dico-burbuja-texto` interceptaba el
+ * pointer del boton "Mostrar" de la primera fila — un aviso que sale solo
+ * inhabilitando un control.
+ *
+ * `pointer-events: none` se probo y no alcanza: el cuerpo del globo es un
+ * boton (revela el texto completo), asi que reactivarlo vuelve a interceptar.
+ * Esto es ademas lo que B3 pedia con todas las letras —"abrir un aviso mueve
+ * el contenido de forma deliberada"—, que en el stack se cumplia por estar en
+ * flujo y en la sidebar se habia perdido al pasar el globo a `fixed`.
+ *
+ * 148px = los 64 del `top` del globo mas su alto tipico, redondeado hacia
+ * arriba. Solo se aplica mientras hay uno abierto.
+ */
+@media (min-width: 769px) {
+  .ag-root:has(.ag-sidebar .dico-avisos-mensaje) .ag-main,
+  .ag-root:has(.ag-sidebar .dico-intervencion-mensaje) .ag-main {
+    padding-top: 148px;
+    transition: padding-top var(--ag-t-med) var(--ag-ease);
+  }
 }
 
-@media (max-width: 520px) {
-  .ag-dico-stack .dico-avisos-mensaje {
-    width: min(350px, 100%);
-  }
+/* El hueco en la barra. Reserva su lugar aunque Native todavia no haya
+   montado, para que los controles de la derecha no salten. */
+.ag-topbar-dico {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.ag-topbar .dico-avisos {
+  padding: 0;
+  position: static;
+}
+
+.ag-topbar .dico-avisos-presencia {
+  gap: 0;
+}
+
+.ag-topbar { position: relative; }
+
+/* Dico suma 84px a la barra (personaje 40 + contador 44) y a 768 el documento
+   pasaba a 777 de scrollWidth: 9px de desborde. El que tiene que ceder es el
+   NOMBRE del negocio —se trunca y se sigue entendiendo— y no el layout. */
+.ag-root .ag-topbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-root .ag-topbar-right { min-width: 0; }
+
+/* Anclado al BORDE REAL de la barra, no a un token con su alto.
+   Se probo con `--ag-topbar-h: 57px` y la barra mide 65: el globo salia 2px
+   por encima de su borde inferior y el contrato de `dico-native-message`
+   —"la burbuja nunca invade la topbar"— fallaba por esos 2px. `top: 100%`
+   sobre el contexto de la barra no puede desincronizarse: no hay numero que
+   mantener al dia. */
+.ag-topbar .dico-avisos-mensaje {
+  position: absolute;
+  top: calc(100% + 6px);
+  /* 20 y no 8: la burbuja tiene `overflow: visible` y sus ecos viven FUERA de
+     su caja — medido, el documento pasaba a 777 de scrollWidth a 768 sin que
+     ningun elemento tuviera `right` fuera del viewport, porque lo que sale es
+     un pseudo-elemento y esos no aparecen en un querySelectorAll. El margen
+     los contiene sin recortar la cola. */
+  right: 20px;
+  left: auto;
+  width: min(340px, calc(100vw - 40px));
+  margin: 0;
+  transform: none;
+  z-index: calc(var(--ag-z-nav, 40) + 2);
+}
+
+/* El stack ya no monta la presencia; si algo queda dentro, no reserva aire. */
+.ag-dico-stack:empty {
+  padding: 0;
+  margin: 0;
 }
 
 /* Un aviso abierto puede superar el limite conservador de 40vh, y todavia

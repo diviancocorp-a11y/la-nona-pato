@@ -21,14 +21,14 @@
      La pantalla y el titulo de seccion tienen que arrancar en la MISMA
      vertical o se lee como dos bloques pegados de cualquier manera. */
   padding: var(--ag-sp-3) 18px var(--ag-sp-2);
-  /* A 1440 la fila medía 1290px: el nombre quedaba pegado a la izquierda y las
-     acciones a 1200px de distancia, con un vacio en el medio que obligaba a
-     cruzar la pantalla con la vista para relacionar un producto con su boton
-     de borrar. Se le pone ancho de lectura.
-     Alineado a la IZQUIERDA, no centrado: centrarlo lo separaba del titulo del
-     shell —que si esta a la izquierda— y la pantalla quedaba con dos ejes
-     distintos, peor que el problema que venia a resolver. */
-  max-width: 860px;
+  /* PASS 1: la columna de 860px resolvia el problema de la fila de 1290 —el
+     nombre y sus acciones a 1200px de distancia— pero creaba otro: a 1440 la
+     pantalla se leia como una columna angosta dentro de un canvas vacio.
+     Dos cosas distintas se estaban confundiendo en un solo numero: cuanto
+     mide LA FILA y cuanto ocupa LA PANTALLA. Ahora la pantalla toma el ancho
+     util y la lista se acomoda en columnas cuando sobra lugar (abajo), asi
+     que la fila nunca se estira y el lienzo igual se llena. */
+  max-width: 1180px;
 }
 
 /* ── Barra de acciones: buscar + agregar ───────────────────────────────── */
@@ -55,8 +55,13 @@
   border-radius: var(--ag-r-md);
 }
 
+/* Volt en el foco (PASS 1): el oro ya es la accion —el CTA de al lado es
+   dorado— asi que usarlo tambien para "aca estas escribiendo" hacia que dos
+   cosas distintas se senialaran igual. Volt es el sistema respondiendo, que es
+   lo que un foco es. */
 .ag-productos-buscador:focus-within {
-  border-color: var(--ag-accent-border);
+  border-color: var(--ag-volt);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ag-volt) 18%, transparent);
 }
 
 .ag-productos-buscador svg { flex-shrink: 0; color: var(--ag-ink-3); }
@@ -103,10 +108,18 @@
 
 /* ── Fila de producto ──────────────────────────────────────────────────── */
 
+/* Una columna hasta que sobre lugar de verdad. El `auto-fill` con minimo de
+   380px es lo que evita el estiron: la fila no crece mas alla de lo comodo,
+   entran dos cuando el ancho alcanza y el canvas deja de verse vacio sin que
+   haga falta inventar contenido. */
 .ag-productos-lista {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* `min(380px, 100%)` y no `380px` pelado: a 390 de viewport el ancho util
+     es 354, y un minimo fijo mayor que el contenedor no se encoge — desbordaba
+     8px, medido. El `min()` deja que la pista colapse al ancho disponible. */
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
   gap: var(--ag-sp-2);
+  align-items: start;
 }
 
 .ag-producto {

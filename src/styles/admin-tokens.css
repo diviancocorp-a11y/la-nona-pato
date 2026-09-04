@@ -61,6 +61,13 @@ body[data-ui-owner="admin"],
   --ag-c-sales-ink:  #217B57;   /* 5.20:1 sobre la tarjeta blanca */
   --ag-c-orders-ink: #D22D1B;   /* 5.08:1 */
 
+  /* Volt (Phase 4 PASS 1). Machine Soul lo define como "actividad interna y
+     tecnica, nunca protagonista" y hasta ahora solo existia dentro del pulso
+     de Dico: el resto del panel no tenia como nombrarlo. Este alias es el que
+     falta para poder usarlo donde el sistema OBSERVA —foco, y lo que Dico
+     senala sin que nadie se lo pida— sin volverlo decorativo. */
+  --ag-volt: var(--ms-volt);          /* 5.75:1 sobre la tarjeta blanca */
+
   /* Marca: el oro es accion, seleccion, foco y presencia. Nada mas. */
   --ag-c-terra:   var(--ms-gold);
   --ag-c-yellow:  var(--ms-gold);
@@ -239,6 +246,7 @@ body[data-ui-owner="admin"],
      tenga que saber en que tema esta. */
   --ag-c-sales-ink:    #2A9D6E;   /* 5.19:1 sobre Zinc 900 */
   --ag-c-orders-ink:   #E85A4A;   /* 5.06:1 */
+  --ag-volt:           var(--ms-volt-dark);   /* 6.97:1 sobre Zinc 900 */
   --ag-c-stock-soft:   rgba(232, 165, 58, 0.18);
   --ag-c-crm-soft:     rgba(107, 91, 214, 0.22);
   --ag-c-prep-soft:    rgba(58, 139, 159, 0.20);

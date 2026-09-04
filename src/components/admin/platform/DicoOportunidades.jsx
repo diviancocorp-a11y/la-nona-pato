@@ -15,9 +15,22 @@
  * titulo. El titulo solo ("3 clientes dejaron de venir") es una afirmacion que
  * hay que creer; con la cuenta al lado es algo que se puede verificar. El plan
  * lo dice sin vueltas: explicar no es opcional.
+ *
+ * ── PASS 1: DE QUIEN ES ESTA VOZ ──
+ * El bloque se rotulaba «Para mirar» y se cerraba con una X de 22px: un
+ * mensaje sin autor, a diez pixeles de Dico, compitiendo con el por el mismo
+ * lugar de la pantalla. La funcion no sobra —sigue siendo lo que arriba se
+ * explica— pero la voz sí era ambigua.
+ *
+ * Ahora dice quien habla. Es Dico observando, y por eso el acento es Volt y no
+ * el teal de seccion: Machine Soul define Volt como "actividad interna y
+ * tecnica, nunca protagonista", que es exactamente esto — el sistema mirando
+ * por su cuenta algo que nadie le pidio. El teal ademas daba 3,17:1 en el
+ * boton, por debajo de AA.
  */
 import { useState } from 'react';
 import { oportunidadesDe } from '../../../modules/dico/oportunidades';
+import './oportunidades.css';
 
 export default function DicoOportunidades({ onIr, ...datos }) {
   const oportunidades = oportunidadesDe(datos);
@@ -29,67 +42,35 @@ export default function DicoOportunidades({ onIr, ...datos }) {
   if (oportunidades.length === 0 || cerrado === firma) return null;
 
   return (
-    <div style={{ padding: '10px 16px 0' }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
-        padding: '0 2px',
-      }}>
-        <span style={{
-          fontSize: 11, fontWeight: 800, letterSpacing: '0.06em',
-          textTransform: 'uppercase', color: 'var(--ag-ink-3)', flex: 1,
-        }}>
-          Para mirar
+    <div className="ag-oportunidades">
+      <div className="ag-oportunidades-head">
+        <span className="ag-oportunidades-firma">
+          <span className="ag-oportunidades-punto" aria-hidden="true" />
+          Dico está mirando
         </span>
         <button
           type="button"
+          className="ag-oportunidades-cerrar"
           onClick={() => setCerrado(firma)}
-          aria-label="Cerrar oportunidades"
-          style={{
-            width: 22, height: 22, borderRadius: 999, border: 0,
-            background: 'var(--ag-bg-soft)', color: 'var(--ag-ink-3)',
-            cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, fontSize: 11,
-          }}
+          aria-label="Cerrar lo que Dico está mirando"
         >✕</button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="ag-oportunidades-lista">
         {oportunidades.map(o => (
-          <div
-            key={o.id}
-            className="ag-card"
-            style={{ padding: '12px 14px', borderLeft: '3px solid var(--ag-c-prep)' }}
-          >
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ag-ink)' }}>
-              {o.titulo}
-            </div>
+          <div key={o.id} className="ag-card ag-oportunidad">
+            <div className="ag-oportunidad-titulo">{o.titulo}</div>
 
             {/* La cuenta. Sin esto es una caja negra. */}
-            <div style={{
-              fontSize: 11.5, color: 'var(--ag-ink-2)', marginTop: 4,
-              lineHeight: 1.4,
-            }}>
-              {o.porque}
-            </div>
+            <div className="ag-oportunidad-porque">{o.porque}</div>
 
-            <div style={{
-              display: 'flex', alignItems: 'flex-end', gap: 10, marginTop: 8,
-            }}>
-              <div style={{
-                flex: 1, fontSize: 11.5, color: 'var(--ag-ink-3)', lineHeight: 1.35,
-              }}>
-                {o.hacer}
-              </div>
+            <div className="ag-oportunidad-pie">
+              <div className="ag-oportunidad-hacer">{o.hacer}</div>
               {o.ir && (
                 <button
                   type="button"
+                  className="ag-oportunidad-ir"
                   onClick={() => onIr?.(o.ir.tab)}
-                  style={{
-                    padding: '5px 11px', borderRadius: 999, flexShrink: 0,
-                    border: '1px solid var(--ag-c-prep)',
-                    background: 'var(--ag-c-prep-soft)', color: 'var(--ag-c-prep)',
-                    fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}
                 >{o.ir.texto}</button>
               )}
             </div>
