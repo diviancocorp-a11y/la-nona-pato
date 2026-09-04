@@ -35,8 +35,12 @@ import { useId } from 'react';
 export default function NavLateral({ tabs, tab, onTab, openCount = 0, presencia = null }) {
   const tituloId = useId();
 
+  // `ms-trace` (PASS 2): la MISMA trama diagonal de la topbar y del bottom
+  // nav. El riel y la barra son el mismo chasis y tenian acabados distintos;
+  // la textura es lo que los hace leer como una sola pieza. Vale para el
+  // colapsado y para el expandido: es la misma superficie.
   return (
-    <aside className="ag-sidebar" aria-label="Navegación lateral">
+    <aside className="ag-sidebar ms-trace" aria-label="Navegación lateral">
       {/* Bloque de marca. En colapsado se ve solo Dico; al expandir aparece el
           wordmark A SU DERECHA. Dico no se reemplaza ni se mueve: sigue siendo
           el mismo control en el mismo lugar, que es lo que lo hace invocable

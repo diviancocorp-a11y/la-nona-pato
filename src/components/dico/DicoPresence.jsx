@@ -161,7 +161,6 @@ export default function DicoPresence({
             abierto={visible.notice}
             onAbrir={abrirAviso}
             onCerrar={cerrarAviso}
-            onInvocar={abrirPhysical}
             anclaje={anclaje}
           />
         );

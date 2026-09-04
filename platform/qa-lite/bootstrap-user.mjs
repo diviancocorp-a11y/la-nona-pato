@@ -77,7 +77,15 @@ export async function bootstrapUser(status = getLocalStatus()) {
     if (error) throw new Error(`Validacion local fallo en ${table}: ${error.message}`);
     checks[table] = count;
   }
-  if (checks.tenants !== 1 || checks.products !== 4 || checks.orders !== 3) {
+  /* `>=` y no `===`: lo que esto detecta es un seed que NO SE APLICO, y para
+     eso alcanza el minimo. La igualdad estricta ademas impedia cargar data de
+     revision encima del fixture —`scripts/qa-lite/cargar-productos-demo.mjs`,
+     que existe para poder mirar una pantalla con el volumen de un negocio
+     real— sin tocar el seed determinista.
+     OJO: los gates de pixel (visual-parity, phase9, dico-*) SI dependen del
+     fixture exacto. Antes de correrlos hay que volver al seed limpio con
+     `npm run qa:lite:setup` o `cargar-productos-demo.mjs --limpiar`. */
+  if (checks.tenants !== 1 || checks.products < 4 || checks.orders < 3) {
     throw new Error(`Seed local incompleto: ${JSON.stringify(checks)}`);
   }
 

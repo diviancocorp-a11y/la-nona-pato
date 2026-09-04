@@ -920,7 +920,17 @@ export async function openAdmin(page: Page, theme: 'light' | 'dark', viewport = 
   await loginAdmin(page)
   await expect(page.locator('.ag-root')).toHaveClass(new RegExp(`ag-theme-${theme}`))
   await expect(page.locator('.ag-root button.dico-avisos-trigger')).toBeVisible()
-  await expect(page.getByText('Te quedaron 10 horas sin vender', { exact: true })).toBeVisible()
+  /* PASS 2 — la seniial de "el panel termino de cargar" es el CONTADOR, no el
+     texto de una oportunidad.
+     Antes se esperaba a que «Te quedaron 10 horas sin vender» fuera visible:
+     servia porque las oportunidades se dibujaban sueltas en la pantalla. Ahora
+     son mensajes de Dico y viven dentro de su burbuja, que nace cerrada — el
+     texto existe en el DOM solo cuando el usuario abre el globo.
+     El contador cumple la misma funcion y es mejor senial: solo aparece
+     cuando las reglas ya corrieron sobre datos cargados. Que el mensaje se
+     pueda leer al abrirlo se verifica donde corresponde, en los specs que
+     abren la burbuja. */
+  await expect(page.locator('.ag-root .dico-avisos-badge')).toBeVisible()
   await stabilizePage(page)
   await recordAdminScrollCheckpoint(page, 'after-open-admin')
   return '.ag-root'
@@ -934,13 +944,17 @@ export async function settleAdmin(page: Page) {
   const viewport = page.viewportSize()
   const surface = `admin--${theme}--${viewport?.width || 0}x${viewport?.height || 0}`
   await inventoryDicoMotionStack(page, surface)
-  const opportunity = page.getByText('Te quedaron 10 horas sin vender', { exact: true })
+  /* PASS 2 — la oportunidad ya no se dibuja suelta: es un mensaje de Dico y
+     vive DENTRO de su burbuja, que nace cerrada. Antes de abrirla el texto no
+     existe en el DOM, asi que lo que se espera antes del click es el
+     contador; el texto se verifica despues, cuando el globo esta abierto. */
+  const badge = root.locator('.dico-avisos-badge')
   const noticeTrigger = root.locator('button.dico-avisos-trigger')
   const bubbleControl = root.locator('button.dico-burbuja-contenido')
   const bubbleVisibleText = root.locator('.dico-burbuja-texto')
   const bubbleFullText = root.locator('.dico-burbuja-lectura')
 
-  await expect(opportunity).toBeVisible()
+  await expect(badge).toBeVisible()
   await recordAdminScrollCheckpoint(page, 'after-opportunity')
   await expect(noticeTrigger).toHaveCount(1)
   await expect(noticeTrigger).toBeVisible()
@@ -965,7 +979,7 @@ export async function settleAdmin(page: Page) {
 
   await stabilizePage(page)
   await waitForFiniteAnimations(root, surface)
-  await expectStableLayout(page, [root, opportunity, noticeTrigger, bubbleControl, bubbleVisibleText])
+  await expectStableLayout(page, [root, badge, noticeTrigger, bubbleControl, bubbleVisibleText])
   await recordAdminScrollCheckpoint(page, 'after-settle-admin')
 }
 

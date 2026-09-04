@@ -197,7 +197,39 @@
 
   /* Physical emerge SOBRE el workspace, a la derecha del riel. Dentro de la
      sidebar no entra: el escenario mide 184px. */
+  /* PASS 2 — EL DESACOPLE MINIMO DEL LOOP.
+   *
+   * Medido (`phase4-physical-loop.spec.ts`): con el puntero INMOVIL sobre
+   * Physical, el Slot ocupaba 8 posiciones distintas en X, de 203 a 259 —
+   * 56px de amplitud. La cadena, con sus tres eslabones confirmados:
+   *
+   *   el Slot es `fixed` pero sigue siendo DESCENDIENTE del <aside>, asi que
+   *   el hover sobre el personaje cuenta como hover de la sidebar; la sidebar
+   *   se expande; su `left` depende de `--ag-sidebar-ancho`; el personaje se
+   *   corre 160px y se escapa del puntero; la sidebar colapsa; el personaje
+   *   vuelve. Y otra vez.
+   *
+   * Esto corta el eslabon del medio SIN tocar motion, geometria ni el
+   * contrato de poses: el personaje deja de capturar el puntero, asi que no
+   * dispara el hover del riel. Los controles de su burbuja se reactivan uno
+   * por uno — el CTA y la X siguen siendo clickeables, que es lo unico con lo
+   * que se interactua ahi desde que Dico 2D dejo de invocarlo.
+   *
+   * Lo que esto NO resuelve esta en `PHASE-9.1-PHYSICAL-VISUAL.md`: que
+   * Physical siga anclado a la sidebar es el problema de fondo. */
+  .ag-sidebar .dico-slot .dico-burbuja-contenido,
+  .ag-sidebar .dico-slot .dico-burbuja-accion,
+  .ag-sidebar .dico-slot .dico-burbuja-cerrar {
+    pointer-events: auto;
+  }
+
   .ag-sidebar .dico-slot {
+    /* El corte del loop (ver el bloque de arriba). Va DENTRO de esta regla y
+       no en una propia con el mismo selector: `navLateral.test.jsx` busca
+       `.ag-sidebar .dico-slot {` y lee el primer cuerpo que encuentra, asi que
+       un segundo bloque le escondia el `var(--ag-sidebar-ancho)` que ese
+       contrato exige. */
+    pointer-events: none;
     position: fixed;
     /* Se corre con la sidebar: mismo ancho, misma transicion. Physical mide
        184px y antes salia clavado a la derecha del riel, asi que al

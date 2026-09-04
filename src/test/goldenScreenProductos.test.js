@@ -168,7 +168,7 @@ describe('Phase 4 · G2 — la pantalla no usa var() con fallback', () => {
     // pantalla y el componente solo elige la clase.
     expect(CSS_PANTALLA_CODIGO).toContain('var(--ag-c-sales-ink)');
     expect(CSS_PANTALLA_CODIGO).toContain('var(--ag-c-orders-ink)');
-    expect(PANEL_CODIGO).toContain('ag-producto-margen');
+    expect(PANEL_CODIGO).toContain('ag-fila-margen');
   });
 
   it('la pantalla no vuelve a clavar una familia tipografica a mano', () => {

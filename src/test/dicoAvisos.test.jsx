@@ -144,33 +144,43 @@ describe('DicoAvisos en el panel real', () => {
       .toHaveAttribute('data-dico-pulso', 'attention');
   });
 
-  it('sin avisos Dico deja de ser decorativo: se lo puede invocar', () => {
-    const onInvocar = vi.fn();
-    renderAvisos({ ...sano, onInvocar });
-
-    // Sin `onInvocar` esto era un span inerte: el usuario veia a Dico y no
-    // podia hacer nada con el.
-    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
-    expect(onInvocar).toHaveBeenCalledTimes(1);
+  /**
+   * SUPERSEDED POR PHASE 4 · PASS 2 — cambio contractual explicito.
+   *
+   * Estos dos casos fijaban que tocar a Dico 2D TRAIA A PHYSICAL ("Traer a
+   * Dico") y que el personaje y el contador fueran dos gestos distintos.
+   * Ahora Dico 2D es presencia persistente e indicador de lo que tiene para
+   * decir: al tocarlo abre y cierra SU MENSAJE, no invoca a Physical. El
+   * boton de invocar vuelve cuando exista el chat real.
+   *
+   * Lo que se conserva de la version vieja: que el personaje NO sea un span
+   * inerte cuando hay algo que mirar, y que el contador siga siendo un
+   * control con su propia area — eso sigue medido abajo.
+   */
+  it('sin avisos Dico no ofrece accion: no hay nada que decir', () => {
+    const { container } = renderAvisos(sano);
+    expect(container.querySelector('button.dico-avisos-idle')).toBeNull();
+    expect(container.querySelector('.dico-avisos-idle [data-dico-native]')).toBeInTheDocument();
   });
 
-  it('con avisos, Dico sigue siendo la invocacion y el contador el aviso', () => {
-    // DOS GESTOS, DOS TARGETS. Antes el mismo pixel hacia una cosa u otra
-    // segun cuantos avisos hubiera, o sea que el usuario tenia que saber el
-    // estado del sistema antes de tocar.
-    const onInvocar = vi.fn();
-    const { container } = renderAvisos({ ...sano, productos: [prod({ price: 0 })], onInvocar });
+  it('con avisos, tocar a Dico abre y cierra su mensaje', () => {
+    // Contra el comportamiento observable y no contra spies: el wrapper
+    // `AvisosControlados` es quien posee `abierto`, asi que un `onAbrir`
+    // inyectado por props nunca se llamaria.
+    const { container } = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
 
-    // El contador abre el aviso y NO trae a Dico.
-    fireEvent.click(screen.getByRole('button', { name: /abrir 1 aviso de dico/i }));
-    expect(onInvocar).not.toHaveBeenCalled();
+    expect(container.querySelector('.dico-burbuja')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver lo que dice Dico' }));
+    expect(container.querySelector('.dico-burbuja')).not.toBeNull();
     expect(screen.getAllByText(/está sin precio/).length).toBeGreaterThan(0);
 
-    // Dico trae a Dico, haya avisos o no.
-    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
-    expect(onInvocar).toHaveBeenCalledTimes(1);
+    // El mismo pixel lo cierra: es la misma intencion.
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar el mensaje de Dico' }));
+    expect(container.querySelector('.dico-burbuja')).toBeNull();
 
-    // Y son controles separados: el contador ya no vive encima del arte.
+    // El contador sigue siendo un control aparte, con su propia area: no
+    // volvio a ser una calcomania encima del arte.
     const boton = container.querySelector('.dico-avisos-trigger');
     expect(boton.querySelector('[data-dico-native]'), 'el contador envuelve al personaje').toBeNull();
     expect(container.querySelector('.dico-avisos-idle [data-dico-native]')).toBeInTheDocument();

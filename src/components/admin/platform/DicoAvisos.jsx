@@ -34,6 +34,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
+import { oportunidadesDe } from '../../../modules/dico/oportunidades';
 import DicoNative from '../../dico/DicoNative';
 import BurbujaDico from '../../dico/BurbujaDico';
 
@@ -62,8 +63,12 @@ export default function DicoAvisos({
   abierto = false,
   onAbrir,
   onCerrar,
-  onInvocar,
   onIr,
+  /**
+   * Si este rol puede ver los numeros del negocio. Las oportunidades hablan
+   * de plata; a un mozo no le sirve saber que hay stock parado.
+   */
+  conOportunidades = false,
   /**
    * Donde vive Dico, que decide para donde sale la cola del globo.
    * `arriba`  el aviso se abre ENCIMA del personaje (composicion mobile)
@@ -76,7 +81,29 @@ export default function DicoAvisos({
   ...datos
 }) {
   const idsOmitidos = new Set(omitir);
-  const avisos = avisosDe(datos).filter(aviso => !idsOmitidos.has(aviso.id));
+  /* PASS 2 — LAS DOS CAPAS ENTRAN POR EL MISMO CANAL.
+   *
+   * Las oportunidades vivian en su propia tarjeta dentro de Productos, con su
+   * propio rotulo y su propia X: un segundo emisor de mensajes a diez pixeles
+   * de Dico. Ahora son mensajes de Dico y se leen donde el usuario ya va a
+   * buscar lo que Dico tiene para decir.
+   *
+   * NO es un sistema nuevo: `oportunidadesDe` es la misma funcion de siempre y
+   * su forma se adapta aca —`porque` + `hacer` son el cuerpo del mensaje—.
+   * Van DESPUES de los avisos y siempre como `sugerencia`: la higiene es lo
+   * que esta roto, esto es lo que se puede mejorar, y esa jerarquia es la que
+   * ordena la cola.
+   */
+  const avisos = [
+    ...avisosDe(datos),
+    ...(conOportunidades ? oportunidadesDe(datos).map(o => ({
+      id: `oportunidad:${o.id}`,
+      nivel: 'sugerencia',
+      titulo: o.titulo,
+      detalle: `${o.porque} ${o.hacer}`,
+      ir: o.ir,
+    })) : []),
+  ].filter(aviso => !idsOmitidos.has(aviso.id));
   const firma = avisos.map(a => a.id).join('|');
   const [pagina, setPagina] = useState({ firma: '', indice: 0 });
   const [entrada] = useState(esPrimeraEntrada);
@@ -164,12 +191,19 @@ export default function DicoAvisos({
       )}
 
       <div className="dico-avisos-presencia">
-        {onInvocar ? (
+        {/* PASS 2 — CAMBIO CONTRACTUAL: tocar a Dico 2D abre SU MENSAJE.
+            Antes traia a Physical al plano ("Traer a Dico"). Dico 2D es
+            presencia persistente e indicador de lo que tiene para decir, no el
+            llamador de Physical; el boton de invocar volvera cuando exista el
+            chat real. Con esto el personaje y el contador hacen LO MISMO, que
+            es lo correcto: son la misma intencion. */}
+        {tieneAvisos ? (
           <button
             type="button"
             className="dico-avisos-idle"
-            onClick={onInvocar}
-            aria-label="Traer a Dico"
+            onClick={abierto ? onCerrar : onAbrir}
+            aria-expanded={abierto}
+            aria-label={abierto ? 'Cerrar el mensaje de Dico' : 'Ver lo que dice Dico'}
           >
             {personaje}
           </button>

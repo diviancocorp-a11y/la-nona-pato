@@ -22,7 +22,6 @@ import ConfirmSlideProvider from '../components/ConfirmSlideProvider';
 import ProductsPanel from '../components/admin/platform/ProductsPanel';
 import OrdersPanel from '../components/admin/platform/OrdersPanel';
 import DicoPresence from '../components/dico/DicoPresence';
-import DicoOportunidades from '../components/admin/platform/DicoOportunidades';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
 import NavLateral from '../components/admin/platform/NavLateral';
@@ -700,6 +699,13 @@ export default function PlatformAdmin() {
       recetas={recetas}
       gastos={gastos}
       settings={sett}
+      // PASS 2 — las oportunidades entran por el canal de Dico, no por una
+      // tarjeta aparte. Son los MISMOS datos que consumia DicoOportunidades.
+      ventas={ventas}
+      clientes={clientes}
+      utilizacion={utilizacion}
+      esperaPerdida={esperaPerdida}
+      conOportunidades={puedeVer(roles, 'ventas')}
       omitir={products.length === 0 ? ['catalogo-vacio'] : []}
       onIr={setTab}
       anclaje={esDesktop ? 'lateral' : 'arriba'}
@@ -833,28 +839,6 @@ export default function PlatformAdmin() {
               showToast={msg}
               intervencionActiva={intervencion?.id === 'catalogo-vacio' && !catalogoVacioAngosto}
               anclaDico={setAnclaDico}
-            />
-          )}
-          {/* 6g — DEBAJO del trabajo, no encima.
-              Estaba arriba de todo y ocupaba el tope del main: competia por el
-              mismo espacio que el globo de Dico —medido: los dos se encimaban
-              a 1440— y empujaba la lista de productos fuera de la primera
-              pantalla. Sigue siendo "primero lo roto, despues lo que se puede
-              mejorar": los avisos son los que salen por arriba, en el globo.
-              Esto es lo que se mira cuando ya terminaste, asi que va al final.
-              Y solo para quien puede mirar los numeros del negocio — a un mozo
-              no le sirve saber que hay stock parado. */}
-          {tab === 'products' && puedeVer(roles, 'ventas') && (
-            <DicoOportunidades
-              listo={!loadingProducts && recetas !== null}
-              vertical={tenant?.vertical}
-              productos={products}
-              insumos={ings}
-              ventas={ventas}
-              clientes={clientes}
-              utilizacion={utilizacion}
-              esperaPerdida={esperaPerdida}
-              onIr={setTab}
             />
           )}
 

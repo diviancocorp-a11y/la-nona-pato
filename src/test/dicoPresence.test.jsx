@@ -51,49 +51,82 @@ const sinAvisos = { ...datos, productos: [prod()], recetas: new Map([['p1', [{ i
   gastos: [{ date: '2026-08-05' }] };
 
 describe('DicoPresence', () => {
-  it('el click en Dico 2D lo trae al plano y despues lo devuelve', () => {
-    // La secuencia completa, de punta a punta: es la unica forma de invocar a
-    // Physical desde el personaje, y tiene que dejar el sistema donde empezo.
-    const { container } = render(React.createElement(DicoPresence, sinAvisos));
+  /**
+   * SUPERSEDED POR PHASE 4 · PASS 2 — cambio contractual explicito.
+   *
+   * Los dos casos originales invocaban a Physical desde el personaje ("Traer
+   * a Dico"). Dico 2D dejo de ser el llamador manual: ahora es presencia e
+   * indicador, y al tocarlo abre su mensaje. El unico disparador que queda es
+   * la INTERVENCION, que la manda el productor.
+   *
+   * Lo que esos contratos protegian de verdad sigue medido aca, con el
+   * disparador nuevo: que Native y Physical NUNCA coexistan, que el globo no
+   * sobreviva a la entrada de Physical, y que el sistema vuelva a
+   * `native_idle` con Native de nuevo en pantalla.
+   */
+  const intervencion = {
+    id: 'nada-visible',
+    mensaje: 'Apagaste el ultimo visible.',
+    anclaje: 'presence',
+  };
+
+  it('la intervencion trae a Physical y devolverla deja el sistema donde empezo', () => {
+    const { container, rerender } = render(React.createElement(DicoPresence, sinAvisos));
     expect(nativeDe(container)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    rerender(React.createElement(DicoPresence, { ...sinAvisos, intervencion }));
     expect(estadoDe(container)).toBe('physical_opening');
     expect(nativeDe(container)).not.toBeInTheDocument();   // Dico 2D se va
 
     esperarMovimiento(physicalDe(container));
     expect(estadoDe(container)).toBe('physical_open');
 
+    // Guardarlo AVISA al productor, que es el dueño de la carga; mientras la
+    // intervencion siga puesta, la reconciliacion vuelve a abrir Physical —y
+    // esta bien que lo haga—. Aca se simula al productor retirandola, que es
+    // lo que hace `onIntervencionCerrada` en el panel real.
     fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
+    rerender(React.createElement(DicoPresence, { ...sinAvisos, intervencion: null }));
     esperarMovimiento(physicalDe(container));
     expect(estadoDe(container)).toBe('native_idle');
     expect(nativeDe(container)).toBeInTheDocument();        // y vuelve
     expect(physicalDe(container)).not.toBeInTheDocument();
   });
 
-  it('B1 completo: el click en Dico cierra el aviso y trae a Physical', () => {
+  it('B1 completo: Physical entra y el aviso abierto no sobrevive', () => {
     // La secuencia que no puede romperse: nunca hay coexistencia. Antes de
-    // este contrato, invocar a Physical con el aviso abierto dejaba un globo
-    // flotando de un personaje que ya no estaba.
-    const { container } = render(React.createElement(DicoPresence, datos));
+    // este contrato, la entrada de Physical con el aviso abierto dejaba un
+    // globo flotando de un personaje que ya no estaba.
+    const { container, rerender } = render(React.createElement(DicoPresence, datos));
     fireEvent.click(screen.getByRole('button', { name: /abrir .*aviso.* de dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
     expect(container.querySelector('.dico-burbuja')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Traer a Dico' }));
+    rerender(React.createElement(DicoPresence, { ...datos, intervencion }));
     expect(estadoDe(container)).toBe('physical_opening');
-    expect(container.querySelector('.dico-burbuja'), 'el globo sobrevivio a Physical').toBeNull();
     expect(nativeDe(container)).not.toBeInTheDocument();
     expect(physicalDe(container)).toBeInTheDocument();
 
     esperarMovimiento(physicalDe(container));
     fireEvent.click(screen.getByRole('button', { name: 'Guardar Dico Physical' }));
+    rerender(React.createElement(DicoPresence, { ...datos, intervencion: null }));
     esperarMovimiento(physicalDe(container));
     expect(estadoDe(container)).toBe('native_idle');
     expect(nativeDe(container)).toBeInTheDocument();
     // Y el aviso NO vuelve solo: volver del plano fisico no reabre lo que se
     // habia cerrado.
     expect(container.querySelector('.dico-burbuja')).toBeNull();
+  });
+
+  it('tocar a Dico 2D ya NO trae a Physical', () => {
+    // El cambio contractual, medido en positivo: el personaje es un control de
+    // su mensaje. Si alguien vuelve a cablearlo a `OPEN_PHYSICAL`, esto falla.
+    const { container } = render(React.createElement(DicoPresence, datos));
+    expect(screen.queryByRole('button', { name: 'Traer a Dico' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver lo que dice Dico' }));
+    expect(estadoDe(container)).toBe('native_notice');
+    expect(physicalDe(container)).not.toBeInTheDocument();
   });
 
   it('muestra Native en native_idle', () => {

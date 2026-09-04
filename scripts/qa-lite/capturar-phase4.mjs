@@ -114,6 +114,11 @@ try {
         // Varios specs del harness escriben diagnosticos y los exigen.
         QA_ARTIFACT_DIR: join(REPO_ROOT, '.qa-lite', 'artifacts'),
         QA_PHASE: LOTE,
+        // Presupuesto de RELOJ, no umbral: con el catalogo de revision
+        // cargado (21 productos) hay ~3x mas nodos que medir y las 14
+        // superficies no entran en los 90s por defecto. No esconde ni un
+        // pixel; le da tiempo a las mismas comparaciones.
+        QA_TEST_TIMEOUT_MS: process.env.QA_TEST_TIMEOUT_MS || '240000',
         QA_SUPABASE_URL: status.apiUrl,
         QA_SUPABASE_SERVICE_ROLE: status.serviceRoleKey,
         QA_SUPABASE_ANON_KEY: status.anonKey,

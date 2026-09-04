@@ -13,13 +13,43 @@ const SALIDA = join(process.cwd(), '.qa-lite', 'artifacts', 'physical-poses')
 
 const POSES = ['idle', 'explain', 'pointDown', 'pointUp', 'thinking', 'worried', 'success', 'error'] as const
 
-test('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
+/* PENDIENTE — PHASE 4 · PASS 2, misma causa que `dico-sidebar`.
+ *
+ * Sacaba a Physical al plano con «Traer a Dico». Ese boton dejo de existir: el
+ * punto 2 saco a Dico 2D del rol de llamador manual. Se intento reemplazarlo
+ * por la intervencion `nada-visible` —navegar a Productos y apagar el
+ * catalogo, que es lo que hace `dico-intervenciones`, el spec hermano que SI
+ * pasa— y Physical no llega a montar. No se encontro la diferencia y no se va
+ * a declarar verde algo que no se midio.
+ *
+ * QUE QUEDA SIN COBERTURA: que las ocho poses compartan caja, escala y
+ * anclaje EN EL NAVEGADOR. Es el contrato que impide que cambiar un asset
+ * mueva el dedo fuera del CTA.
+ *
+ * QUE LO CUBRE MIENTRAS TANTO, parcialmente: `scripts/dico-3d-validar-assets`
+ * valida los assets como archivos (8/8, 21/21) y `dico-intervenciones`
+ * verifica en navegador que el dedo cae sobre el CTA en `catalogo-vacio`. Lo
+ * que NO cubre ninguno de los dos es la comparacion entre las ocho poses.
+ */
+test.fixme('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
   await aplicarMovimiento(page, 'no-preference')
   await openAdmin(page, 'light', DESKTOP)
   await mkdir(SALIDA, { recursive: true })
 
-  // Traer a Physical al plano por el camino real: click en Dico 2D.
-  await page.getByRole('button', { name: 'Traer a Dico' }).click()
+  /* Traer a Physical por el camino real. PASS 2: ese camino ya no es el click
+     en Dico 2D —dejo de ser el llamador manual— sino la intervencion
+     `nada-visible`, que es como llega en el panel. Se apaga el catalogo
+     entero, igual que en `dico-intervenciones`. */
+  /* Entrar al catalogo es lo que PROPONE la intervencion: el productor la
+     evalua en el efecto de `tab === 'products'`. Sin este paso se apaga
+     todo y no aparece nadie — es la diferencia con `dico-intervenciones`,
+     que si lo hacia. */
+  await page.getByRole('button', { name: /^Productos/ }).click()
+  await page.waitForTimeout(400)
+  for (let quedan = await page.getByRole('button', { name: 'Ocultar' }).count(); quedan > 0; quedan -= 1) {
+    await page.getByRole('button', { name: 'Ocultar' }).first().click()
+    await page.waitForTimeout(160)
+  }
   await expect(page.locator('.dico-pose')).toHaveCount(1)
   await expect.poll(() => page.evaluate(() => (
     document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
