@@ -1,95 +1,143 @@
-# Phase 9.1 — Physical Visual Corrective · PROPUESTA
+# PHASE 9.1 — Physical Visual Corrective
 
-Fecha: 2026-09-04 · Estado: **PROPUESTA, no ejecutada**
-Origen: Phase 4 · VISUAL CONVALIDATION PASS 2, punto 6.
+Fecha de apertura: 2026-09-04 · Estado: **ABIERTA. Diagnóstico hecho, corrección NO implementada.**
+Origen: veredicto visual de Phase 4 (puntos 3 y 4, no aprobados).
 
-Este documento no implementa nada. Registra un defecto **demostrado con
-medición**, el parche que sí se aplicó, y qué queda fuera del alcance de
-Phase 4 porque tocaría el contrato de motion de Phase 9.
+Este documento abre el carril. No implementa nada: mide los dos defectos, dice
+qué los causa y propone la corrección mínima.
+
+Evidencia ejecutable: `e2e/qa-lite/phase91-physical-diagnostico.spec.ts`
+Artefactos: `.qa-lite/artifacts/phase91/diagnostico.json` + capturas.
 
 ---
 
-## 1. El defecto, demostrado
+## 1. Dirección aprobada
 
-Evidencia ejecutable: `e2e/qa-lite/phase4-physical-loop.spec.ts`
-Artefactos: `.qa-lite/artifacts/phase4-golden/physical-loop/diagnostico.json`
+Dico 3D deja de vivir pegado a la sidebar. Comportamiento objetivo:
 
-**Medición.** Con Physical en pantalla y el puntero **inmóvil** encima del
-personaje, la caja del Slot ocupó **8 posiciones distintas en X** a lo largo de
-12 lecturas: de `203` a `259`. **Amplitud: 56px.** El personaje oscilaba sin
-que nadie moviera el mouse.
+- aparece **centrado en pantalla**;
+- en **capa superior**;
+- con **scrim** / fondo atenuado sutil;
+- **no empuja el contenido**;
+- **no depende del hover de la sidebar**;
+- **click/tap afuera lo cierra**.
 
-**La cadena, con sus tres eslabones verificados en la misma corrida:**
+Señalar un target concreto se resuelve después: la entrada base es central e
+independiente.
+
+**Fuera de alcance, confirmado:** poses nuevas, `pointLeft` / `pointRight`,
+chat completo, botón «Llamar a Dico».
+
+---
+
+## 2. Los dos defectos, medidos
+
+### 2.1 Empuja el contenido (punto 3)
+
+Medido a 390px, con y sin Physical en pantalla:
+
+| | sin Physical | con Physical |
+|---|---|---|
+| `.ag-slot` (alto) | 6px | 198px |
+| `.ag-pantalla-productos` (y) | 138,6 | 211,6 |
+
+**La pantalla de Productos baja 73px** por el solo hecho de que Dico aparezca,
+y el hueco crece 192px.
+
+**Causa.** `.ag-slot` es una caja normal **en el flujo del documento**
+(`position: relative`, `max-height: 40vh`, `overflow: hidden`), montada entre
+el encabezado y `ProductsPanel` en `PlatformAdmin.jsx`. Cuando Physical monta,
+el escenario aporta su alto —`--pose-alto` ≈ 318px— y el hueco crece hasta el
+tope. Todo lo que está debajo se corre.
+
+No es un descuido: es lo que el contrato de layout de Phase 8 pedía —«nunca
+flota sobre navegación, controles persistentes ni diálogos»— resuelto
+reservando lugar en el flujo. La dirección nueva invierte esa decisión, y hay
+que declararlo así.
+
+**Sólo pasa en mobile.** En escritorio `PlatformAdmin` no monta la presencia en
+`.ag-slot` (`{!esDesktop && huecoDico && presenciaDico}`): vive en la sidebar,
+y ahí Physical es `fixed` y no empuja nada.
+
+### 2.2 El loop reaparece (punto 4)
+
+Con el puntero **inmóvil**, 12 lecturas de la posición X del Slot:
+
+| puntero sobre | oscila | amplitud |
+|---|---|---|
+| el personaje | **no** | 0px |
+| **el CTA de la burbuja** | **sí** | **160px** |
+
+Posiciones sobre el CTA: `240, 160, 156, 184, 253, 316, 315, 264, 308, 156,
+210, 156`.
+
+**Causa.** La cadena de Phase 4 sigue entera:
 
 | # | Eslabón | Medido |
 |---|---|---|
-| 1 | El Slot es `position: fixed` | `position: "fixed"` |
-| 2 | …pero sigue siendo **descendiente del `<aside>`** en el DOM | `esDescendienteDeLaSidebar: true` |
-| 3 | …y su `left` depende del ancho de la sidebar | `left: calc(var(--ag-sidebar-ancho) + 8px + …)` |
+| 1 | El Slot es `position: fixed` | `"fixed"` |
+| 2 | …pero es **descendiente del `<aside>`** | `esDescendienteDeLaSidebar: true` |
+| 3 | …y su `left` sale del ancho de la sidebar | `calc(var(--ag-sidebar-ancho) + …)` |
 
-De ahí el ciclo: el puntero entra en Physical → como es descendiente del
-`<aside>`, cuenta como **hover de la sidebar** → la sidebar se expande →
-`--ag-sidebar-ancho` pasa de `64px` a `224px` → Physical se corre 160px y **se
-escapa del puntero** → la sidebar colapsa → Physical vuelve debajo del puntero
-→ vuelve a empezar.
+PASS 3 cortó el eslabón 2 con `pointer-events: none` **y volvió a habilitarlo
+en los controles de la burbuja**, que son los únicos con los que se interactúa.
+Los que siguen aceptando puntero, medidos:
 
-Nada de esto es un bug de motion: las tres piezas hacen exactamente lo que
-declaran. El defecto está en que **Physical vive dentro del elemento cuyo
-tamaño lo posiciona**.
-
-## 2. Lo que sí se corrigió en Phase 4
-
-Se cortó el **eslabón 2**, que es el único que se puede tocar sin reinterpretar
-motion ni geometría:
-
-```css
-.ag-sidebar .dico-slot { pointer-events: none; }
-/* los controles de su burbuja se reactivan uno por uno */
+```
+button.dico-burbuja-contenido   span.dico-burbuja-reserva
+i.dico-burbuja-cursor-reserva   span.dico-burbuja-texto
+button.dico-burbuja-accion      button.dico-burbuja-cerrar
 ```
 
-El personaje deja de capturar el puntero, así que no dispara el hover del riel.
-**Re-medido: `oscila: false`, amplitud `0`.**
+Cada uno es una reentrada al hover del riel. O sea: **el loop está cortado
+mientras nadie toca la burbuja, que es justo lo que el usuario va a hacer.** El
+parche de PASS 3 ya lo decía por escrito —«si mañana algo vuelve a necesitar
+puntero dentro del Slot, el loop vuelve»—; esto lo confirma con número.
 
-Se puede hacer porque desde este mismo pase **Dico 2D ya no invoca a Physical**
-(punto 2): lo único con lo que se interactúa dentro del Slot es el CTA y la X
-de la burbuja, y los dos siguen siendo clickeables.
+`hayScrim: 0` — hoy no existe ninguna capa atenuada detrás.
 
-**Lo que NO resuelve:** que Physical siga anclado a la sidebar. El eslabón 1 y
-el 3 siguen ahí. Si mañana algo vuelve a necesitar puntero dentro del Slot —el
-botón «Llamar a Dico», por ejemplo— el loop vuelve.
+---
 
-## 3. Lo que requiere Phase 9.1
+## 3. Propuesta mínima
 
-La dirección aprobada para estudiar: **Physical aparece centrado, independiente
-de la sidebar, con un scrim sutil detrás; si tiene que señalar un target, se
-posiciona hacia él después.**
+Una sola causa explica los dos defectos: **Physical se monta dentro del árbol
+de otro** —el `<aside>` en escritorio, el flujo del documento en mobile— y por
+eso hereda el hover de uno y el layout del otro.
 
-Eso no entra en Phase 4 porque toca contratos cerrados y medidos:
+La corrección mínima es sacarlo de los dos:
 
-| Qué habría que tocar | Contrato en riesgo |
+1. **Portal a `body`.** El Slot deja de ser descendiente del `<aside>` y de
+   `.ag-slot`. Con eso caen solos el eslabón 2 —el hover del riel deja de
+   verlo, sin necesitar `pointer-events: none`— y el empuje de mobile, porque
+   deja de ocupar lugar en el flujo.
+2. **Posición fija y centrada**, independiente de `--ag-sidebar-ancho`.
+3. **Scrim** propio detrás, en la capa de backdrop, que además da el
+   click-afuera-cierra sin inventar nada.
+
+Los tres son el mismo movimiento y no conviene partirlos: portar sin centrar
+deja a Physical en una coordenada que ya no significa nada.
+
+### Qué se reabre, y por qué no entra en Phase 4
+
+| Qué hay que tocar | Contrato en riesgo |
 |---|---|
-| Sacar el Slot del `<aside>` (portal a `body`) | La geometría de `left`/`top` de la sidebar; `dico-sidebar.spec.ts` |
-| Physical centrado | `--pose-bajo-pies`, `--pose-tinta-izq`, `--pose-dedo`, `--pose-dedo-y` — **salen de medir píxeles alpha del asset**, no de tantear |
-| Scrim detrás | Capas: hoy Physical vive en `--ag-z-nav + 1`; un scrim entra en la conversación de `--ag-z-backdrop` (800) |
-| Reposicionar hacia el target | `anclaje: 'target'` ya existe y ancla por **tinta**, no por caja. Un modo "primero centro, después target" es una transición nueva, o sea motion nuevo |
+| Sacar el Slot del `<aside>` | Geometría de `left`/`top`. `dico-sidebar.spec.ts` mide el reanclaje en 4 anchos, y ese contrato **queda sin objeto**: Physical ya no se reancla porque ya no depende del riel |
+| Physical centrado | `--pose-bajo-pies`, `--pose-tinta-izq`, `--pose-dedo`, `--pose-dedo-y` **salen de medir píxeles alpha del asset**. El contrato es explícito: «si alguien las redondea, el dedo deja de caer sobre el CTA» |
+| Scrim | Capas: hoy Physical vive en `--ag-z-nav + 1` (medido: `z-index: 6`); un scrim entra en la conversación de `--ag-z-backdrop` (800) |
+| Anclaje a target | `anclaje: 'target'` ancla por **tinta**, no por caja. «Primero centro, después target» es una transición nueva, o sea motion nuevo |
+| `.ag-slot` vacío en mobile | Phase 8 lo puso en el flujo a propósito para que Dico no tapara nada. Vaciarlo revierte esa decisión |
 
-El contrato de geometría es explícito al respecto: *«si alguien las redondea,
-el dedo deja de caer sobre el CTA»*. Reabrirlo sin un gate propio es la forma
-de romper Phase 9 en silencio.
+**Veredicto de alcance: NO entra como correctivo acotado.** Toca el contrato de
+geometría de Phase 9, el de capas del shell y el de layout de Phase 8, y deja
+sin objeto parte de `dico-sidebar`. Necesita su propio brief de ejecución y su
+propio gate — que es lo que este carril es.
 
-## 4. Fuera de alcance, confirmado
+---
 
-No se implementan acá ni en Phase 4: `pointLeft` / `pointRight`, la
-alternancia automática up/down por espacio disponible, el botón «Llamar a
-Dico», el chat con Physical, ni Dico 2D como la «O» del logo.
+## 4. Estado
 
-## 5. Estado
-
-- Defecto: **demostrado y medido**.
-- Loop: **cortado** en Phase 4, con re-medición.
-- El parche de `pointer-events`: **aceptado provisionalmente** (Ricky,
-  4/sep/2026), porque la causa se demostró, la amplitud quedó en 0 y no se
-  tocó motion.
-- Physical centrado: **diferido a esta fase**. No se implementa ahora.
-- Causa de fondo: **abierta**, documentada acá.
-- Phase 9.1: **no iniciada**. Necesita su propio brief y su propio gate.
+- Defectos: **demostrados y medidos**.
+- Corte parcial del loop con `pointer-events` (Phase 4): **aceptado
+  provisionalmente**. Sirve mientras el puntero no entre a la burbuja.
+- Portal, centrado, scrim y click-afuera: **no implementados**.
+- Ejecución: **sin empezar**.
