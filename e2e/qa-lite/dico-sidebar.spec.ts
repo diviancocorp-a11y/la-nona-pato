@@ -1,7 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect } from './fixtures'
-import { openAdmin } from './surfaces'
+import {
+  openAdmin, irAProductos, apagarTodo, mostrarUno,
+  anotarVisibilidad, restaurarVisibilidad,
+} from './surfaces'
 
 /**
  * La sidebar desktop en los anchos que importan, sobre el panel real.
@@ -22,28 +25,43 @@ const ANCHOS = [
   { w: 390, h: 844, chasis: 'nav-inferior' },
 ] as const
 
-/* PENDIENTE — PHASE 4 · PASS 2.
+/* PHASE 4 · PASS 3 — REINSTRUMENTADO con la intervencion real.
  *
- * Este gate valida la geometria de la sidebar en seis anchos CON Physical
- * afuera, y para sacarlo afuera clickeaba «Traer a Dico». Ese boton dejo de
- * existir: el punto 2 del pase saco a Dico 2D del rol de llamador manual, y
- * el unico disparador que queda es la intervencion `nada-visible`.
- *
- * Se intento reemplazar el disparador —ocultar todo el catalogo, reponiendolo
- * en cada ancho— y Physical no llega a montar en la segunda vuelta. La causa
- * probable es que la intervencion se dispara en una TRANSICION que el spec no
- * esta reproduciendo, pero no se confirmo, y no se va a declarar verde algo
- * que no se midio.
- *
- * `fixme` y no `skip`: esto no es un caso obsoleto, es un contrato vigente que
- * quedo sin cobertura por un cambio deliberado. La geometria que verifica
- * —Physical y el globo se reanclan al expandirse el riel— sigue siendo real y
- * no esta medida por ningun otro gate.
- *
- * Lo que verifica CON Physical adentro (anchos, rotulos, teclado) lo siguen
- * cubriendo `phase3b-a3` y `dico-native-message`, que pasan.
+ * Sacaba a Physical con «Traer a Dico», que PASS 2 elimino. Ahora lo saca
+ * `nada-visible`, disparada como la dispara un usuario: apagar el catalogo
+ * hasta que no queda nada visible. Los helpers estan en `surfaces.ts` y
+ * explican por que importa que sea una TRANSICION a cero y no un estado.
  */
-test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
+
+/* Tabular hasta la sidebar SIN presupuesto inventado.
+ *
+ * Antes eran «40 pasos». Ese numero alcanzaba con los cuatro productos del
+ * seed y dejo de alcanzar con el catalogo de revision: la sidebar viene
+ * DESPUES del workspace en el DOM, asi que con 21 productos hay mas de
+ * sesenta controles por delante y el gate fallaba por contar, no por un
+ * defecto. Subir el numero a ojo lo habria escondido hasta el proximo
+ * catalogo mas grande.
+ *
+ * El presupuesto se DERIVA del anillo real: se cuentan los focusables del
+ * documento y se recorren todos, mas dos vueltas de margen. Si con eso no se
+ * llega, la sidebar de verdad quedo fuera del orden de tabulacion, que es lo
+ * unico que este contrato queria detectar.
+ */
+async function tabularHastaLaSidebar(page: import('@playwright/test').Page) {
+  const presupuesto = await page.evaluate(() => (
+    document.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+    ).length + 2
+  ))
+  for (let pasos = 0; pasos < presupuesto; pasos += 1) {
+    await page.keyboard.press('Tab')
+    const dentro = await page.evaluate(() => Boolean(document.activeElement?.closest('.ag-sidebar-item')))
+    if (dentro) return true
+  }
+  return false
+}
+
+test('la sidebar desktop se sostiene en los seis anchos', async ({ page }) => {
   await openAdmin(page, 'light', { width: 1440, height: 900 })
   await mkdir(SALIDA, { recursive: true })
   const informe: Record<string, unknown>[] = []
@@ -111,17 +129,24 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
       // lo que dibuja el anillo— no matchea cuando el foco lo pone el codigo,
       // asi que una captura hecha asi mostraria la sidebar abierta y sin
       // anillo, y no probaria nada sobre navegacion por teclado.
-      await page.locator('body').click({ position: { x: w - 40, y: h - 40 } }).catch(() => {})
-      let pasos = 0
-      let dentro = false
-      while (pasos < 40 && !dentro) {
-        await page.keyboard.press('Tab')
-        pasos += 1
-        dentro = await page.evaluate(() => Boolean(
-          document.activeElement?.closest('.ag-sidebar-item'),
-        ))
-      }
-      expect(dentro, `${w}px: no se llega a la sidebar con Tab en 40 pasos`).toBe(true)
+      /* Soltar el foco SIN clickear la pantalla.
+       *
+       * Antes esto era un click en la esquina inferior derecha del body, para
+       * devolver el punto de partida del tabulador al principio del
+       * documento. Con los cuatro productos del seed esa esquina caia en el
+       * vacio; con el catalogo de revision cayo sobre el tacho de un producto
+       * y ABRIO el modal «Eliminar Tiramisu», cuyo velo de 1280x860 tapaba
+       * despues al contador de Dico. El gate moria 90 segundos mas tarde
+       * culpando a un `<div>` sin nombre.
+       *
+       * Un click a ciegas sobre una pantalla con datos siempre le va a pegar
+       * a algo. `blur()` consigue lo mismo —el foco vuelve al body y el
+       * proximo Tab arranca de cero— y no toca ningun control. Los Tab que
+       * vienen despues siguen siendo teclas de verdad, que es lo que
+       * `:focus-visible` necesita. */
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+      const dentro = await tabularHastaLaSidebar(page)
+      expect(dentro, `${w}px: no se llega a la sidebar tabulando el anillo entero`).toBe(true)
       await page.waitForTimeout(320)
       const conFoco = await medir()
       expect(conFoco.ancho, `${w}px no expande con foco de teclado`).toBeGreaterThan(antes.ancho)
@@ -150,10 +175,44 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
       await page.screenshot({ path: join(SALIDA, `${w}-mobile.png`), caret: 'hide' })
     }
 
-    // ── DICO NO LE SACA CAPACIDADES A LA NAVEGACION ──────────────────────
-    // Con el aviso abierto y con Physical afuera, la sidebar tiene que seguir
-    // expandiendose —por hover Y por teclado— y Dico tiene que correrse solo.
-    if (sidebarViva) {
+    // La navegacion nunca se pierde: las secciones son las mismas.
+    const secciones = await page.evaluate(() => (
+      [...document.querySelectorAll('[data-section]')].map((e) => (e as HTMLElement).dataset.section)
+    ))
+    expect(secciones.length, `${w}px se quedo sin secciones`).toBeGreaterThan(0)
+    fila.secciones = secciones.length
+    informe.push(fila)
+  }
+
+  await writeFile(join(SALIDA, 'informe.json'), `${JSON.stringify(informe, null, 2)}\n`, 'utf8')
+  console.log(JSON.stringify(informe, null, 2))
+})
+
+/* ── DICO NO LE SACA CAPACIDADES A LA NAVEGACION ────────────────────────────
+ *
+ * Con el aviso abierto y con Physical afuera, la sidebar tiene que seguir
+ * expandiendose —por hover Y por teclado— y Dico tiene que correrse solo.
+ *
+ * VA EN SU PROPIO TEST, no como segunda mitad del anterior. PASS 3 lo
+ * reinstrumento con la intervencion real, y traer y guardar a Physical cuatro
+ * veces dejo al test unico en 90s justos: el limite del harness. Partirlo le
+ * da a cada contrato su propio presupuesto sin tocar el reloj de nadie, y de
+ * paso hace que un fallo diga cual de las dos cosas se rompio.
+ */
+test('Dico no le saca capacidades a la sidebar en los cuatro anchos', async ({ page }) => {
+  await openAdmin(page, 'light', { width: 1440, height: 900 })
+  await mkdir(SALIDA, { recursive: true })
+  await irAProductos(page)
+  const alEntrar = await anotarVisibilidad(page)
+  const informe: Record<string, unknown>[] = []
+
+  for (const { w, h, chasis } of ANCHOS) {
+    if (chasis !== 'sidebar') continue
+    await page.setViewportSize({ width: w, height: h })
+    await page.waitForTimeout(320)
+    const fila: Record<string, unknown> = { ancho: w }
+
+    {
       const anchoDe = () => page.locator('.ag-sidebar').evaluate((el) => el.getBoundingClientRect().width)
       const izquierdaDe = (sel: string) => page.locator(sel).evaluate((el) => (
         +el.getBoundingClientRect().x.toFixed(1)
@@ -164,6 +223,17 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
       const riel = await anchoDe()
 
       // 1. Con el aviso abierto.
+      /* Nada puede estar tapando al contador: si algo lo cubre, el click se
+         reintenta 90s y el error final culpa a un `<div>` anonimo. Esto lo
+         dice de entrada y con nombre y apellido. */
+      const tapa = await page.evaluate(() => {
+        const t = document.querySelector('button.dico-avisos-trigger') as HTMLElement
+        const b = t.getBoundingClientRect()
+        const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)
+        if (!top || t.contains(top)) return null
+        return `${top.tagName}.${(top.className || '').toString().trim() || '(sin clase)'}`
+      })
+      expect(tapa, `${w}px: algo tapa el contador de Dico`).toBeNull()
       await page.locator('button.dico-avisos-trigger').click()
       await expect(page.locator('.dico-burbuja')).toBeVisible()
       // Alejar el mouse ANTES de medir: clickear el contador lo deja sobre la
@@ -184,29 +254,15 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
       )), `${w}px: el aviso apago los rotulos`).toBeGreaterThan(0.9)
       await page.screenshot({ path: join(SALIDA, `${w}-aviso-expandida.png`), caret: 'hide' })
 
-      /* 2. Con Physical afuera.
-         PASS 2: Dico 2D ya no invoca a Physical —es presencia e indicador, y
-         al tocarlo abre su mensaje—. El unico disparador que queda es la
-         intervencion, asi que se provoca `nada-visible` ocultando todo el
-         catalogo, que es como llega en el panel real. */
-      /* Se REPONE el catalogo antes de apagarlo. El spec recorre seis anchos
-         y `nada-visible` se dispara en la TRANSICION a cero visibles: sin
-         reponer, a partir del segundo ancho ya estaba todo oculto y no habia
-         transicion que disparar. */
-      /* Entrar al catalogo es lo que PROPONE la intervencion: el productor la
-         evalua en el efecto de `tab === 'products'`. Sin este paso se apaga
-         todo y no aparece nadie — es la diferencia con `dico-intervenciones`,
-         que si lo hacia. */
-      await page.getByRole('button', { name: /^Productos/ }).click()
-      await page.waitForTimeout(400)
-      for (let quedan = await page.getByRole('button', { name: 'Mostrar' }).count(); quedan > 0; quedan -= 1) {
-        await page.getByRole('button', { name: 'Mostrar' }).first().click()
-        await page.waitForTimeout(140)
-      }
-      for (let quedan = await page.getByRole('button', { name: 'Ocultar' }).count(); quedan > 0; quedan -= 1) {
-        await page.getByRole('button', { name: 'Ocultar' }).first().click()
-        await page.waitForTimeout(140)
-      }
+      /* 2. Con Physical afuera, traido por la intervencion real.
+         No se repone el catalogo entero en cada ancho: la limpieza de la
+         vuelta anterior deja UN producto visible, que es todo lo que hace
+         falta para volver a caer a cero. Reponer los cuatro cuatro veces
+         costaba 48 clicks y dejaba el gate en 138s, o sea afuera de los 90s
+         del harness — y subir ese numero para tapar el costo era justamente
+         lo que no habia que hacer. */
+      await irAProductos(page)
+      await apagarTodo(page)
       await expect(page.locator('.dico-physical')).toHaveCount(1)
       await expect.poll(() => page.evaluate(() => (
         document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
@@ -225,21 +281,20 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
 
       // 3. Teclado CON Physical afuera: la sidebar responde igual.
       await alejar()
-      let saltos = 0
-      let enSidebar = false
-      while (saltos < 40 && !enSidebar) {
-        await page.keyboard.press('Tab')
-        saltos += 1
-        enSidebar = await page.evaluate(() => Boolean(document.activeElement?.closest('.ag-sidebar-item')))
-      }
+      const enSidebar = await tabularHastaLaSidebar(page)
       expect(enSidebar, `${w}px: con Physical afuera no se llega a la sidebar con Tab`).toBe(true)
       await page.waitForTimeout(320)
       expect(await anchoDe(), `${w}px: con Physical afuera el teclado no expande`).toBeGreaterThan(riel)
       await page.screenshot({ path: join(SALIDA, `${w}-teclado-physical.png`), caret: 'hide' })
 
-      // Guardar a Physical y volver al estado limpio para el proximo ancho.
+      /* Guardar a Physical y dejar el catalogo listo para el proximo ancho.
+         Se cierra RESOLVIENDO la intervencion —volviendo a prender el
+         catalogo— y no con el control de la burbuja: si se cerrara a mano, la
+         carga seguiria viva en el productor y la proxima vuelta arrancaria
+         sin la transicion que necesita para volver a dispararla. */
       await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
-      await page.locator('button.dico-slot-control').click()
+      await mostrarUno(page)
+      await expect(page.locator('.dico-physical')).toHaveCount(0)
       await expect.poll(() => page.evaluate(() => (
         document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
       ))).toBe('native_idle')
@@ -247,16 +302,14 @@ test.fixme('la sidebar desktop se sostiene en los seis anchos', async ({ page })
       fila.expandeConAviso = anchoConAviso
       fila.expandeConPhysical = anchoConPhysical
     }
-
-    // La navegacion nunca se pierde: las secciones son las mismas.
-    const secciones = await page.evaluate(() => (
-      [...document.querySelectorAll('[data-section]')].map((e) => (e as HTMLElement).dataset.section)
-    ))
-    expect(secciones.length, `${w}px se quedo sin secciones`).toBeGreaterThan(0)
-    fila.secciones = secciones.length
     informe.push(fila)
   }
 
-  await writeFile(join(SALIDA, 'informe.json'), `${JSON.stringify(informe, null, 2)}\n`, 'utf8')
+  // Devolver el catalogo como se lo encontro (ver `restaurarVisibilidad`).
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await irAProductos(page)
+  await restaurarVisibilidad(page, alEntrar)
+
+  await writeFile(join(SALIDA, 'informe-dico.json'), `${JSON.stringify(informe, null, 2)}\n`, 'utf8')
   console.log(JSON.stringify(informe, null, 2))
 })

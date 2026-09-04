@@ -1,7 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect, aplicarMovimiento } from './fixtures'
-import { DESKTOP, openAdmin } from './surfaces'
+import {
+  DESKTOP, openAdmin, irAProductos, apagarTodo,
+  anotarVisibilidad, restaurarVisibilidad,
+} from './surfaces'
 
 /**
  * Las ocho poses sobre la app real: que cambiar de pose NO mueva la caja.
@@ -13,43 +16,31 @@ const SALIDA = join(process.cwd(), '.qa-lite', 'artifacts', 'physical-poses')
 
 const POSES = ['idle', 'explain', 'pointDown', 'pointUp', 'thinking', 'worried', 'success', 'error'] as const
 
-/* PENDIENTE — PHASE 4 · PASS 2, misma causa que `dico-sidebar`.
+/* PHASE 4 · PASS 3 — REINSTRUMENTADO, sin puerta de test en runtime.
  *
- * Sacaba a Physical al plano con «Traer a Dico». Ese boton dejo de existir: el
- * punto 2 saco a Dico 2D del rol de llamador manual. Se intento reemplazarlo
- * por la intervencion `nada-visible` —navegar a Productos y apagar el
- * catalogo, que es lo que hace `dico-intervenciones`, el spec hermano que SI
- * pasa— y Physical no llega a montar. No se encontro la diferencia y no se va
- * a declarar verde algo que no se midio.
+ * Sacaba a Physical con «Traer a Dico», el boton que el punto 2 de PASS 2
+ * elimino al dejar a Dico 2D como presencia y no como llamador manual. Ahora
+ * lo saca la intervencion `nada-visible`, que es como llega en el panel real:
+ * ningun codigo productivo cambia y no hay disparador que exista solo para
+ * los tests.
  *
- * QUE QUEDA SIN COBERTURA: que las ocho poses compartan caja, escala y
- * anclaje EN EL NAVEGADOR. Es el contrato que impide que cambiar un asset
- * mueva el dedo fuera del CTA.
+ * POR QUE FALLABA EL PRIMER INTENTO — medido, no deducido. No era la
+ * intervencion: era el matcher. PASS 2 le puso `aria-label` con el nombre del
+ * producto a cada control de fila, asi que el nombre accesible paso a ser
+ * «Ocultar Rabas» y el spec seguia buscando «Ocultar». No encontraba una sola
+ * fila y se caia antes de llegar a Dico.
  *
- * QUE LO CUBRE MIENTRAS TANTO, parcialmente: `scripts/dico-3d-validar-assets`
- * valida los assets como archivos (8/8, 21/21) y `dico-intervenciones`
- * verifica en navegador que el dedo cae sobre el CTA en `catalogo-vacio`. Lo
- * que NO cubre ninguno de los dos es la comparacion entre las ocho poses.
+ * El catalogo se anota al entrar y se restaura al salir: la base local es una
+ * sola y el seed trae productos apagados que otros gates necesitan.
  */
-test.fixme('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
+test('las ocho poses comparten caja, escala y anclaje', async ({ page }) => {
   await aplicarMovimiento(page, 'no-preference')
   await openAdmin(page, 'light', DESKTOP)
   await mkdir(SALIDA, { recursive: true })
 
-  /* Traer a Physical por el camino real. PASS 2: ese camino ya no es el click
-     en Dico 2D —dejo de ser el llamador manual— sino la intervencion
-     `nada-visible`, que es como llega en el panel. Se apaga el catalogo
-     entero, igual que en `dico-intervenciones`. */
-  /* Entrar al catalogo es lo que PROPONE la intervencion: el productor la
-     evalua en el efecto de `tab === 'products'`. Sin este paso se apaga
-     todo y no aparece nadie — es la diferencia con `dico-intervenciones`,
-     que si lo hacia. */
-  await page.getByRole('button', { name: /^Productos/ }).click()
-  await page.waitForTimeout(400)
-  for (let quedan = await page.getByRole('button', { name: 'Ocultar' }).count(); quedan > 0; quedan -= 1) {
-    await page.getByRole('button', { name: 'Ocultar' }).first().click()
-    await page.waitForTimeout(160)
-  }
+  await irAProductos(page)
+  const alEntrar = await anotarVisibilidad(page)
+  await apagarTodo(page)
   await expect(page.locator('.dico-pose')).toHaveCount(1)
   await expect.poll(() => page.evaluate(() => (
     document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
@@ -142,14 +133,17 @@ test.fixme('las ocho poses comparten caja, escala y anclaje', async ({ page }) =
   // se mide con `explain`, la pose mas ancha.
   //
   // OJO: cruzar la frontera de 769px REMONTA `DicoPresence` —en desktop vive en
-  // la sidebar y en mobile en el flujo— y su maquina arranca de cero, asi que
-  // Physical se guarda solo. Por eso hay que volver a invocarlo aca en vez de
-  // arrastrar el estado del tramo anterior.
+  // la sidebar y en mobile en el flujo— y su maquina arranca de cero.
+  //
+  // PASS 3: antes habia que RE-INVOCAR a Physical del otro lado, porque venia
+  // de una invocacion manual y el remonte se la llevaba puesta. Traido por la
+  // intervencion no hace falta: la carga vive en el productor, que no se
+  // remonta, y la reconciliacion contra el estado lo vuelve a abrir sin que
+  // nadie re-despache nada. Es la propiedad que mide el tercer caso de
+  // `dico-intervenciones`, y aca se apoya en ella en vez de esquivarla.
   await page.setViewportSize({ width: 390, height: 844 })
   await page.waitForTimeout(320)
-  await expect(page.locator('.dico-pose')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Traer a Dico' }).click()
-  await expect(page.locator('.dico-pose')).toHaveCount(1)
+  await expect(page.locator('.dico-pose'), 'Physical no sobrevivio el cruce a mobile').toHaveCount(1)
   await expect.poll(() => page.evaluate(() => (
     document.querySelector('[data-dico-presence-state]')?.getAttribute('data-dico-presence-state')
   ))).toBe('physical_open')
@@ -198,6 +192,11 @@ test.fixme('las ocho poses comparten caja, escala y anclaje', async ({ page }) =
     expect(enMobile.tintaDer, 'la tinta se corta por derecha en mobile')
       .toBeLessThanOrEqual(enMobile.recorte.fin)
   }
+
+  // Devolver el catalogo como se lo encontro (ver `restaurarVisibilidad`).
+  await page.setViewportSize(DESKTOP)
+  await irAProductos(page)
+  await restaurarVisibilidad(page, alEntrar)
 
   await writeFile(join(SALIDA, 'poses.json'), `${JSON.stringify({ escritorio: filas, mobile: enMobile }, null, 2)}\n`, 'utf8')
   console.log(JSON.stringify(filas.map((f) => ({ pose: f.pose, caja: f.caja })), null, 2))

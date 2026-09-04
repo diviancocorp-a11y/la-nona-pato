@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect, aplicarMovimiento } from './fixtures'
-import { DESKTOP, localStatusFromEnv, openAdmin } from './surfaces'
+import { DESKTOP, localStatusFromEnv, openAdmin, irAProductos, apagarTodo } from './surfaces'
 import { applyFixtureState } from '../../platform/qa-lite/state.mjs'
 
 /**
@@ -88,15 +88,14 @@ test('nada visible: la escena completa', async ({ page }) => {
   await aplicarMovimiento(page, 'no-preference')
   await openAdmin(page, 'light', DESKTOP)
   await mkdir(SALIDA, { recursive: true })
-  await page.getByRole('button', { name: /^Productos/ }).click()
-  await page.waitForTimeout(500)
-
-  const cuantos = await page.getByRole('button', { name: 'Ocultar' }).count()
-  expect(cuantos, 'no hay productos visibles que apagar').toBeGreaterThan(0)
-  for (let i = 0; i < cuantos; i += 1) {
-    await page.getByRole('button', { name: 'Ocultar' }).first().click()
-    await page.waitForTimeout(200)
-  }
+  /* PASS 3 — el mismo helper que usan los otros gates de Dico, en vez de un
+     bucle propio. Ademas de sacar la duplicacion, `apagarTodo` se cura solo:
+     si otro spec ya dejo el catalogo apagado, lo prende antes de volver a
+     apagarlo. Con el bucle propio este test dependia de correr antes que
+     `dico-intervenciones`, que se va dejando todo oculto — y eso lo hacia
+     fallar por el ORDEN de los archivos, no por un defecto. */
+  await irAProductos(page)
+  await apagarTodo(page)
   await expect(page.locator('.dico-pose')).toHaveCount(1)
 
   const filas: Array<Record<string, unknown>> = []

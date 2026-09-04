@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect, aplicarMovimiento } from './fixtures'
-import { DESKTOP, openAdmin } from './surfaces'
+import { DESKTOP, openAdmin, irAProductos, prenderTodo } from './surfaces'
 
 /**
  * Las dos intervenciones sobre la app real.
@@ -163,4 +163,13 @@ test('la intervencion sobrevive el cruce de 769px', async ({ page }) => {
   // Y Physical vuelve solo, sin que nadie re-dispare.
   await expect(page.locator('.dico-pose'), 'Physical no volvio del otro lado').toHaveCount(1)
   await page.screenshot({ path: join(SALIDA, 'cruce-769-mobile.png'), caret: 'hide' })
+
+  /* PASS 3 — devolver el catalogo prendido. Este era EL archivo que ensuciaba
+     la base para todos los que corren despues: terminaba con los cuatro
+     productos apagados y el siguiente gate se encontraba una pantalla que no
+     era la que venia a medir. Mientras `dico-sidebar` y `dico-physical-poses`
+     estuvieron en `fixme` no se notaba. */
+  await page.setViewportSize(DESKTOP)
+  await irAProductos(page)
+  await prenderTodo(page)
 })

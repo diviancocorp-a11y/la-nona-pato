@@ -936,6 +936,141 @@ export async function openAdmin(page: Page, theme: 'light' | 'dark', viewport = 
   return '.ag-root'
 }
 
+/* ── Traer a Physical por el camino real ──────────────────────────────────
+ *
+ * PASS 2 saco a Dico 2D del rol de llamador manual: «Traer a Dico» ya no
+ * existe y el unico disparador de Physical es la intervencion `nada-visible`.
+ * Estos tres pasos la provocan como la provoca un usuario, sin ninguna puerta
+ * de test en el runtime.
+ *
+ * EL ORDEN IMPORTA Y NO ES DECORATIVO. `nada-visible` se dispara en la
+ * TRANSICION a cero productos visibles, no por estar en cero. La base local
+ * arrastra productos apagados de la corrida anterior, asi que "apagar lo que
+ * quede" puede no apagar nada — y entonces no hay transicion y no aparece
+ * nadie. Por eso se PRENDE todo antes de apagarlo: es la unica forma de
+ * garantizar que exista el borde que dispara la intervencion.
+ *
+ * Vive aca y no en un spec porque `dico-sidebar` lo necesita seis veces —una
+ * por ancho— y `dico-physical-poses` una: duplicarlo era garantizar que se
+ * arreglara en uno solo.
+ */
+export async function irAProductos(page: Page) {
+  // Entrar al catalogo es lo que PROPONE la intervencion: el productor la
+  // evalua en el efecto de `tab === 'products'`.
+  await page.getByRole('button', { name: /^Productos/ }).click()
+  /* Se espera la primera FILA, no un boton por nombre: PASS 2 le puso
+     `aria-label` con el nombre del producto a cada control —«Ocultar Rabas»,
+     no «Ocultar»— para que un lector de pantalla no anuncie treinta botones
+     identicos, asi que cualquier matcher por texto exacto ya no encuentra
+     nada. La fila existe siempre que el panel termino de dibujar. */
+  await expect(page.locator('.ag-fila-acciones').first()).toBeVisible()
+}
+
+/* Los controles de FILA, no cualquier boton que diga «mostrar».
+ *
+ * Medido: sin acotar, `name: 'Mostrar'` tambien matchea «Volver a mostrarlo»,
+ * el CTA de la propia intervencion `nada-visible` — el nombre accesible se
+ * compara por substring y sin distinguir mayusculas. El conteo daba 22 sobre
+ * 21 productos y el `.first()` podia terminar clickeando a Dico en vez de a
+ * una fila. Acotarlo a `.ag-fila-acciones` deja adentro solo el catalogo. */
+const filaBoton = (page: Page, nombre: 'Ocultar' | 'Mostrar') => (
+  page.locator('.ag-fila-acciones').getByRole('button', { name: nombre })
+)
+
+/** Deja el catalogo entero visible. Devuelve cuantos prendio. */
+export async function prenderTodo(page: Page) {
+  const mostrar = filaBoton(page, 'Mostrar')
+  let prendidos = 0
+  // Se relee el conteo en cada vuelta en vez de fijarlo al principio: cada
+  // click re-renderiza la lista y un indice viejo apunta a otra fila.
+  for (let quedan = await mostrar.count(); quedan > 0; quedan = await mostrar.count()) {
+    await mostrar.first().click()
+    await expect(mostrar).toHaveCount(quedan - 1)
+    prendidos += 1
+  }
+  return prendidos
+}
+
+/* ── Devolver el catalogo EXACTAMENTE como estaba ────────────────────────
+ *
+ * No alcanza con "prender todo al terminar". El seed trae productos apagados
+ * a proposito —`phase4-golden` mide justamente el contraste de una fila
+ * atenuada— asi que un spec que se va dejando todo prendido le borra el caso
+ * de prueba al siguiente, en silencio y solo cuando corre antes.
+ *
+ * La base local es una sola y sobrevive entre archivos: el unico
+ * comportamiento correcto es anotar como estaba al entrar y dejarlo asi al
+ * salir. Se identifica cada fila por el nombre del producto, que es lo que ya
+ * lleva el `aria-label` de su propio boton.
+ */
+export async function anotarVisibilidad(page: Page) {
+  return page.evaluate(() => [...document.querySelectorAll('.ag-fila')].map((f) => ({
+    nombre: (f.querySelector('.ag-fila-nombre')?.textContent || '').trim(),
+    oculto: f.classList.contains('esta-oculta'),
+  })).filter((x) => x.nombre))
+}
+
+export async function restaurarVisibilidad(
+  page: Page,
+  estado: Array<{ nombre: string; oculto: boolean }>,
+) {
+  for (const { nombre, oculto } of estado) {
+    const ahoraOculto = await page.locator('.ag-fila', { hasText: nombre })
+      .first().evaluate((f) => f.classList.contains('esta-oculta')).catch(() => null)
+    if (ahoraOculto === null || ahoraOculto === oculto) continue
+    // El `aria-label` de cada control ya trae el nombre del producto: sirve
+    // para tocar una fila concreta sin depender del orden de la lista.
+    await page.getByRole('button', { name: `${oculto ? 'Ocultar' : 'Mostrar'} ${nombre}`, exact: true }).click()
+    await expect(page.locator('.ag-fila', { hasText: nombre }).first())
+      .toHaveClass(oculto ? /esta-oculta/ : /^((?!esta-oculta).)*$/)
+  }
+}
+
+/* Prende UN solo producto. Es la forma barata de resolver `nada-visible`:
+   la intervencion se cierra porque el estado que la justificaba dejo de ser
+   cierto, no porque alguien la haya despedido. Y deja exactamente un producto
+   visible, o sea una transicion a cero lista para la proxima vuelta — que es
+   lo que permite que un gate de seis anchos no tenga que reponer el catalogo
+   entero cuatro veces. */
+export async function mostrarUno(page: Page) {
+  const mostrar = filaBoton(page, 'Mostrar')
+  const quedan = await mostrar.count()
+  if (quedan === 0) throw new Error('no hay productos ocultos que prender')
+  await mostrar.first().click()
+  await expect(mostrar).toHaveCount(quedan - 1)
+}
+
+/** Apaga UN solo producto. Devuelve su nombre. */
+export async function ocultarUno(page: Page) {
+  const ocultar = filaBoton(page, 'Ocultar')
+  const quedan = await ocultar.count()
+  if (quedan === 0) throw new Error('no hay productos visibles que ocultar')
+  const nombre = (await ocultar.first().getAttribute('aria-label') || '').replace(/^Ocultar /, '')
+  await ocultar.first().click()
+  await expect(ocultar).toHaveCount(quedan - 1)
+  return nombre
+}
+
+/* Apaga el catalogo entero. La ULTIMA vuelta es la que dispara la intervencion.
+ *
+ * Si no hay NADA visible, prende todo primero en vez de fallar. No es
+ * tolerancia: es lo que hace que el gate no dependa del orden en que corran
+ * los specs. La base local es una sola y sobrevive entre archivos — con
+ * `dico-physical-poses` corriendo antes, `dico-sidebar` se encontraba el
+ * catalogo ya apagado y sin ninguna transicion que provocar. Que un contrato
+ * pase o falle segun quien corrio primero es peor que cualquier lentitud. */
+export async function apagarTodo(page: Page) {
+  const ocultar = filaBoton(page, 'Ocultar')
+  if (await ocultar.count() === 0) await prenderTodo(page)
+  const total = await ocultar.count()
+  if (total === 0) throw new Error('el catalogo esta vacio: no hay nada que apagar ni que prender')
+  for (let quedan = total; quedan > 0; quedan = await ocultar.count()) {
+    await ocultar.first().click()
+    await expect(ocultar).toHaveCount(quedan - 1)
+  }
+  return total
+}
+
 export async function settleAdmin(page: Page) {
   const root = page.locator('.ag-root')
   const theme = await root.evaluate((element) => (

@@ -1,7 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect, aplicarMovimiento } from './fixtures'
-import { openAdmin } from './surfaces'
+import {
+  openAdmin, irAProductos, ocultarUno, prenderTodo,
+  anotarVisibilidad, restaurarVisibilidad,
+} from './surfaces'
 
 /**
  * Phase 4 — Golden Screen (Productos): captura de evidencia y contratos.
@@ -156,6 +159,10 @@ const medirPantalla = (page: import('@playwright/test').Page, minimo: number) =>
 
   /* ── G1: contraste de todo texto de la pantalla ── */
   const textos: Array<Record<string, unknown>> = []
+  /* G6: lo mismo, pero acotado a las filas de productos ocultos y guardando
+     tambien lo que pasa. Es el unico bloque de la pantalla donde el diseño
+     ATENUA a proposito, asi que es donde hay que mirar el margen. */
+  const ocultos: Array<Record<string, unknown>> = []
   const conTexto = [...(panel?.querySelectorAll('*') || [])].filter((el) => {
     if (!visible(el)) return false
     // Solo nodos con texto PROPIO: si no, cada contenedor reporta el texto de
@@ -187,6 +194,29 @@ const medirPantalla = (page: import('@playwright/test').Page, minimo: number) =>
     // AA: 3:1 vale solo para texto grande (>=24px, o >=18.66px en negrita).
     const grande = px >= 24 || (px >= 18.66 && peso >= 700)
     const exigido = grande ? 3 : MIN
+
+    /* ── PRODUCTOS OCULTOS — la regresion especifica de PASS 3 ──────────
+     * Un producto apagado se dibuja "atenuado", y atenuado no puede querer
+     * decir ilegible: sigue siendo texto que el dueño del negocio tiene que
+     * poder leer para volver a prenderlo. La version con `opacity: .55`
+     * dejaba el nombre en 4,0:1 y el boton de la fila en 2,6:1 — medido
+     * sobre treinta filas, invisible con cuatro.
+     * Se guardan TODAS las mediciones de esas filas, no solo las que fallan,
+     * para que el artifact muestre el margen que hay y no solo el veredicto.
+     * La composicion alfa ya la hizo `tintaVista` unas lineas mas arriba: es
+     * la misma cuenta para todos, no una excepcion para este caso. */
+    const filaOculta = el.closest('.ag-fila.esta-oculta')
+    if (filaOculta) {
+      ocultos.push({
+        producto: (filaOculta.querySelector('.ag-fila-nombre')?.textContent || '').trim().slice(0, 40),
+        texto: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        clase: el.className?.toString().slice(0, 40) || null,
+        contraste: r,
+        exigido,
+        cumple: r >= exigido,
+      })
+    }
+
     if (r < exigido) {
       textos.push({
         ambito: enPantalla(el) ? 'pantalla' : 'shell',
@@ -221,6 +251,7 @@ const medirPantalla = (page: import('@playwright/test').Page, minimo: number) =>
     hayPantalla: !!pantalla,
     desborde: raiz.scrollWidth - raiz.clientWidth,
     textosQueFallan: textos,
+    ocultos,
     totalTextosMedidos: conTexto.length,
     targets,
     // La pantalla que se esta mirando, para que el artifact no mienta sobre
@@ -234,6 +265,24 @@ const medirPantalla = (page: import('@playwright/test').Page, minimo: number) =>
 test('Phase 4 — Productos: evidencia y contratos G1/G3/G4 en 2 temas x 5 anchos', async ({ page }) => {
   await aplicarMovimiento(page, 'no-preference')
   await mkdir(SALIDA, { recursive: true })
+
+  /* G6 SE FABRICA SU PROPIO CASO.
+   *
+   * El seed trae sus cuatro productos VISIBLES: no hay ninguna fila atenuada
+   * que medir. La primera version de este gate se apoyaba en que algun otro
+   * spec hubiera dejado uno apagado — o sea que pasaba o no segun el orden de
+   * los archivos, que es exactamente el defecto que este pase vino a sacar
+   * del harness. Apagar uno aca lo vuelve deterministico, y se repone al
+   * final para no cambiarle el fixture a nadie. */
+  await openAdmin(page, 'light', { width: 1440, height: 1000 })
+  await irAProductos(page)
+  /* Se anota como estaba y se normaliza: prender todo y apagar exactamente
+     uno. Sin el `prenderTodo`, este gate dependia de en que estado se lo
+     dejaran los specs de Dico, que corren antes y se van dejando el catalogo
+     apagado. Al final se repone lo anotado. */
+  const alEntrar = await anotarVisibilidad(page)
+  await prenderTodo(page)
+  const apagado = await ocultarUno(page)
 
   const filas: Array<Record<string, unknown>> = []
   const problemas: string[] = []
@@ -269,6 +318,7 @@ test('Phase 4 — Productos: evidencia y contratos G1/G3/G4 en 2 temas x 5 ancho
         targetsChicosShell: deShell(chicos),
         targets: m.targets.length,
         tituloVisible: m.tituloVisible,
+        ocultos: m.ocultos,
       })
 
       // G4 — el contrato de A3, sin mover el umbral.
@@ -332,6 +382,11 @@ test('Phase 4 — Productos: evidencia y contratos G1/G3/G4 en 2 temas x 5 ancho
   await writeFile(join(SALIDA, 'burbuja.json'), `${JSON.stringify({ lote: LOTE, burbuja }, null, 2)}
 `, 'utf8')
 
+  // Devolver el catalogo como estaba antes de fabricar el caso de G6.
+  await openAdmin(page, 'light', { width: 1440, height: 1000 })
+  await irAProductos(page)
+  await restaurarVisibilidad(page, alEntrar)
+
   await writeFile(join(SALIDA, 'medicion.json'), `${JSON.stringify({ lote: LOTE, filas }, null, 2)}\n`, 'utf8')
 
   // El lote `antes` DOCUMENTA el estado; no falla por el. Fallar ahi seria no
@@ -342,6 +397,24 @@ test('Phase 4 — Productos: evidencia y contratos G1/G3/G4 en 2 temas x 5 ancho
     const g3 = filas.flatMap((f) => (f.targetsChicosPantalla as unknown[]).map((t) => ({ caso: f.caso, t })))
     expect(g1, `G1 — textos de la pantalla por debajo de ${MINIMO_CONTRASTE}:1`).toEqual([])
     expect(g3, `G3 — targets de la pantalla por debajo de ${MINIMO_TARGET}px`).toEqual([])
+
+    /* ── G6 · PRODUCTOS OCULTOS ─────────────────────────────────────────
+     * La regresion especifica de PASS 3. G1 ya cubre "ningun texto de la
+     * pantalla falla", asi que esto no agrega cobertura: agrega INTENCION.
+     * Si mañana alguien vuelve a atenuar una fila apagada con `opacity`, el
+     * error va a decir que rompio el contrato de los productos ocultos y con
+     * que numero, en vez de aparecer como un texto mas en una lista de
+     * treinta. Y el artifact guarda el margen de cada fila, no solo el
+     * veredicto, para poder ver cuanto falta antes de que sea un problema.
+     *
+     * Se exige que la medicion EXISTA: un seed sin ningun producto apagado
+     * dejaria este gate pasando en verde sin haber medido nada. */
+    const medidas = filas.flatMap((f) => (f.ocultos as Array<Record<string, unknown>>)
+      .map((o) => ({ caso: f.caso, ...o })))
+    expect(medidas.length, 'G6 — no se midio ningun producto oculto: el fixture no tiene ninguno apagado')
+      .toBeGreaterThan(0)
+    const flojos = medidas.filter((o) => !o.cumple)
+    expect(flojos, 'G6 — texto o control de un producto oculto por debajo de AA').toEqual([])
   }
   expect(problemas, 'G4 y sanidad de la medicion').toEqual([])
 })
