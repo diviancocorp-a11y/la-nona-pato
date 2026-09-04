@@ -280,12 +280,64 @@ test('Phase 4 — Productos: evidencia y contratos G1/G3/G4 en 2 temas x 5 ancho
     }
   }
 
+  /* PASS 1 — la burbuja de Dico, abierta.
+   *
+   * El lote de arriba nunca la muestra: se abre con un gesto. Sin esta captura
+   * no hay como revisar de donde sale el globo ni si se cierra tocando afuera,
+   * que son dos de los puntos del pase. Se mide en los dos temas y en los dos
+   * lados de la frontera de 769, que es donde Dico cambia de lugar. */
+  const burbuja: Array<Record<string, unknown>> = []
+  for (const tema of TEMAS) {
+    for (const vp of [VIEWPORTS[0], VIEWPORTS[4]]) {
+      await openAdmin(page, tema, { width: vp.width, height: vp.height })
+      const caso = `${tema}--${vp.nombre}`
+      const trigger = page.locator('.ag-root button.dico-avisos-trigger')
+      if (await trigger.count() === 0) continue
+
+      await trigger.click()
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      await page.waitForTimeout(400)
+      await page.screenshot({ path: join(SALIDA, `burbuja-${caso}.png`), caret: 'hide' })
+
+      // De donde sale el globo respecto de la cara: negativo = por arriba.
+      const geo = await page.evaluate(() => {
+        const cara = document.querySelector('.ag-root .dico-avisos-idle')?.getBoundingClientRect()
+        const globo = document.querySelector('.ag-root .dico-avisos-mensaje')?.getBoundingClientRect()
+        if (!cara || !globo) return null
+        return {
+          caraTop: Math.round(cara.top), caraIzq: Math.round(cara.left),
+          globoTop: Math.round(globo.top), globoIzq: Math.round(globo.left),
+          globoAncho: Math.round(globo.width),
+          /* En ESCRITORIO el contrato es "a la altura de la cara, hacia la
+             derecha": el globo empieza antes de que termine la cara y no a su
+             izquierda. En MOBILE no puede cumplirse —Dico vive en la barra de
+             arriba y no hay pantalla por encima—, asi que ahi lo que se mide
+             es que cuelgue pegado a la barra y no flotando a media altura. */
+          arribaDelPie: globo.top < cara.bottom,
+          aLaDerecha: globo.left >= cara.left,
+          pegadoALaBarra: globo.top - cara.bottom < 24,
+        }
+      })
+
+      // Cerrar tocando AFUERA: el contrato nuevo del pase.
+      await page.mouse.click(5, Math.round(vp.height / 2))
+      await page.waitForTimeout(250)
+      const cerroAfuera = await trigger.getAttribute('aria-expanded') === 'false'
+
+      burbuja.push({ caso, ...(geo || {}), cerroAfuera })
+      if (!cerroAfuera) problemas.push(`${caso}: la burbuja no se cerro al tocar afuera`)
+    }
+  }
+
+  await writeFile(join(SALIDA, 'burbuja.json'), `${JSON.stringify({ lote: LOTE, burbuja }, null, 2)}
+`, 'utf8')
+
   await writeFile(join(SALIDA, 'medicion.json'), `${JSON.stringify({ lote: LOTE, filas }, null, 2)}\n`, 'utf8')
 
   // El lote `antes` DOCUMENTA el estado; no falla por el. Fallar ahi seria no
   // poder capturar nunca el baseline de una pantalla que justamente sabemos
   // que tiene deuda. El lote `despues` SI exige los contratos.
-  if (LOTE === 'despues') {
+  if (LOTE.endsWith('despues')) {
     const g1 = filas.flatMap((f) => (f.contrastePantalla as unknown[]).map((d) => ({ caso: f.caso, d })))
     const g3 = filas.flatMap((f) => (f.targetsChicosPantalla as unknown[]).map((t) => ({ caso: f.caso, t })))
     expect(g1, `G1 — textos de la pantalla por debajo de ${MINIMO_CONTRASTE}:1`).toEqual([])

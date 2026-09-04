@@ -28,10 +28,18 @@ const arg = (nombre, fallback) => {
 };
 
 const LOTE = arg('lote', 'antes');
-if (!['antes', 'despues'].includes(LOTE)) {
-  throw new Error(`--lote debe ser "antes" o "despues" (recibido: ${LOTE})`);
+// Cualquier nombre sirve mientras diga de que lado esta: los pases sucesivos
+// usan `pass1-antes` / `pass1-despues`. Lo unico que el spec necesita saber es
+// si tiene que EXIGIR los contratos o solo documentar el estado.
+if (!/(^|-)(antes|despues)$/.test(LOTE)) {
+  throw new Error(`--lote tiene que terminar en "antes" o "despues" (recibido: ${LOTE})`);
 }
 const PUERTO = Number(arg('puerto', '4319'));
+/* Con `--spec` el runner sirve de banco de pruebas para CUALQUIER spec del
+   harness contra el arbol de trabajo: es lo que permite re-correr los gates de
+   las fases que un lote toca (A3, phase9-visual) sin pagar un compare de dos
+   refs. Por defecto corre el de Phase 4. */
+const SPEC = arg('spec', 'phase4-golden.spec.ts');
 
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
@@ -101,8 +109,11 @@ try {
         // El reloj congelado del harness: sin el, dos corridas del mismo lote
         // difieren en todo lo que muestre una hora.
         QA_FIXED_NOW: FIXED_NOW,
-        QA_SPEC: 'phase4-golden.spec.ts',
+        QA_SPEC: SPEC,
         QA_PHASE4_LOTE: LOTE,
+        // Varios specs del harness escriben diagnosticos y los exigen.
+        QA_ARTIFACT_DIR: join(REPO_ROOT, '.qa-lite', 'artifacts'),
+        QA_PHASE: LOTE,
         QA_SUPABASE_URL: status.apiUrl,
         QA_SUPABASE_SERVICE_ROLE: status.serviceRoleKey,
         QA_SUPABASE_ANON_KEY: status.anonKey,
