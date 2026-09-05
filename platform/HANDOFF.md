@@ -8,6 +8,113 @@
 
 ---
 
+## 5/sep/2026 — LIVE BUILD MODE · los tres defectos del Sales-Critical Smoke, cerrados
+
+Cambio de metodo operativo, decidido por Ricardo al abrir la sesion: **se
+trabaja sobre la aplicacion real**. Observacion → cambio chico → smoke →
+revision. El roadmap, las fases 0-10, los gates visuales y QA Lite siguen
+siendo documentacion y herramientas, pero **dejan de gobernar el orden diario
+de trabajo**. Los cuatro guardrails que si detienen una instruccion antes de
+ejecutarla: brand lock del manual DICO, seguridad/dinero/datos, riesgo
+funcional concreto y accesibilidad grave. QA proporcional: la suite completa
+se corre cuando el riesgo lo justifica, no por cada ajuste visual.
+
+Primer lote bajo ese metodo: los tres defectos reproducidos en
+`platform/SALES-CRITICAL-SMOKE-2026-09-04.md` (que entro al repo en esta
+sesion; estaba sin trackear).
+
+### Hecho
+
+**P0-1 · La configuracion del negocio era inalcanzable** — `01ebcea`.
+`src/modules/roles.js` + `src/pages/PlatformAdmin.jsx:626`.
+El efecto que corrige un tab invalido miraba SOLO la lista de modulos del
+rubro, y `config`/`cobros`/`usuarios` nunca fueron modulos —se abren desde el
+engranaje—: cualquier intento de entrar rebotaba a `products` en el mismo
+tick. Con eso quedaban inalcanzables horarios, direccion, delivery, marca,
+cuentas de pago, conectar MercadoPago y el equipo.
+La salida fue declarar los tres destinos en `roles.js` (`DESTINOS_DE_CONFIG` +
+`puedeAbrirDestino`) **con los roles que pueden abrirlos**, siguiendo a las
+policies de 0050: `settings` es de duenio y encargado, las credenciales de
+cobro y el equipo son del duenio. Se declaran ahi y no sueltos en el panel
+porque el guard tiene que poder preguntar si el destino es valido. El
+engranaje ademas dejo de dibujarse para quien no puede entrar.
+
+**P0-2 · Se podia cobrar mas que el saldo** — `9dbeb35`.
+`platform/migrations/0063_cobro_no_supera_el_saldo.sql` +
+`src/components/admin/platform/PantallaDeCobro.jsx` + `platformCaja.js`.
+Pedido de $29.000, cobro de $29.000, segundo cobro de $29.000 con otra clave:
+aceptado. No es doble click —la idempotencia por `client_request_id` si
+funciona—: es un importe mal tipeado que ninguna capa rechazaba.
+El tope va en `register_payment` porque la RPC es lo que cualquiera con sesion
+puede llamar por API; la pantalla lo avisa antes de mandar, pero eso es
+comodidad, no control. **El `for update` sobre la fila del pedido antes de
+leer el saldo no es adorno**: sin el, dos cajas cobrando la misma cuenta leen
+el mismo saldo y el sobrecobro vuelve por la ventana. Tolerancia de un
+centavo, porque el total puede venir de una suma redondeada.
+
+**P1 · Cualquier empleado editaba y borraba productos por API** — `ec8b464`.
+`platform/migrations/0064_productos_por_rol.sql`.
+Las policies de `products` venian de 0001/0002 y son por MEMBRESIA; la 0050
+puso roles a expenses, suppliers, sales, settings, staff, audit_log y
+cash_sessions, y `products` quedo afuera. El panel lo escondia, pero eso es
+navegacion, no seguridad. Ahora: **lee** cualquier miembro (el mozo necesita
+el catalogo para tomar el pedido), **escriben** duenio y encargado, **borra**
+el duenio. Mismo barrido previo de policies que 0050 y por la misma razon: las
+permisivas se combinan con OR, alcanza con que sobreviva una vieja por
+membresia para que el corte no sirva de nada.
+
+`scripts/platform-schema.json` subio `_migrations_through` a `"0064"` a mano:
+las dos migraciones tocan una funcion y policies, no columnas — es una de las
+dos salidas que el propio guard declara legitimas.
+
+### Verificado
+
+Todo contra la **base local de QA Lite** (Supabase local, 63 migraciones,
+seed determinista). **Nada de esto se aplico a `wwwzdgprsooyjgkuyoav`.**
+
+| Que | Como | Resultado |
+|---|---|---|
+| P0-1 | Navegador real, dev server 5273, sesion de duenio | Configuracion **abre**; Equipo **abre**; Cobros online **abre**. Las dos ultimas muestran "Cargando..." porque el stack local no sirve edge functions (`tenant-users`, `mp-status` dan 503) — no es del cambio |
+| P0-2 | Sonda contra la base, con 0063 aplicada | 1500 sobre 1000 → `monto_supera_el_saldo`; 600 → ok; 500 con saldo 400 → rechazado; 400 → ok; uno mas con saldo 0 → `pedido_ya_saldado`. Suma 1000 / total 1000 |
+| P0-2 | `probe-04-dinero.mjs` completo | El paso 6 pasa de $58.000 cobrados a **$29.000**; el arqueo esperado, de $78.000 a **$49.000** |
+| P1 | `probe-05-roles.mjs` + sonda con sesion real de `attendant` | update precio **0 filas** (antes 3); delete **0 filas**; insert **RECHAZADO 42501**; lee catalogo **3 filas** (tiene que poder). Con sesion de duenio, update/insert/delete siguen funcionando |
+| Regresion | `vitest run` completo | **1191/1191**, 86 archivos (6 tests nuevos: tope de cobro en la pantalla, destinos por rol) |
+| | eslint + tsc + vite build | verdes, 0 errores |
+
+### Pendiente inmediato
+
+1. **Aplicar 0063 y 0064 al edificio** (`wwwzdgprsooyjgkuyoav`). Estan solo en
+   la base local. Hasta que se apliquen, el sobrecobro y la escritura de
+   productos por cualquier empleado **siguen vivos en la base real**. Es
+   cambio de RLS y de la funcion de cobro sobre datos reales: queda a
+   decision de Ricardo, se puede hacer por MCP (`apply_migration`).
+2. **Que Ricardo mire P0-1 con sus ojos** en el panel. Bloqueado por Docker
+   (abajo).
+3. **Publicar** y pasar a trabajar desde su feedback visual directo, que es el
+   objetivo del modo. Mientras P0-2/P1 no esten aplicados en la base real,
+   publicar contra backend de testing/sandbox, no productivo.
+
+Lo que el smoke dejo abierto y **no** se toco en esta sesion: el pedido no se
+puede tomar desde el panel, el salon no toma comandas, la venta no descuenta
+stock, el libro de inventario y el numero de stock divergen, la merma acepta
+mas que el stock, sin facturacion electronica, el tenant nace con
+`plan_id = null`.
+
+### Bloqueado por Ricky
+
+- **Reiniciar Windows.** Docker Desktop no arranca: quedo huerfano el socket
+  `AppData\Local\Docker\run\sailor-ingest.sock` (del 3/9) y el arranque muere
+  en `initializing Ingest server ... The file cannot be accessed by the
+  system`. Sin Docker no hay Supabase local y no levanta el dev server. Se
+  probo todo lo que no requiere reinicio: matar los procesos de Docker,
+  `wsl --shutdown` (no habia distros corriendo), `Remove-Item`, `Move-Item`,
+  `File.Delete` de .NET y `fsutil reparsepoint delete` — los cuatro ultimos
+  dan **error 1920**. **NO usar "Reset to factory defaults"** del dialogo de
+  Docker: borra imagenes y volumenes y no hace falta.
+- **Decidir si se aplican 0063/0064 al edificio** (punto 1 de arriba).
+
+---
+
 ## 3/sep/2026 (b) — PHASE 3B CLOSED · GOLDEN SCREEN DESBLOQUEADA
 
 Se ejecutó el gate **A3**, que era lo único que separaba a Phase 3B de
