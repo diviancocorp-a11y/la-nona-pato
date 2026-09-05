@@ -83,11 +83,18 @@ seed determinista). **Nada de esto se aplico a `wwwzdgprsooyjgkuyoav`.**
 
 ### Pendiente inmediato
 
-1. **Aplicar 0063 y 0064 al edificio** (`wwwzdgprsooyjgkuyoav`). Estan solo en
-   la base local. Hasta que se apliquen, el sobrecobro y la escritura de
-   productos por cualquier empleado **siguen vivos en la base real**. Es
-   cambio de RLS y de la funcion de cobro sobre datos reales: queda a
-   decision de Ricardo, se puede hacer por MCP (`apply_migration`).
+1. ~~Aplicar 0063 y 0064 al edificio~~ — **HECHO el 5/9**, por Ricky desde el
+   editor SQL: el clasificador de permisos bloquea `apply_migration` sobre
+   produccion (mismo camino que 0060/0061 el 29/8). Verificado contra la base:
+   `register_payment` con UNA sola firma y el comentario de 0063, `anon` sin
+   execute y `authenticated` con execute; `products` con exactamente 4
+   policies —select por membresia, insert/update owner+manager, delete owner—
+   y ninguna vieja sobreviviendo al barrido; RLS activa; 66 productos, 3
+   pedidos, 0 pagos, sin danio; advisors de seguridad identicos a antes.
+   `get_catalog` es SECURITY DEFINER, asi que el catalogo publico no depende
+   de las policies que se cambiaron.
+   **Sigue sin aplicar la 0062**: los advisors muestran los dos overloads de
+   `sumar_staff` vivos.
 2. **Que Ricardo mire P0-1 con sus ojos** en el panel. Bloqueado por Docker
    (abajo).
 3. **Publicar** y pasar a trabajar desde su feedback visual directo, que es el
