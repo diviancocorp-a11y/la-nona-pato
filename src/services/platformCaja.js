@@ -23,6 +23,11 @@ const MENSAJES = {
   mesa_de_otro_negocio: 'Esa mesa no es de este negocio.',
   pedido_no_encontrado: 'No se encontró el pedido.',
   tipo_invalido: 'Tipo de propina inválido.',
+  // 0063: el tope de cobro vive en la RPC. Si llega hasta aca es porque el
+  // monto se paso por otro camino que la pantalla de cobro, o porque otra
+  // caja cobro el saldo en el medio.
+  monto_supera_el_saldo: 'No se puede cobrar más que lo que falta del pedido.',
+  pedido_ya_saldado: 'Ese pedido ya está pago.',
 };
 
 function traducir(msg) {

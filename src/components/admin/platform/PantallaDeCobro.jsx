@@ -92,7 +92,13 @@ export default function PantallaDeCobro({
     ? (Number(String(entregado).replace(',', '.')) || 0) - montoNum
     : null;
   const saldado = saldo !== null && saldo <= 0;
-  const puedeCobrar = !!metodo && montoNum > 0 && !enviando;
+  // Techo del cobro. El tope de verdad esta en `register_payment` (0063) —lo
+  // que se puede llamar por API es la RPC, no esta pantalla—; aca es para que
+  // el cajero vea el error ANTES de mandar, no despues. El centavo de
+  // tolerancia es el mismo de la funcion: el total puede venir de una suma
+  // redondeada y rechazar por $0,004 seria rechazar un cobro correcto.
+  const excedeSaldo = saldo !== null && montoNum > saldo + 0.01;
+  const puedeCobrar = !!metodo && montoNum > 0 && !excedeSaldo && !enviando;
 
   const confirmar = useCallback(async () => {
     if (!puedeCobrar) return;
@@ -267,8 +273,13 @@ export default function PantallaDeCobro({
                 style={input} inputMode="decimal" value={monto}
                 onChange={(e) => setMonto(e.target.value.replace(/[^\d.,]/g, ''))}
               />
-              <span style={{ display: 'block', marginTop: 5, fontSize: 12.5, color: 'var(--ag-ink-3, #666)' }}>
-                Viene con lo que falta. Poné menos para dividir la cuenta.
+              <span style={{
+                display: 'block', marginTop: 5, fontSize: 12.5,
+                color: excedeSaldo ? 'var(--ag-bad, #c62828)' : 'var(--ag-ink-3, #666)',
+              }}>
+                {excedeSaldo
+                  ? `No se puede cobrar más que lo que falta (${money(saldo)}).`
+                  : 'Viene con lo que falta. Poné menos para dividir la cuenta.'}
               </span>
             </label>
 

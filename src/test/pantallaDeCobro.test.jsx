@@ -149,6 +149,28 @@ describe('PantallaDeCobro — lo que puede salir mal se dice', () => {
     expect(await screen.findByText('El monto tiene que ser mayor a cero.')).toBeInTheDocument();
   });
 
+  // P0-2 del smoke del 4/9/2026: se pudo cobrar $58.000 sobre un pedido de
+  // $29.000. El tope de verdad esta en `register_payment` (0063); esto mide
+  // que la pantalla no lo deje ni intentar.
+  it('no deja cobrar mas que el saldo', async () => {
+    montar();
+    const monto = await screen.findByDisplayValue('6500');
+    fireEvent.click(screen.getByRole('button', { name: /Efectivo/ }));
+    fireEvent.change(monto, { target: { value: '9000' } });
+    expect(await screen.findByText(/No se puede cobrar más que lo que falta/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Cobrar \$/ }));
+    expect(caja.cobrar).not.toHaveBeenCalled();
+  });
+
+  it('cobra un parcial sin protestar', async () => {
+    montar();
+    const monto = await screen.findByDisplayValue('6500');
+    fireEvent.click(screen.getByRole('button', { name: /Efectivo/ }));
+    fireEvent.change(monto, { target: { value: '3000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Cobrar \$/ }));
+    await waitFor(() => expect(caja.cobrar).toHaveBeenCalledWith('t1', 'o1', 'm-efe', 3000));
+  });
+
   it('no cobra sin medio elegido', async () => {
     montar();
     await screen.findByDisplayValue('6500');
