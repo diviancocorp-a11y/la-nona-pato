@@ -65,7 +65,7 @@ import {
 import {
   modulosDe, terminologia, tieneModulo, usaContabilidadUsar,
 } from '../modules/registry';
-import { puedeVer, pantallaInicial } from '../modules/roles';
+import { puedeVer, pantallaInicial, puedeAbrirDestino } from '../modules/roles';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
 // diferencia es que se le inyecta con que guardar y que zonas apagar. Va lazy
@@ -621,8 +621,16 @@ export default function PlatformAdmin() {
   // en su caja, el mozo en sus mesas. Y si el tab en el que esta deja de estar
   // disponible —cambio de rol, negocio sin esa pantalla— se corrige solo en
   // vez de dejar el panel en blanco.
+  //
+  // `tabs` son SOLO los modulos del rubro. Configuracion, Cobros y Usuarios
+  // se abren desde el engranaje y nunca estuvieron ahi: mientras el guard
+  // miro unicamente esa lista, entrar a cualquiera de los tres rebotaba a
+  // `products` en el mismo tick y la configuracion del negocio era
+  // inalcanzable (P0-1). El permiso lo decide `puedeAbrirDestino`, que sigue
+  // a las policies de 0050 — no alcanza con que el destino exista.
   useEffect(() => {
-    if (!tabs.length || tabs.some(t => t.id === tab)) return;
+    if (!tabs.length) return;
+    if (tabs.some(t => t.id === tab) || puedeAbrirDestino(roles, tab)) return;
     setTab(pantallaInicial(roles, tabs) || tabs[0].id);
   }, [tabs, tab, roles]);
 
@@ -752,7 +760,7 @@ export default function PlatformAdmin() {
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
-            <button
+            {puedeAbrirDestino(roles, 'config') && <button
               type="button"
               className="ag-theme-toggle"
               onClick={() => setTab(tab === 'config' ? 'products' : 'config')}
@@ -763,7 +771,7 @@ export default function PlatformAdmin() {
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
-            </button>
+            </button>}
             <button
               type="button"
               className="ag-btn-mini"
@@ -995,8 +1003,8 @@ export default function PlatformAdmin() {
                     showToast={msg}
                     onSave={guardarSettings}
                     capacidades={CAPACIDADES_EDIFICIO}
-                    onAbrirUsuarios={() => setTab('usuarios')}
-                    onAbrirPasarelas={() => setTab('cobros')}
+                    onAbrirUsuarios={puedeAbrirDestino(roles, 'usuarios') ? () => setTab('usuarios') : null}
+                    onAbrirPasarelas={puedeAbrirDestino(roles, 'cobros') ? () => setTab('cobros') : null}
                     onBack={() => setTab('products')}
                   />
                 </Suspense>

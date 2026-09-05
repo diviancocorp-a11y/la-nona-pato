@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import {
   ROLES, ACCESO, accesoDe, accesoDeRoles, puedeVer, puedeEditar,
   pantallaInicial, rolesAsignables, etiquetaDeRol, vePrecios,
+  puedeAbrirDestino,
 } from '../modules/roles';
 
 const MODULOS_GASTRO = ['products', 'orders', 'mesas', 'caja', 'stock', 'finanzas', 'ventas', 'personal'];
@@ -169,5 +170,35 @@ describe('la cocina no ve importes', () => {
 
   it('sin roles no ve nada, tampoco importes', () => {
     expect(vePrecios([])).toBe(false);
+  });
+});
+
+// P0-1 del smoke del 4/9/2026: Configuracion, Cobros y Usuarios no son
+// modulos del rubro, y el panel rebotaba a `products` cualquier tab que no
+// estuviera en la lista de modulos. Sin estos destinos declarados, el
+// engranaje no abre nada.
+describe('los destinos que no son modulos', () => {
+  it('el duenio abre los tres', () => {
+    for (const d of ['config', 'cobros', 'usuarios']) {
+      expect(puedeAbrirDestino(['owner'], d), d).toBe(true);
+    }
+  });
+
+  it('el encargado configura el negocio, pero no toca cobros ni el equipo', () => {
+    expect(puedeAbrirDestino(['manager'], 'config')).toBe(true);
+    expect(puedeAbrirDestino(['manager'], 'cobros')).toBe(false);
+    expect(puedeAbrirDestino(['manager'], 'usuarios')).toBe(false);
+  });
+
+  it('quien atiende no entra a ninguno', () => {
+    for (const d of ['config', 'cobros', 'usuarios']) {
+      expect(puedeAbrirDestino(['attendant'], d), d).toBe(false);
+      expect(puedeAbrirDestino(['cashier'], d), d).toBe(false);
+    }
+  });
+
+  it('un modulo comun no es un destino suelto', () => {
+    expect(puedeAbrirDestino(['owner'], 'products')).toBe(false);
+    expect(puedeAbrirDestino(['owner'], undefined)).toBe(false);
   });
 });

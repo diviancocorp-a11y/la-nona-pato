@@ -146,6 +146,31 @@ export function accesoDeRoles(roles = [], moduloId) {
   }, NADA);
 }
 
+/**
+ * Los destinos que NO son modulos del rubro.
+ *
+ * Configuracion, Cobros Online y Usuarios se abren desde el engranaje, no
+ * desde la navegacion, asi que nunca estuvieron en la lista de modulos. El
+ * efecto del panel que corrige un tab invalido miraba SOLO esa lista: abrir
+ * cualquiera de los tres rebotaba a `products` en el mismo tick y la
+ * configuracion del negocio quedaba inalcanzable (P0-1 del smoke 4/9/2026).
+ *
+ * Los roles de cada uno acompanian a la policy que de verdad protege los
+ * datos: `settings` es de duenio y encargado (migracion 0050); las
+ * credenciales de cobro y el equipo son del duenio.
+ */
+export const DESTINOS_DE_CONFIG = {
+  config: ['owner', 'manager'],
+  cobros: ['owner'],
+  usuarios: ['owner'],
+};
+
+/** Si este destino suelto existe y esta persona puede abrirlo. */
+export function puedeAbrirDestino(roles, destinoId) {
+  const permitidos = DESTINOS_DE_CONFIG[destinoId];
+  return !!permitidos && (roles || []).some(r => permitidos.includes(r));
+}
+
 /** Si esta persona ve el modulo, en la medida que sea. */
 export function puedeVer(roles, moduloId) {
   return accesoDeRoles(roles, moduloId) !== NADA;
