@@ -34,6 +34,25 @@
   letter-spacing: -0.01em;
 }
 
+/* ── El saludo ──────────────────────────────────────────────────────────
+ * Es el segundo lugar del shell donde habla Butler, y por la misma razon que
+ * el encabezado de seccion: es lo unico editorial de la barra. Escala
+ * contenida —16px, no un titulo— porque comparte fila con los controles.
+ *
+ * El nombre lleva el oro. Es la regla de la marca aplicada tal cual: el oro
+ * es presencia, y de todo lo que hay en la barra la unica presencia es la
+ * persona que esta del otro lado. */
+.ag-root .ag-topbar-title.ag-saludo {
+  font-family: var(--ag-font-display);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.ag-root .ag-saludo-nombre {
+  color: var(--ag-c-terra);
+}
+
 /* Controles de la topbar: estructurales, no pastillas translucidas. */
 .ag-root .ag-topbar .ag-theme-toggle,
 .ag-root .ag-topbar .ag-btn-mini {

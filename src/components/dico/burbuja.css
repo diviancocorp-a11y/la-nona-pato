@@ -190,12 +190,15 @@
 }
 .dico-burbuja-accion:active { transform: translateY(1px); }
 
+/* SIGUIENTE ES UN BOTON, NO UN ENLACE GRIS. Sobre el papel crema del globo,
+   un gris subrayado no se leia: se le da la tinta del globo y su propio
+   contorno, el mismo trazo que el resto del dibujo. */
 .dico-burbuja-mas {
-  padding: 5px 10px;
-  color: var(--ag-ink-2, #6b7280);
+  padding: 5px 12px;
+  font-weight: 700;
+  color: var(--bu-tinta);
   background: transparent;
-  border: 0;
-  text-decoration: underline;
+  border: 2px solid var(--bu-tinta);
 }
 
 .dico-burbuja-cerrar {
@@ -318,21 +321,52 @@
   pointer-events: none;
 }
 
+/* LO QUE DICE DICO ES UNA CAPA, NO UNA FILA.
+ *
+ * Estaba en el flujo, asi que abrirlo bajaba la pantalla que hubiera debajo
+ * —el catalogo entero se corria— y despues volvia a subir al cerrarlo. Un
+ * aviso que re-maqueta la pantalla obliga a releer donde estaba todo cada vez
+ * que Dico abre la boca; y al estar al ras, tampoco se leia como algo que
+ * pasa POR ENCIMA de lo que estabas haciendo.
+ *
+ * Ahora sale del flujo en TODOS los chasis. El desktop ya lo hacia por su
+ * cuenta en `admin-sidebar.css` —esta es la misma decision, ahora tambien
+ * para la barra de arriba, que es de donde cuelga Dico bajo 769px—. La
+ * elevacion la pone la tarjeta (`mensaje.css`). */
 .dico-avisos-mensaje {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
-  width: min(100%, 430px);
-  margin-bottom: 5px;
+  width: max-content;
+  max-width: min(430px, calc(100vw - 20px));
 }
 
 .dico-avisos-mensaje .dico-burbuja {
   margin-left: 0;
 }
 
+/* El ancla del `position: absolute` es la presencia, que es de donde cuelga
+   visualmente el mensaje. Sin esto se posicionaria contra el chasis entero. */
+.dico-avisos {
+  position: relative;
+}
+
 @media (max-width: 520px) {
   .dico-avisos { padding-inline: 10px; }
-  .dico-avisos-mensaje { width: 100%; }
+  /* Pegado al borde izquierdo de la pantalla, no al de Dico: a 390px, colgar
+     una tarjeta de 360 desde la posicion del avatar la saca del viewport. */
+  .dico-avisos-mensaje {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 58px;
+    width: auto;
+    max-width: none;
+  }
   .dico-avisos .dico-burbuja {
     flex: 1 1 auto;
     min-width: 0;

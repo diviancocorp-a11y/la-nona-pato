@@ -18,10 +18,11 @@
   --ag-sidebar-riel: 64px;
   --ag-sidebar-abierta: 224px;
 
-  /* El personaje. Dos medidas declaradas juntas, igual que el riel: la
-     posicion de Dico no puede quedar dispersa en literales sueltos. */
+  /* El personaje. UNA sola medida: Dico mide lo mismo con el riel cerrado y
+     con la sidebar abierta. Hubo un tamanio expandido de 88px y se saco —ver
+     la regla de `:hover`—: al crecer arrastraba al contador y a la cara justo
+     cuando el mouse pasaba por al lado. */
   --ag-dico-riel: 60px;
-  --ag-dico-abierta: 88px;
 }
 
 /* Nombre accesible para lectores sin ocupar espacio. No existia una utilidad
@@ -70,6 +71,39 @@
     transition: width .18s var(--ag-ease);
   }
 
+  /* ── EN CLARO, EL RIEL ES CLARO ──────────────────────────────────────
+   * El chasis nacio oscuro en los dos temas —"la estructura lee como
+   * material, no como tarjeta", dice `admin-tokens.css`—. En la practica, en
+   * el tema claro deja una columna negra contra una pantalla blanca que se
+   * lee como un panel ajeno pegado al costado, no como parte del mismo
+   * producto.
+   *
+   * Se cambia SOLO la sidebar y solo en claro. Los tokens de tinta se
+   * redefinen aca adentro, asi que los items, el wordmark y todo lo que
+   * cuelga de `--ag-chassis-ink` siguen a esta superficie sin que ninguno
+   * tenga que enterarse. La trama `ms-trace` tambien se da vuelta: su tinta
+   * es blanca al 55% y sobre papel claro no existiria. */
+  .ag-theme-light .ag-sidebar {
+    --ag-chassis-ink: var(--ms-zinc-900);
+    --ag-chassis-ink-2: var(--ms-zinc-500);
+    --ms-trace-ink: rgba(9, 9, 11, 0.55);
+
+    background: var(--ag-bg-card);
+    border-right-color: var(--ag-line);
+  }
+
+  /* La sombra de la expansion tambien: una sombra negra al 32% sobre una
+     pantalla clara mancha en vez de elevar. */
+  .ag-theme-light .ag-sidebar:has(:focus-visible) {
+    box-shadow: 0 0 28px rgba(9, 9, 11, .14);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ag-theme-light .ag-sidebar:hover {
+      box-shadow: 0 0 28px rgba(9, 9, 11, .14);
+    }
+  }
+
   /* Foco de TECLADO. Va SUELTO, fuera de cualquier media query de puntero:
      quien navega con tabulador tiene que ver los rotulos en cualquier
      dispositivo.
@@ -80,13 +114,16 @@
      workspace. `:focus-visible` es justo la distincion que hace falta —el
      navegador solo lo marca cuando el foco vino del teclado—, asi que
      expande tabulando y no expande al clickear. */
+  /* DICO NO CRECE AL ABRIRSE EL RIEL.
+   *
+   * Crecia de 60 a 88 y con el se movia todo lo que le cuelga: el contador
+   * saltaba de esquina y la cara cambiaba de tamanio justo cuando el mouse
+   * pasaba por al lado. El tamanio del riel ya lee bien —esa es la medida
+   * elegida—, y mantenerlo fijo hace que el personaje sea lo unico quieto
+   * mientras la navegacion se abre. La sidebar sigue expandiendose igual:
+   * esto no le saca ninguna capacidad. */
   .ag-sidebar:has(:focus-visible) {
     --ag-sidebar-ancho: var(--ag-sidebar-abierta);
-    /* El personaje crece con el riel. Va DENTRO de esta regla y no en una
-       propia con el mismo selector: `navLateral.test.jsx` lee el primer
-       cuerpo que encuentra por selector, y un segundo bloque le esconderia
-       el ancho que ese contrato exige. */
-    --ag-dico-tamanio: var(--ag-dico-abierta);
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
 
@@ -95,7 +132,6 @@
   @media (hover: hover) and (pointer: fine) {
     .ag-sidebar:hover {
       --ag-sidebar-ancho: var(--ag-sidebar-abierta);
-      --ag-dico-tamanio: var(--ag-dico-abierta);
       box-shadow: 0 0 32px rgba(0, 0, 0, .32);
     }
   }
@@ -119,16 +155,14 @@
     /* Alto FIJO en los dos estados. Si creciera al revelar el wordmark, los
        iconos de abajo bajarian con el. Incluye el lugar del contador.
      *
-     * PASS 4 — 116. El bloque reserva su alto para el caso MAS GRANDE, que es
-     * Dico expandido: 88 del personaje + 12 de aire para el badge + 10 de
-     * padding + 6 de respiro = 116. PASS 3 habia necesitado 148 porque el
-     * contador era un control aparte DEBAJO del personaje y se caia encima de
-     * `.ag-sidebar-nav`, que le intercepta el pointer. Ahora el contador vive
-     * en la esquina de la cara y esos 32px vuelven al riel.
+     * 116 es el alto del bloque de marca y se queda como esta aunque el
+     * personaje ahora mida siempre 60: bajarlo subiria toda la navegacion, que
+     * es un cambio de layout que nadie pidio. El aire de mas ya existia en el
+     * estado colapsado, que era el 95% del tiempo.
      *
-     * Fijo en los DOS estados, no solo en el expandido: si creciera al
-     * expandirse, los iconos de navegacion bajarian con el y se rompe la
-     * propiedad que mide `dico-sidebar` en los seis anchos. */
+     * Fijo en los DOS estados: si creciera al expandirse, los iconos de
+     * navegacion bajarian con el y se rompe la propiedad que mide
+     * `dico-sidebar` en los seis anchos. */
     height: 116px;
     flex-shrink: 0;
     padding-top: 10px;
@@ -144,11 +178,9 @@
   .ag-sidebar-wordmark {
     align-self: start;
     margin-top: 18px;
-    /* Le deja lugar al personaje grande. Con Dico a 88 y centrado sobre el
-       riel de 64, su borde derecho cae en 76: doce pixeles DENTRO de esta
-       columna, que arranca en 64. Sin esto la cabeza le tapaba la D de DICO
-       —medido en la captura de 1440 expandida—. Doce de invasion mas ocho de
-       aire; no es un numero a ojo, sale de las dos medidas declaradas. */
+    /* Aire entre el personaje y el wordmark. Con Dico a 60 centrado sobre el
+       riel de 64 su borde derecho cae en 62, o sea que ya no invade esta
+       columna; los 20px quedan como separacion y no como correccion. */
     padding-left: 20px;
     font-family: var(--font-heading, var(--ag-font));
     font-weight: 800;
@@ -191,7 +223,10 @@
        lugar tiene reservado siempre. El resto —el arte, el badge— cuelga de
        estas dos y no repite ningun numero (ver `burbuja.css`). */
     --dico-cara: var(--ag-dico-tamanio);
-    --dico-cara-reserva: var(--ag-dico-abierta);
+    /* Una sola medida: el personaje ya no cambia de tamanio, asi que la caja
+       reserva exactamente lo que ocupa. Reservar los 88 del estado viejo
+       dejaba al contador flotando lejos de la cara. */
+    --dico-cara-reserva: var(--ag-dico-tamanio);
 
     justify-content: center;
     /* CLAVADA AL RIEL. Sin esto, el personaje de 88px estiraba a su propio

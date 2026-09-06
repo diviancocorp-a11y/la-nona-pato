@@ -28,15 +28,11 @@
  * El texto completo esta SIEMPRE en el DOM para el lector de pantalla: nadie
  * deberia esperar una animacion para enterarse de que le falta stock.
  */
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import './burbuja.css';
+import useTipeo from './useTipeo';
 
-const MS_POR_LETRA = 18;
 const R = 20;          // radio de las esquinas
-
-const menosMovimiento = () =>
-  typeof window !== 'undefined'
-  && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 /**
  * El contorno, en dos partes: el globo (que se rellena) y las rayitas de eco
@@ -116,10 +112,10 @@ export default function BurbujaDico({
   onCerrar,
   cola = 'izquierda',
 }) {
-  const [letras, setLetras] = useState(() => (menosMovimiento() ? texto.length : 0));
+  // El tipeo es el MISMO que el de la tarjeta de Dico 2D: una sola voz, una
+  // sola velocidad. Ver `useTipeo`.
+  const { letras, completo, saltear } = useTipeo(texto);
   const [caja, setCaja] = useState({ w: 0, h: 0 });
-  const completo = letras >= texto.length;
-  const timer = useRef(null);
   const contenido = useRef(null);
 
   // El marco se dibuja sobre el tamanio real del contenido. La copia completa
@@ -135,25 +131,6 @@ export default function BurbujaDico({
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (menosMovimiento()) {
-      setLetras(texto.length);
-      return undefined;
-    }
-    setLetras(0);
-    timer.current = setInterval(() => {
-      setLetras((n) => {
-        if (n >= texto.length) { clearInterval(timer.current); return n; }
-        return n + 1;
-      });
-    }, MS_POR_LETRA);
-    return () => clearInterval(timer.current);
-  }, [texto]);
-
-  const saltear = () => {
-    if (!completo) { clearInterval(timer.current); setLetras(texto.length); }
-  };
 
   const globo = contorno(Math.max(caja.w, 80), Math.max(caja.h, 40), cola);
   const tienePie = accion || restantes > 0 || onCerrar;
@@ -197,9 +174,12 @@ export default function BurbujaDico({
             {accion}
           </button>
         )}
+        {/* «Siguiente», no «hay 2 más»: lo que el usuario decide es avanzar,
+            no contar. El numero, cuando importa, lo lleva la tarjeta de Dico
+            2D en su cabecera. */}
         {restantes > 0 && (
           <button type="button" className="dico-burbuja-mas" onClick={onSiguiente}>
-            hay {restantes} más →
+            Siguiente
           </button>
         )}
         {onCerrar && (

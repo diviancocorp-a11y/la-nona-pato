@@ -100,7 +100,7 @@ describe('DicoPresence', () => {
     const { container, rerender } = render(React.createElement(DicoPresence, datos));
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(estadoDe(container)).toBe('native_notice');
-    expect(container.querySelector('.dico-burbuja')).toBeInTheDocument();
+    expect(container.querySelector('.dico-mensaje')).toBeInTheDocument();
 
     rerender(React.createElement(DicoPresence, { ...datos, intervencion }));
     expect(estadoDe(container)).toBe('physical_opening');

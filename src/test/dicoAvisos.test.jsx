@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -56,7 +58,7 @@ describe('DicoAvisos en el panel real', () => {
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(screen.getAllByText(/está sin precio/)).toHaveLength(3);
-    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
+    expect(container.querySelectorAll('.dico-mensaje-lectura')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Poner precio' }));
     expect(onIr).toHaveBeenCalledWith('products');
   });
@@ -68,11 +70,11 @@ describe('DicoAvisos en el panel real', () => {
 
     expect(container.querySelector('[data-dico-native="alert"]')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
-    fireEvent.click(screen.getByRole('button', { name: /hay 1 más/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
     // `sin-receta` es una sugerencia: la cara baja de `alert` a `curious`.
     expect(container.querySelector('[data-dico-native="curious"]')).toBeInTheDocument();
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
-    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
+    expect(container.querySelectorAll('.dico-mensaje-lectura')).toHaveLength(1);
   });
 
   it('permite omitir un aviso que ya resuelve otra escena', () => {
@@ -95,7 +97,7 @@ describe('DicoAvisos en el panel real', () => {
       .toHaveAttribute('data-dico-pulso', 'attention');
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
     expect(screen.getAllByText(/no tiene receta cargada/)).toHaveLength(3);
-    expect(container.querySelectorAll('.dico-burbuja-lectura')).toHaveLength(1);
+    expect(container.querySelectorAll('.dico-mensaje-lectura')).toHaveLength(1);
   });
 
   it('mantiene a Dico visible aunque no haya avisos', () => {
@@ -114,7 +116,7 @@ describe('DicoAvisos en el panel real', () => {
     expect(screen.queryByText(/está sin precio/)).not.toBeInTheDocument();
   });
 
-  it('renderiza el mensaje antes de Native y con cola centrada', () => {
+  it('el mensaje va antes de Native y es la tarjeta del sistema', () => {
     const { container } = renderAvisos({
       ...sano, productos: [prod({ price: 0 })],
     });
@@ -123,7 +125,9 @@ describe('DicoAvisos en el panel real', () => {
     const avisos = container.querySelector('.dico-avisos');
     expect(avisos.firstElementChild).toHaveClass('dico-avisos-mensaje');
     expect(avisos.lastElementChild).toHaveClass('dico-avisos-presencia');
-    expect(container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
+    // Dico 2D habla en tarjeta; el globo dibujado quedo para Physical.
+    expect(container.querySelector('.dico-mensaje')).not.toBeNull();
+    expect(container.querySelector('.dico-burbuja')).toBeNull();
     expect(container.querySelector('[data-dico-native]')).toBeInTheDocument();
   });
 
@@ -169,15 +173,15 @@ describe('DicoAvisos en el panel real', () => {
     // inyectado por props nunca se llamaria.
     const { container } = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
 
-    expect(container.querySelector('.dico-burbuja')).toBeNull();
+    expect(container.querySelector('.dico-mensaje')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
-    expect(container.querySelector('.dico-burbuja')).not.toBeNull();
+    expect(container.querySelector('.dico-mensaje')).not.toBeNull();
     expect(screen.getAllByText(/está sin precio/).length).toBeGreaterThan(0);
 
     // El mismo pixel lo cierra: es la misma intencion.
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar el mensaje de Dico' }));
-    expect(container.querySelector('.dico-burbuja')).toBeNull();
+    expect(container.querySelector('.dico-mensaje')).toBeNull();
 
     /* PASS 4 — SUPERSEDED. Hasta acá esto exigía lo contrario: que el contador
      * fuera un control APARTE y que no envolviera al personaje. Esa regla
@@ -199,17 +203,31 @@ describe('DicoAvisos en el panel real', () => {
     expect(container.querySelectorAll('.dico-avisos-presencia button')).toHaveLength(1);
   });
 
-  it('la cola del globo sale para el lado donde NO esta Dico', () => {
-    // Anclado arriba, el globo esta encima de Dico y la cola baja. Anclado
-    // al costado —Dico en la sidebar— una cola que baje apunta al vacio.
+  it('el mensaje declara de que chasis cuelga, y es una CAPA', () => {
+    // La tarjeta ya no cambia de forma segun donde viva Dico —eso lo hacia la
+    // cola del globo—, pero el contenedor sigue diciendo de donde cuelga: el
+    // CSS del chasis es quien sabe donde ubicarla.
     const arriba = renderAvisos({ ...sano, productos: [prod({ price: 0 })] });
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
-    expect(arriba.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-centro');
+    expect(arriba.container.querySelector('.dico-avisos-mensaje'))
+      .toHaveClass('dico-avisos-mensaje--arriba');
     arriba.unmount();
 
     const costado = renderAvisos({ ...sano, productos: [prod({ price: 0 })], anclaje: 'lateral' });
     fireEvent.click(screen.getByRole('button', { name: /ver lo que dice dico/i }));
-    expect(costado.container.querySelector('.dico-burbuja')).toHaveClass('dico-burbuja--cola-lateral');
+    expect(costado.container.querySelector('.dico-avisos-mensaje'))
+      .toHaveClass('dico-avisos-mensaje--lateral');
+  });
+
+  it('lo que dice Dico no empuja la pantalla que este abierta', () => {
+    // Estaba en el flujo: abrirlo bajaba el catalogo entero y cerrarlo lo
+    // volvia a subir. El contrato es que salga del flujo en todos los chasis.
+    const css = readFileSync(resolve('src/components/dico/burbuja.css'), 'utf8');
+    const cuerpo = css.slice(
+      css.indexOf('.dico-avisos-mensaje {'),
+      css.indexOf('}', css.indexOf('.dico-avisos-mensaje {')),
+    );
+    expect(cuerpo, 'el mensaje volvio al flujo').toMatch(/position:\s*(absolute|fixed)/);
   });
 
   it('hace la entrada una sola vez por dispositivo', () => {

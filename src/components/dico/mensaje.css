@@ -1,0 +1,189 @@
+/* La tarjeta de Dico 2D.
+ *
+ * Material del sistema: la superficie de tarjeta, el borde y el radio que ya
+ * usa el resto del panel. Lo unico que trae del globo es la VOZ —cuerpo de
+ * 14/20 y el cursor de consola vieja—; el envase es de la aplicacion.
+ *
+ * La ELEVACION es parte del contrato, no decoracion: la tarjeta tiene que
+ * leerse por ENCIMA de la pantalla abierta. Sin sombra queda al ras del
+ * catalogo y se siente como una fila mas de la lista. Quien la posiciona es
+ * su contenedor (`.dico-avisos-mensaje` en `admin-sidebar.css` / `burbuja.css`),
+ * que la saca del flujo; aca solo va como se ve.
+ */
+
+.dico-mensaje {
+  --dm-acento: var(--ag-volt, #2f7386);
+
+  position: relative;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px 14px;
+  background: var(--ag-bg-card, #fff);
+  border: 1px solid var(--ag-line, rgba(9, 9, 11, .12));
+  /* El acento del nivel entra por el canto izquierdo. Un borde entero de
+     color pintaria la tarjeta de rojo por un aviso de stock. */
+  border-left: 3px solid var(--dm-acento);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(9, 9, 11, .06),
+    0 18px 44px rgba(9, 9, 11, .26);
+  color: var(--ag-ink, #111);
+  font-family: var(--ag-font, system-ui, -apple-system, sans-serif);
+}
+
+.dico-mensaje--alerta     { --dm-acento: var(--ag-bad, #c0392b); }
+.dico-mensaje--aviso      { --dm-acento: var(--ag-warn, #b8801a); }
+.dico-mensaje--sugerencia { --dm-acento: var(--ag-accent-border, #8a6100); }
+
+.dico-mensaje-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* Butler y oro: el mismo par que titula el shell. Es lo que dice "esto lo
+   dice Dico" ahora que el envase ya no lo grita. */
+.dico-mensaje-firma {
+  font-family: var(--ag-font-display, var(--ag-font));
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ag-accent-border, #8a6100);
+  letter-spacing: .01em;
+}
+
+.dico-mensaje-paso {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ag-ink-3, #6b7280);
+}
+
+.dico-mensaje-cerrar {
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ag-ink-2, #4b5563);
+  background: var(--ag-bg-soft, rgba(9, 9, 11, .05));
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.dico-mensaje-cerrar:hover { color: var(--ag-ink, #111); }
+
+/* El cuerpo es un boton porque tocarlo completa el tipeo, igual que en el
+   globo. Se ve como texto: nada de esto debe leerse como un control. */
+.dico-mensaje-cuerpo {
+  position: relative;
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  /* 20px EXACTOS y no 1.45, por la misma razon que en el globo: el sobrante
+     fraccionario se acumula linea a linea y deja al pie en una `y` con
+     decimales, que es lo que hacia no determinista al gate de pixeles. */
+  line-height: 20px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.dico-mensaje-reserva,
+.dico-mensaje-texto {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* Participa del layout, nunca de la pintura ni del arbol de accesibilidad. */
+.dico-mensaje-reserva { visibility: hidden; }
+
+.dico-mensaje-cursor-reserva {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+}
+
+.dico-mensaje-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 2px;
+  margin-left: 2px;
+  vertical-align: baseline;
+  background: currentColor;
+  animation: dico-mensaje-cursor .5s steps(1, end) infinite;
+}
+@keyframes dico-mensaje-cursor {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.dico-mensaje-lectura {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dico-mensaje-pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dico-mensaje-accion,
+.dico-mensaje-siguiente {
+  min-height: 34px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* La accion es la del sistema: solido de acento con tinta oscura encima. */
+.dico-mensaje-accion {
+  color: #1a1a1a;
+  background: var(--ag-accent, #e0ac3c);
+  border: 0;
+}
+.dico-mensaje-accion:active { transform: translateY(1px); }
+
+/* SIGUIENTE ES UN BOTON, NO UN ENLACE GRIS.
+ *
+ * Era «hay 1 más →» en gris claro sobre papel claro: no se leia. Ahora lleva
+ * la tinta del panel sobre la superficie suave y su propio borde, que es lo
+ * que lo hace visible en los dos temas sin competir con la accion. */
+.dico-mensaje-siguiente {
+  color: var(--ag-ink, #111);
+  background: var(--ag-bg-soft, rgba(9, 9, 11, .05));
+  border: 1px solid var(--ag-line, rgba(9, 9, 11, .18));
+}
+.dico-mensaje-siguiente:hover { background: var(--ag-surface-2, rgba(9, 9, 11, .09)); }
+
+.dico-mensaje-accion:focus-visible,
+.dico-mensaje-siguiente:focus-visible,
+.dico-mensaje-cerrar:focus-visible,
+.dico-mensaje-cuerpo:focus-visible {
+  outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dico-mensaje-cursor { animation: none; }
+}

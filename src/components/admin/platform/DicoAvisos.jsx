@@ -36,7 +36,7 @@ import { useEffect, useRef, useState } from 'react';
 import { avisosDe } from '../../../modules/dico/reglas';
 import { oportunidadesDe } from '../../../modules/dico/oportunidades';
 import DicoNative from '../../dico/DicoNative';
-import BurbujaDico from '../../dico/BurbujaDico';
+import MensajeDico from '../../dico/MensajeDico';
 
 /**
  * Los tres niveles son una escala de gravedad (alerta > aviso > sugerencia) y
@@ -174,15 +174,25 @@ export default function DicoAvisos({
 
   return (
     <div ref={raiz} className={`dico-avisos${abierto ? ' dico-avisos--abierto' : ''}`}>
+      {/* DICO 2D HABLA EN TARJETA, NO EN GLOBO.
+          El globo dibujado quedo para Physical, que es un personaje presente
+          en la escena y tiene a donde apuntar con la cola. Aca el que habla es
+          un avatar de 60px clavado en el riel: la cola peleaba con su posicion
+          y el papel crema no pertenecia a ninguna superficie del panel. Lo que
+          se conserva es la VOZ —la letra y el tipeo—, que es lo que hace que
+          se sienta Dico. Ver `MensajeDico`.
+          `anclaje` ya no cambia el componente: la capa la ubica el CSS del
+          chasis, que es quien sabe donde vive Dico. */}
       {abierto && actual && (
-        <div className="dico-avisos-mensaje">
-          <BurbujaDico
+        <div className={`dico-avisos-mensaje dico-avisos-mensaje--${anclaje}`}>
+          <MensajeDico
             key={`${firma}:${indice}`}
             texto={`${actual.titulo}. ${actual.detalle}`}
             nivel={actual.nivel}
-            cola={anclaje === 'lateral' ? 'lateral' : 'centro'}
             accion={actual.ir?.texto}
             onAccion={actual.ir ? () => onIr?.(actual.ir.tab) : undefined}
+            indice={indice}
+            total={avisos.length}
             restantes={avisos.length - indice - 1}
             onSiguiente={() => setPagina({ firma, indice: indice + 1 })}
             onCerrar={onCerrar}

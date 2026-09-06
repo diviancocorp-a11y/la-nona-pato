@@ -66,6 +66,7 @@ import {
   modulosDe, terminologia, tieneModulo, usaContabilidadUsar,
 } from '../modules/registry';
 import { puedeVer, pantallaInicial, puedeAbrirDestino } from '../modules/roles';
+import { saludoDe, nombreDe } from '../modules/saludo';
 
 // Settings es el componente del admin legacy, reusado tal cual: la unica
 // diferencia es que se le inyecta con que guardar y que zonas apagar. Va lazy
@@ -675,6 +676,8 @@ export default function PlatformAdmin() {
     );
   }
 
+  const saludo = saludoDe();
+  const saludoNombre = nombreDe(session);
   const openCount = orders.filter(o => OPEN_ORDER_STATUSES.includes(o.status)).length;
   const themeClass = theme === 'dark' ? 'ag-theme-dark' : 'ag-theme-light';
 
@@ -741,7 +744,17 @@ export default function PlatformAdmin() {
         {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}
 
         <header className="ag-topbar ms-trace">
-          <div className="ag-topbar-title" style={{ flex: 1, textAlign: 'left' }}>{tenant?.name}</div>
+          {/* SALUDO, NO ROTULO. Ahi decia el nombre del negocio: un dato que
+              el duenio ya sabe, porque esta parado adentro. El saludo sigue a
+              la hora y el nombre va en el acento de la marca — es lo unico
+              que ese lugar puede decir que el usuario no sepa ya.
+              Si no hay nombre no se inventa uno: cae al nombre del negocio,
+              que es lo que habia antes. */}
+          <div className="ag-topbar-title ag-saludo" style={{ flex: 1, textAlign: 'left' }}>
+            {saludoNombre
+              ? <>{saludo} <span className="ag-saludo-nombre">{saludoNombre}</span></>
+              : tenant?.name}
+          </div>
           <div className="ag-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {/* PASS 1 — Dico 2D vive en la BARRA en mobile.
                 Antes se montaba en `.ag-dico-stack`, en el flujo del main: a
