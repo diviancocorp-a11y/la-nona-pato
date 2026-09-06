@@ -25,6 +25,7 @@ import DicoPresence from '../components/dico/DicoPresence';
 import AdminPushBanner from '../components/admin/shared/AdminPushBanner';
 import NavInferior from '../components/admin/platform/NavInferior';
 import NavLateral from '../components/admin/platform/NavLateral';
+import { controlesDeSesion, PieDeSesion, MenuDeSesion } from '../components/admin/platform/ControlesDeSesion';
 import useMediaQuery from '../lib/useMediaQuery';
 import { intervencionDe, sigueVigente } from '../modules/dico/intervenciones';
 import {
@@ -676,6 +677,18 @@ export default function PlatformAdmin() {
     );
   }
 
+  // Configuracion, tema y salir. UNA fuente para los dos chasis: al pie del
+  // riel en desktop, adentro de un solo boton en mobile.
+  const controles = controlesDeSesion({
+    tema: theme,
+    onTema: toggleTheme,
+    onConfig: puedeAbrirDestino(roles, 'config')
+      ? () => setTab(tab === 'config' ? 'products' : 'config')
+      : null,
+    onSalir: doLogout,
+    salirTitulo: `${session?.user?.email || ''}${role ? ` · ${role === 'owner' ? 'Dueño' : 'Staff'}` : ''}`,
+  });
+
   const saludo = saludoDe();
   const saludoNombre = nombreDe(session);
   const openCount = orders.filter(o => OPEN_ORDER_STATUSES.includes(o.status)).length;
@@ -765,34 +778,9 @@ export default function PlatformAdmin() {
                 arrastraba el Slot a la barra, que a 390 comprimia la burbuja
                 de intervencion a 95px. */}
             {!esDesktop && <div className="ag-topbar-dico" ref={setHuecoDico} />}
-            <button
-              type="button"
-              className="ag-theme-toggle"
-              onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Cambiar a claro' : 'Cambiar a oscuro'}
-            >
-              {theme === 'dark' ? '☀' : '☾'}
-            </button>
-            {puedeAbrirDestino(roles, 'config') && <button
-              type="button"
-              className="ag-theme-toggle"
-              onClick={() => setTab(tab === 'config' ? 'products' : 'config')}
-              aria-label="Configuración"
-              title="Configuración del negocio"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>}
-            <button
-              type="button"
-              className="ag-btn-mini"
-              onClick={doLogout}
-              title={`${session?.user?.email || ''}${role ? ` · ${role === 'owner' ? 'Dueño' : 'Staff'}` : ''}`}
-            >
-              Salir
-            </button>
+            {/* En desktop los tres controles viven al pie del riel; aca solo
+                quedan en mobile, donde no hay riel, y en un boton unico. */}
+            {!esDesktop && <MenuDeSesion controles={controles} />}
           </div>
         </header>
 
@@ -1038,6 +1026,7 @@ export default function PlatformAdmin() {
           onTab={setTab}
           openCount={openCount}
           presencia={esDesktop ? presenciaDico : null}
+          pie={esDesktop ? <PieDeSesion controles={controles} /> : null}
         />
         <NavInferior tabs={tabs} tab={tab} onTab={setTab} openCount={openCount} />
       </div>

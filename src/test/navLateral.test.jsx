@@ -172,24 +172,46 @@ describe('NavLateral — contrato de layout', () => {
       .not.toContain(':focus-within');
   });
 
-  it('DICO NUNCA LE SACA CAPACIDADES A LA NAVEGACION', () => {
-    // La regla contractual: la presencia se adapta a la interfaz, no al
-    // reves. Hubo una version donde la sidebar dejaba de expandirse y
-    // apagaba los rotulos mientras Physical estaba afuera o el aviso
-    // abierto, para evitar que se pisaran. Eso es la interfaz perdiendo
-    // capacidad por culpa de Dico.
+  it('mientras Dico habla, el riel se queda QUIETO y colapsado', () => {
+    // SUPERSEDED — hasta el 6/9/2026 esto exigia lo contrario: que ninguna
+    // regla condicionada al estado de Dico tocara el ancho de la sidebar ni
+    // la opacidad de sus rotulos ("Dico nunca le saca capacidades a la
+    // navegacion"). La regla nacio contra una version donde la sidebar se
+    // apagaba mientras Physical estaba afuera.
     //
-    // Se mira que NINGUNA regla condicionada al estado de Dico toque el
-    // ancho de la sidebar ni la opacidad de sus rotulos.
+    // Lo que la tiro abajo se ve usando el panel: tocar a Dico deja el
+    // puntero sobre la sidebar, asi que se expande; ir hacia el mensaje saca
+    // el puntero y la colapsa, y con ella se corre el mensaje, que cuelga de
+    // su ancho. Volver a rozarla lo empuja de nuevo. El texto se mueve
+    // mientras lo estas leyendo.
+    //
+    // La decision de Ricardo es que con el mensaje abierto el riel quede
+    // quieto hasta que el usuario toque la accion o lo cierre. Lo que se
+    // sigue exigiendo es lo que aquella regla protegia de verdad: que la
+    // navegacion NO desaparezca. El riel se queda en su ancho —nunca en 0 ni
+    // oculto— y sus items siguen recibiendo el click.
     const bloques = sidebarCss.split('}');
-    const culpables = bloques.filter((bloque) => {
+    const porDico = bloques.filter(b => (b.split('{')[0] || '').includes('.dico-avisos--abierto'));
+    expect(porDico.length, 'no existe la regla que congela el riel').toBeGreaterThan(0);
+
+    for (const bloque of porDico) {
       const selector = bloque.split('{')[0] || '';
       const cuerpo = bloque.split('{')[1] || '';
-      const miraADico = selector.includes(':has(.dico') || selector.includes(':has(.ag-dico');
-      if (!miraADico) return false;
-      return /(^|\s)(width|opacity)\s*:/.test(cuerpo);
-    });
-    expect(culpables, `reglas que recortan la navegacion por Dico: ${culpables.join(' | ')}`).toEqual([]);
+      // Nunca se apaga ni se esconde el riel entero.
+      expect(cuerpo, `${selector} esconde la sidebar`).not.toMatch(/display:\s*none/);
+      expect(cuerpo, `${selector} deja la sidebar sin ancho`).not.toMatch(/width:\s*0/);
+      // Si toca el ancho, es para dejarlo en el RIEL, que es el estado
+      // navegable de siempre.
+      if (/--ag-sidebar-ancho\s*:/.test(cuerpo)) {
+        expect(cuerpo, `${selector} congela la sidebar en un ancho que no es el riel`)
+          .toContain('--ag-sidebar-ancho: var(--ag-sidebar-riel)');
+      }
+      // Y lo que se apaga son rotulos, nunca los items que se clickean.
+      if (/pointer-events\s*:\s*none/.test(cuerpo)) {
+        expect(selector, `${selector} apaga el click de la navegacion`)
+          .not.toMatch(/\.ag-sidebar-item(\s|,|$)/);
+      }
+    }
   });
 
   it('la posicion de Dico deriva del ancho REAL de la sidebar', () => {

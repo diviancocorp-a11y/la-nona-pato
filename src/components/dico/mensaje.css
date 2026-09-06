@@ -30,8 +30,15 @@
   font-family: var(--ag-font, system-ui, -apple-system, sans-serif);
 }
 
+/* El AVISO es azul volt, no ambar.
+ *
+ * Con el ambar habia dos amarillos discutiendo en la misma tarjeta —el acento
+ * del nivel y el boton de accion— y ninguno de los dos significaba nada
+ * distinto del otro. Volt es, en el sistema, "actividad interna del sistema,
+ * nunca protagonista": es exactamente lo que es un aviso. El oro queda para
+ * la accion, que es su unico trabajo. */
 .dico-mensaje--alerta     { --dm-acento: var(--ag-bad, #c0392b); }
-.dico-mensaje--aviso      { --dm-acento: var(--ag-warn, #b8801a); }
+.dico-mensaje--aviso      { --dm-acento: var(--ag-volt, #1565C0); }
 .dico-mensaje--sugerencia { --dm-acento: var(--ag-accent-border, #8a6100); }
 
 .dico-mensaje-cabecera {

@@ -228,6 +228,14 @@ describe('DicoAvisos en el panel real', () => {
       css.indexOf('}', css.indexOf('.dico-avisos-mensaje {')),
     );
     expect(cuerpo, 'el mensaje volvio al flujo').toMatch(/position:\s*(absolute|fixed)/);
+
+    // Y el shell tampoco lo empuja por atras: hubo una regla que le metia
+    // `padding-top: 148px` a `.ag-main` —con transicion— mientras habia un
+    // mensaje abierto. El fondo tiene que quedarse quieto.
+    const shell = readFileSync(resolve('src/styles/admin-shell.css'), 'utf8');
+    const reglas = shell.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(reglas, 'el shell volvio a empujar .ag-main cuando Dico habla')
+      .not.toMatch(/dico-avisos-mensaje\)\s*\.ag-main/);
   });
 
   it('hace la entrada una sola vez por dispositivo', () => {

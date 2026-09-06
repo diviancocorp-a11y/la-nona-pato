@@ -31,8 +31,9 @@ import { useId } from 'react';
  * @param {(id:string)=>void} props.onTab
  * @param {number} [props.openCount]  badge de pedidos en curso
  * @param {import('react').ReactNode} [props.presencia]  el bloque de Dico
+ * @param {import('react').ReactNode} [props.pie]  configuracion, tema y salir
  */
-export default function NavLateral({ tabs, tab, onTab, openCount = 0, presencia = null }) {
+export default function NavLateral({ tabs, tab, onTab, openCount = 0, presencia = null, pie = null }) {
   const tituloId = useId();
 
   // `ms-trace` (PASS 2): la MISMA trama diagonal de la topbar y del bottom
@@ -83,6 +84,11 @@ export default function NavLateral({ tabs, tab, onTab, openCount = 0, presencia 
           })}
         </ul>
       </nav>
+
+      {/* Configuracion, tema y salir. Estaban sueltos en la barra de arriba,
+          donde a 375px peleaban por la fila con el saludo y con Dico. Van al
+          PIE porque no son navegacion: no llevan a una pantalla de trabajo. */}
+      {pie}
     </aside>
   );
 }

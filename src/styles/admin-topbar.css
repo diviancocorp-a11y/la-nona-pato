@@ -341,3 +341,67 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-mt, .ag-mt-top, .ag-theme-toggle-inner, .ag-pm-panel, .ag-pm-avatars { animation: none; transition: none; }
 }
+
+/* ── El menu de sesion en mobile (6/9/2026) ─────────────────────────────
+ * Los tres controles —configuracion, tema y salir— se fueron al pie del riel
+ * en desktop. A 375px no hay riel, y los tres sueltos en la barra peleaban
+ * por la fila con el saludo y con Dico: el saludo se cortaba en "Buenas
+ * noches O…". Queda UN boton, el engranaje, y los tres adentro.
+ */
+.ag-sesion {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ag-sesion .ag-nav-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.ag-sesion-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--ag-z-popover);
+  min-width: 208px;
+  padding: 6px;
+  background: var(--ag-bg-card);
+  border: 1px solid var(--ag-line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, .06), 0 16px 40px rgba(9, 9, 11, .26);
+}
+
+.ag-sesion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* 44 de alto: es el minimo tactil y esto se usa con el pulgar. */
+  min-height: 44px;
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ag-ink);
+  font-family: var(--ag-font);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ag-sesion-item:hover { background: var(--ag-bg-soft); }
+
+.ag-sesion-item:focus-visible {
+  outline: 2px solid var(--ds-focus-ring, #e0ac3c);
+  outline-offset: -2px;
+}
+
+.ag-sesion-item .ag-nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--ag-ink-2);
+}

@@ -306,29 +306,22 @@
  * arriba a la derecha de la barra, lo que queda arriba de el es el borde de la
  * pantalla: el globo cuelga inmediatamente debajo de la barra y su cola apunta
  * al personaje, que es lo que hace legible "Dico tiene algo que decir". */
-/* PASS 1 — un globo abierto en la sidebar EMPUJA el contenido, no lo tapa.
+/* ABRIR UN AVISO NO MUEVE LA PANTALLA. NUNCA.
  *
- * Al bajar las oportunidades la lista subio ~150px y quedo debajo del globo
- * de la sidebar: Playwright midio que `.dico-burbuja-texto` interceptaba el
- * pointer del boton "Mostrar" de la primera fila — un aviso que sale solo
- * inhabilitando un control.
+ * Aca habia lo contrario: con un mensaje de Dico abierto, `.ag-main` recibia
+ * `padding-top: 148px` con transicion, o sea que el catalogo entero bajaba y
+ * volvia a subir al cerrarlo. Venia de B3 —"abrir un aviso mueve el contenido
+ * de forma deliberada"— y de un problema real: el cuerpo del globo es un
+ * boton y le interceptaba el click a la primera fila de la lista.
  *
- * `pointer-events: none` se probo y no alcanza: el cuerpo del globo es un
- * boton (revela el texto completo), asi que reactivarlo vuelve a interceptar.
- * Esto es ademas lo que B3 pedia con todas las letras —"abrir un aviso mueve
- * el contenido de forma deliberada"—, que en el stack se cumplia por estar en
- * flujo y en la sidebar se habia perdido al pasar el globo a `fixed`.
+ * Esa solucion costaba mas de lo que arreglaba: la pantalla se re-maquetaba
+ * cada vez que Dico abria la boca y el fondo quedaba en movimiento mientras
+ * se lee el mensaje. El problema que resolvia se resuelve solo con lo que la
+ * tarjeta ya hace: se cierra al tocar afuera, asi que lo de abajo vuelve a
+ * estar disponible con el mismo gesto con que se lo iba a usar.
  *
- * 148px = los 64 del `top` del globo mas su alto tipico, redondeado hacia
- * arriba. Solo se aplica mientras hay uno abierto.
- */
-@media (min-width: 769px) {
-  .ag-root:has(.ag-sidebar .dico-avisos-mensaje) .ag-main,
-  .ag-root:has(.ag-sidebar .dico-intervencion-mensaje) .ag-main {
-    padding-top: 148px;
-    transition: padding-top var(--ag-t-med) var(--ag-ease);
-  }
-}
+ * (Decision de Ricardo, 6/9/2026: "el fondo debe estar inmovil, es
+ * innegociable".) */
 
 /* El hueco en la barra. Reserva su lugar aunque Native todavia no haya
    montado, para que los controles de la derecha no salten. */

@@ -55,7 +55,8 @@
 
 /* El nivel tine la trama, no el papel ni el texto. */
 .dico-burbuja--alerta     { --bu-acento: #c0392b; }
-.dico-burbuja--aviso      { --bu-acento: #b8801a; }
+/* Azul volt, no ambar: en el globo el ambar competia con el CTA dorado. */
+.dico-burbuja--aviso      { --bu-acento: #1565C0; }
 .dico-burbuja--sugerencia { --bu-acento: #2f7386; }
 
 .dico-burbuja-contenido {

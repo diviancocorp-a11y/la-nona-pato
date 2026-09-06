@@ -188,10 +188,18 @@ body[data-ui-owner="admin"],
   --ag-z-toast: 1000;
   --ag-z-tooltip: 1100;
 
+  /* El alto de la barra de arriba. Es una MEDIDA, no un ajuste: la sidebar
+     arranca justo debajo y el mensaje de Dico se ubica a partir de ella. Vivia
+     como el literal 57 repetido en dos comentarios de dos hojas distintas. */
+  --ag-topbar-alto: 57px;
+
   /* Alias de compatibilidad. Los consumen hojas que todavia no se
      migraron; apuntan a las capas de arriba para que no haya dos
      verdades. No usar en codigo nuevo. */
-  --ag-z-topbar: var(--ag-z-sticky);
+  /* La barra va POR ENCIMA del riel. Compartian capa, y como la sidebar se
+     pinta despues en el DOM, ganaba ella: expandida le tapaba el saludo. La
+     barra es el chrome de todo el ancho; el riel cuelga debajo. */
+  --ag-z-topbar: 6;
   --ag-z-nav: var(--ag-z-sticky);
   --ag-z-status: 6;
   --ag-z-overlay: 100;

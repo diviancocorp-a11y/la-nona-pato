@@ -58,7 +58,11 @@
     --ag-dico-tamanio: var(--ag-dico-riel);
 
     position: fixed;
-    inset: 0 auto 0 0;
+    /* ARRANCA DEBAJO DE LA BARRA. Antes ocupaba desde el borde de arriba y,
+       al compartir capa con la topbar, la tapaba: expandida se comia el
+       saludo. Ahora la barra es el chrome de todo el ancho y el riel cuelga
+       de ella; de paso, Dico deja de pelear por esos primeros pixeles. */
+    inset: var(--ag-topbar-alto) auto 0 0;
     z-index: var(--ag-z-nav);
     display: flex;
     flex-direction: column;
@@ -136,6 +140,33 @@
     }
   }
 
+  /* ── MIENTRAS DICO HABLA, EL RIEL NO SE MUEVE ────────────────────────
+   * Tocar a Dico deja el puntero sobre la sidebar, asi que se expandia; al
+   * ir hacia el mensaje el puntero salia y se colapsaba, y con ella se
+   * corria el mensaje, que cuelga de su ancho. Volver a rozarla lo empujaba
+   * de nuevo. Leer algo que se mueve mientras lo leiste es el defecto.
+   *
+   * Con el mensaje abierto el riel queda quieto y colapsado hasta que el
+   * usuario toque la accion o lo cierre. Va DESPUES de las reglas de hover y
+   * foco para ganarles por orden con la misma especificidad.
+   *
+   * ESTO REVIERTE UNA REGLA ANTERIOR —"Dico nunca le saca capacidades a la
+   * navegacion"— y es una decision explicita de Ricardo (6/9/2026). La
+   * navegacion no se pierde: los iconos siguen ahi y siguen siendo
+   * clickeables; lo que no aparece son los rotulos, mientras hay un mensaje
+   * abierto y solo hasta que se cierre. */
+  .ag-sidebar:has(.dico-avisos--abierto),
+  .ag-sidebar:has(.dico-avisos--abierto):hover,
+  .ag-sidebar:has(.dico-avisos--abierto):has(:focus-visible) {
+    --ag-sidebar-ancho: var(--ag-sidebar-riel);
+    box-shadow: none;
+  }
+
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-label,
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-wordmark {
+    opacity: 0;
+  }
+
   /* El workspace se corre SOLO el riel, nunca el ancho expandido.
    *
    * VA SOBRE LA CLASE, NO SOBRE `.ag-root`. Esta hoja es global una vez
@@ -144,6 +175,15 @@
    * y les escondia la nav inferior, dejandolos sin navegacion. */
   .ag-root--con-sidebar {
     padding-left: var(--ag-sidebar-riel);
+  }
+
+  /* LA BARRA CRUZA DE PUNTA A PUNTA. El padding de arriba corre TODO el
+     shell, tambien la barra, que quedaba cortada a la altura del riel como
+     si fuera una pieza mas del workspace. Se le devuelve el ancho completo:
+     la barra es el chrome de toda la pantalla y el riel cuelga debajo. */
+  .ag-root--con-sidebar > .ag-topbar {
+    margin-left: calc(-1 * var(--ag-sidebar-riel));
+    width: calc(100% + var(--ag-sidebar-riel));
   }
 
   /* Arriba del todo. La altura es FIJA en los dos estados: si creciera al
@@ -165,7 +205,7 @@
      * `dico-sidebar` en los seis anchos. */
     height: 116px;
     flex-shrink: 0;
-    padding-top: 10px;
+    padding-top: 14px;
   }
 
   .ag-sidebar-presencia {
@@ -352,11 +392,9 @@
        Solo se mueve en X — el `top` es fijo, asi que no hay salto vertical. */
     left: var(--ag-sidebar-ancho);
     transition: left .18s var(--ag-ease);
-    /* Debajo de la topbar, no encima: la topbar es chrome persistente y el
-       globo taparia el nombre del negocio. Medida: la barra mide 57px.
-       Queda igual "a la derecha y un poco mas abajo" que Dico, que arranca
-       en y=18, y la cola lateral cae a la altura del bloque de marca. */
-    top: 64px;
+    /* Debajo de la barra, nunca encima: es chrome persistente y el mensaje
+       taparia el saludo. Sale de la medida declarada, no de un literal. */
+    top: calc(var(--ag-topbar-alto) + 7px);
     z-index: calc(var(--ag-z-nav) + 2);
   }
 
@@ -474,6 +512,31 @@
     font-weight: 700;
     line-height: 1;
   }
+
+  /* ── El pie: configuracion, tema y salir ─────────────────────────────
+   * No es navegacion —no llevan a una pantalla de trabajo—, asi que va
+   * separado de la lista y pegado abajo. Reusa `.ag-sidebar-item`, que ya
+   * trae la grilla de dos columnas, el target de 44 y el comportamiento del
+   * rotulo: si esto tuviera estilo propio, el pie y la nav se irian
+   * separando con cada cambio. */
+  .ag-sidebar-pie {
+    margin-top: auto;
+    padding: 8px 0 10px;
+    border-top: 1px solid var(--ms-zinc-800);
+    flex-shrink: 0;
+  }
+
+  .ag-theme-light .ag-sidebar-pie { border-top-color: var(--ag-line); }
+
+  /* LOS TRES ICONOS SE VEN SIEMPRE.
+   *
+   * El primer intento escondia tema y salir en el riel colapsado y los sacaba
+   * recien al expandirse. No funciona: el item sigue ocupando su fila, asi
+   * que abajo del engranaje quedaban dos huecos vacios —el espacio se ve
+   * igual—, y ademas dos controles invisibles que aparecen de la nada al
+   * rozar el borde. Se ve el icono siempre, como en la navegacion de arriba;
+   * lo que aparece al expandir es el ROTULO que lo explica, que es
+   * exactamente lo que hace el resto del riel. */
 
   /* Un solo chasis a la vez. La nav inferior no se elimina: se oculta donde
      la sidebar la sustituye —y solo ahi—. */

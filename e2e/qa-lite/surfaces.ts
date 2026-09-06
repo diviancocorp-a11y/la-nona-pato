@@ -208,14 +208,11 @@ despues: ${JSON.stringify(after)}`,
 }
 
 export const ADMIN_CONTINUOUS_DECORATIVE_MOTION = [
-  {
-    selector: '.ag-bg-glow.g1',
-    expectedName: 'ag-glow-drift-1',
-    duration: 38000,
-    iterations: Infinity,
-    freezeAt: 0,
-    expectedCount: 1,
-  },
+  // El resplandor del fondo YA NO SE MUEVE (6/9/2026). Derivaba en un ciclo de
+  // 38s; al 6-7% de alfa no se ve moverse, pero el fondo nunca terminaba de
+  // asentarse y eso se notaba justo cuando algo se abria encima. Regla y
+  // keyframes eliminados, no apagados: este inventario describe lo que existe.
+  // Con esto el shell no tiene NINGUNA animacion infinita.
   // El segundo resplandor se ELIMINO en Phase 4 · PASS 1 (nodo, regla y
   // keyframes). El fondo del shell dejo de ser ambar: dos glows al 34-45% de
   // alfa tapaban el contenido operativo. Este inventario describe lo que

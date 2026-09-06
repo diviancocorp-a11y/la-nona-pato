@@ -21,22 +21,30 @@
   background-size: 6rem 4rem;
 }
 
-/* — Resplandores ámbar (deriva lenta por transform) — */
+/* — El resplandor de marca. QUIETO. —
+ *
+ * Derivaba en un ciclo de 38s. Al 6-7% de alfa no se "ve" moverse, pero el
+ * fondo del panel nunca terminaba de asentarse: mirando la pantalla quieta,
+ * algo se movia siempre detras del contenido. Se nota sobre todo cuando algo
+ * se abre encima —el mensaje de Dico— y el ojo compara la capa nueva contra
+ * un fondo que no esta firme.
+ *
+ * El fondo del panel es MATERIAL, no efecto: eso ya lo decia el comentario de
+ * abajo, y una animacion perpetua lo contradecia. Se saca la animacion de
+ * raiz —regla y keyframes—, no con `animation: none`, para que el inventario
+ * de motion del harness siga describiendo lo que existe de verdad.
+ *
+ * (Decision de Ricardo, 6/9/2026: "el fondo debe estar inmovil, es
+ * innegociable".) */
 .ag-bg-glow {
   position: absolute;
   width: 70vmax;
   height: 70vmax;
   border-radius: 50%;
-  will-change: transform;
 }
 .ag-bg-glow.g1 {
   top: -22vmax;
   right: -22vmax;
-  animation: ag-glow-drift-1 38s ease-in-out infinite alternate;
-}
-@keyframes ag-glow-drift-1 {
-  from { transform: translate(0, 0) scale(1); }
-  to   { transform: translate(-9vmax, 11vmax) scale(1.18); }
 }
 
 /* — Theming —
@@ -81,7 +89,5 @@
    raiz —nodo, regla y keyframes— y no con `display: none`, para que el
    inventario de motion del harness siga describiendo lo que existe. */
 
-/* — Reduce motion respect — */
-@media (prefers-reduced-motion: reduce) {
-  .ag-bg-glow { animation: none; }
-}
+/* Ya no hay nada que apagar para quien pide menos movimiento: el fondo esta
+   quieto para todos. */
