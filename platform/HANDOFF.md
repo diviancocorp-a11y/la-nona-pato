@@ -8,6 +8,147 @@
 
 ---
 
+## 6/sep/2026 — LIVE BUILD MODE: dos lotes visuales y el logo DIC en el riel
+
+Sesión de trabajo visual directo sobre el panel del dueño (gastro), con
+Ricardo mirando la app y pidiendo cambios de a cinco. El método es el del 5/9:
+observación → cambio chico → smoke → revisión.
+
+### Hecho
+
+**Lote 1 — `d02a061`**
+
+1. **Dico 2D deja de crecer al abrirse el riel.** Pasaba de 60 a 88 y
+   arrastraba todo lo que le cuelga: el contador saltaba de esquina y la cara
+   cambiaba de tamaño justo cuando el mouse pasaba al lado. Se eliminó
+   `--ag-dico-abierta`.
+2. **En claro, el riel es claro.** El chasis nacía oscuro en los dos temas
+   ("la estructura lee como material", `admin-tokens.css`); en el tema claro
+   dejaba una columna negra que se leía como un panel ajeno pegado al costado.
+   Se cambió SOLO la sidebar y SOLO en claro, redefiniendo los tokens de tinta
+   dentro de la regla. La topbar sigue oscura **por decisión de Ricardo**: "no
+   rompemos el manual".
+3. **Saludo en vez de rótulo** (`src/modules/saludo.js`). Arriba decía el
+   nombre del negocio, un dato que el dueño ya sabe porque está parado adentro.
+   Ahora saluda por la hora y por su nombre, en Butler y con el nombre en oro.
+   Sin nombre no inventa: cae al nombre del negocio.
+4. **Dico 2D habla en TARJETA, no en globo** (`MensajeDico.jsx` +
+   `mensaje.css`). El globo dibujado es un objeto de historieta y funciona
+   cuando el que habla está en la escena; con un avatar de 60px clavado en el
+   riel, la cola peleaba con su posición y el papel crema no pertenecía a
+   ninguna superficie del panel. **El globo queda para Dico 3D.** Se conserva
+   la VOZ —la letra y el tipeo, ahora compartidos por las dos superficies en
+   `useTipeo.js`—; cambia el envase.
+5. **«Siguiente», no «hay 1 más»**, y deja de ser un enlace gris ilegible: es
+   un botón con tinta y contorno. El número va en la cabecera ("1 DE 2").
+6. **Lo que dice Dico es una CAPA, no una fila**: salía del flujo sólo en
+   desktop; ahora en todos los chasis.
+
+**Lote 2 — `0faba98`**
+
+1. **La barra cruza por encima del riel.** Compartían capa y, como el riel se
+   pinta después en el DOM, ganaba el riel: expandido tapaba el saludo. Ahora
+   la barra tiene capa propia (`--ag-z-topbar: 6`), cruza de punta a punta
+   (`.ag-root--con-sidebar > .ag-topbar` recupera el ancho que le comía el
+   padding del shell) y el riel arranca debajo, con `--ag-topbar-alto` como
+   medida declarada en vez del 57 repetido en comentarios de dos hojas.
+2. **Los tres controles se van al pie del riel** (`ControlesDeSesion.jsx`).
+   Configuración, tema y salir vivían sueltos en la barra: a 375px peleaban la
+   fila con el saludo y con Dico. Una fuente, dos formas: al pie del riel en
+   desktop —los tres iconos SIEMPRE visibles, el rótulo aparece al expandir— y
+   dentro de un solo botón en mobile. El primer intento escondía dos de los
+   tres en el riel colapsado y no servía: el ítem seguía ocupando su fila, así
+   que el hueco se veía igual (corregido en vivo por Ricardo).
+3. **Azul volt para el nivel `aviso`**, en la tarjeta y en el globo: el ámbar
+   competía con el oro de la acción dentro de la misma pieza.
+4. **Mientras Dico habla, el riel no se mueve.** Tocar a Dico deja el puntero
+   sobre la sidebar y la expande; ir hacia el mensaje lo saca y la colapsa, y
+   con ella se corría el mensaje, que cuelga de su ancho. **Esto revierte la
+   regla "Dico nunca le saca capacidades a la navegación"** y el contrato de
+   `navLateral.test.jsx` pasa a exigir lo que esa regla protegía de verdad: que
+   el riel nunca quede en 0 ni oculto y que sus ítems sigan recibiendo el click.
+5. **El fondo queda inmóvil** (innegociable, dicho por Ricardo). Eran DOS
+   cosas: el resplandor de `admin-bg.css` derivaba en un ciclo infinito de 38s,
+   y —la grande— `admin-shell.css` le metía `padding-top: 148px` con transición
+   a `.ag-main` cuando había un mensaje abierto, así que el catálogo entero
+   bajaba al abrirlo y volvía a subir al cerrarlo. Venía de B3 ("abrir un aviso
+   mueve el contenido de forma deliberada") y de un problema real —el cuerpo
+   del globo interceptaba el click de la primera fila—, que hoy se resuelve
+   solo porque la tarjeta se cierra al tocar afuera. Las dos reglas se
+   eliminaron de raíz. **El shell ya no tiene ninguna animación infinita.**
+
+**El logo DIC en el bloque de marca — `60586ff`**
+
+El bloque se dio vuelta: antes era Dico y a su derecha un `DICO` de TEXTO; con
+el logo real eso daría «ODIC», porque la palabra ya termina en O y **el
+personaje ES la O**. Ahora es una grilla de dos columnas —logo y riel— donde la
+del logo mide 0 con la sidebar cerrada: colapsado se ve sólo Dico; al abrirse
+entra el DIC por izquierda y el personaje se corre a ocupar la O.
+
+- **Dico SE MUEVE al expandirse.** Es lo único que permite que el mismo
+  personaje sea la O sin montar un segundo. El riesgo que importaba —que el
+  control se escape del puntero y genere ciclos de hover— no aplica: el puntero
+  queda dentro de la sidebar expandida.
+- **Dos piezas, una por tema**, copiadas de `output/DICO-ENTREGA-FINAL-PNG/` a
+  `public/brand/dico/logo/dic-claro.png` y `dic-oscuro.png` — producción no
+  puede depender de una carpeta de entrega. Mudas: `alt=""`, `aria-hidden`,
+  dimensiones declaradas y `object-fit: contain`.
+- **Las medidas salen de MEDIR LA TINTA de los PNG, no de tantear**: el DIC
+  ocupa el 85,6% de su lienzo de 240x104 y el aro de Dico el 78,1% del suyo.
+  Logo a 48 → letras 41,1; Dico a 56 → aro 43,7 (el sobrepaso óptico de un
+  glifo redondo al lado de uno recto). Entre la C y la O quedaban 15px de aire
+  propio de los dos PNG: el logo invade 10px de la columna del personaje y el
+  hueco óptico baja a 3,4px. Juntar a Dico no era opción: su columna tiene que
+  seguir midiendo el riel, que es lo que lo deja centrado con la sidebar
+  cerrada.
+- **El bloque de marca dejó de tener aire de más**: medía 116px con Dico de 60,
+  herencia de cuando Dico crecía a 88 y el contador era un control aparte.
+  Ahora mide lo del personaje más el aire del contador, así que Dico quedó
+  pegado a la barra y los iconos subieron.
+
+### Verificado
+
+Todo contra la base local de QA Lite, en navegador real, a 1280x800, 800x620 y
+375x812, en claro y en oscuro:
+
+| Qué | Medido |
+|---|---|
+| Empuje del catálogo al abrir el mensaje | **0px** en los dos anchos; `padding-top` de `.ag-main` = 0 |
+| Riel con el mensaje abierto y el mouse encima | **64px**, y el mensaje clavado en x=64; al cerrar vuelve a expandir a 224 |
+| Dico en el riel | 56x56, el mismo tamaño abierto y cerrado |
+| Lockup DIC+O | letras 41,1 · aro 43,7 · hueco óptico 3,4px |
+| Assets | los dos PNG dan **200** y entran a `dist/`; la única carga fallida de la página es `feature_flags`, que no existe en la base local y es previa |
+| Menú de sesión en mobile | tres ítems, 44px de alto, dentro del viewport |
+| Suite | **1206/1206**, 87 archivos · eslint, tsc y `vite build` verdes |
+
+Defecto encontrado y corregido en el camino: con un mensaje abierto y el mouse
+encima, el DIC se dibujaba cortado detrás del personaje — la regla de hover le
+ganaba por orden a la del congelamiento.
+
+### Pendiente inmediato
+
+1. **Seguir con los lotes visuales de Ricardo.** El método es de a cinco
+   cambios; los tres lotes de hoy están aprobados por él.
+2. **Publicar.** Sigue siendo el objetivo del modo y no se hizo: falta la URL
+   real para trabajar sobre ella. El deploy lo corre Ricky (el clasificador
+   bloquea el comando de Vercel).
+3. `npm run build:platform` **no se pudo correr** durante la revisión del logo:
+   se niega a empaquetar con el worktree sucio y Ricardo había pedido no
+   commitear todavía. Ya está commiteado, así que ahora corre.
+4. La **0062** (`drop sumar_staff` de un argumento) sigue sin aplicar en el
+   edificio: los advisors muestran los dos overloads vivos.
+
+### Bloqueado por Ricky
+
+- **Docker.** Se traba con sockets huérfanos y **el reinicio NO lo arregla**
+  (probado hoy). Lo que lo destraba es renombrar `AppData\Local\Docker\run` y
+  `AppData\Local\docker-secrets-engine` ANTES de arrancar. Sin Docker no hay
+  Supabase local ni dev server. El comando exacto está en la memoria del
+  proyecto.
+- **El deploy**, cuando se decida publicar.
+
+---
+
 ## 5/sep/2026 — LIVE BUILD MODE · los tres defectos del Sales-Critical Smoke, cerrados
 
 Cambio de metodo operativo, decidido por Ricardo al abrir la sesion: **se
