@@ -42,13 +42,37 @@ export default function NavLateral({ tabs, tab, onTab, openCount = 0, presencia 
   // colapsado y para el expandido: es la misma superficie.
   return (
     <aside className="ag-sidebar ms-trace" aria-label="Navegación lateral">
-      {/* Bloque de marca. En colapsado se ve solo Dico; al expandir aparece el
-          wordmark A SU DERECHA. Dico no se reemplaza ni se mueve: sigue siendo
-          el mismo control en el mismo lugar, que es lo que lo hace invocable
-          sin que el usuario tenga que volver a buscarlo. */}
+      {/* Bloque de marca. Colapsado se ve SOLO Dico. Al expandirse entra el
+          DIC a su IZQUIERDA y los dos juntos leen DICO: la cara ES la O, no
+          un dibujo al lado de una palabra que ya la tiene.
+          Antes habia un `DICO` de texto a la derecha del personaje. Cambiarlo
+          por `DIC` habria dado «ODIC», asi que el bloque se dio vuelta: el
+          logo entra por la columna que la expansion agrega.
+          Hay UN solo Dico: es el mismo control de siempre, con su nombre
+          accesible; el DIC es decorativo y no habla. */}
       <div className="ag-sidebar-marca">
+        {/* Dos archivos y no uno recoloreado: el negro y el blanco son piezas
+            aprobadas de marca, con su filete azul propio. El tema elige cual
+            se dibuja; el otro no se descarga. */}
+        <img
+          className="ag-sidebar-dic ag-sidebar-dic--claro"
+          src="/brand/dico/logo/dic-claro.png"
+          alt=""
+          aria-hidden="true"
+          width="240"
+          height="104"
+          draggable="false"
+        />
+        <img
+          className="ag-sidebar-dic ag-sidebar-dic--oscuro"
+          src="/brand/dico/logo/dic-oscuro.png"
+          alt=""
+          aria-hidden="true"
+          width="240"
+          height="104"
+          draggable="false"
+        />
         <div className="ag-sidebar-presencia">{presencia}</div>
-        <span className="ag-sidebar-wordmark" aria-hidden="true">DICO</span>
       </div>
 
       <nav className="ag-sidebar-nav" aria-labelledby={tituloId}>

@@ -93,16 +93,59 @@ describe('NavLateral', () => {
     expect(container.querySelector('.ag-sidebar-badge').getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('el bloque de marca revela el wordmark AL LADO de la presencia', () => {
+  /* ── El bloque de marca: DIC + Dico = DICO ─────────────────────────────
+   * SUPERSEDED: hasta el 6/9/2026 esto exigia un `DICO` de TEXTO a la derecha
+   * del personaje. Con el logo aprobado eso daria «ODIC» —la palabra ya
+   * termina en O y el personaje ES la O—, asi que el bloque se dio vuelta.
+   */
+  it('el logo DIC esta, y el placeholder de texto no', () => {
     const { container } = montar({
       presencia: React.createElement('span', { 'data-presencia': '' }),
     });
     const marca = container.querySelector('.ag-sidebar-marca');
-    // Los dos conviven: el wordmark no reemplaza a Dico.
-    expect(marca.querySelector('[data-presencia]')).toBeInTheDocument();
-    expect(marca.querySelector('.ag-sidebar-wordmark')).toHaveTextContent('DICO');
-    // Y el wordmark es decorativo: el nombre del control lo pone Dico.
-    expect(marca.querySelector('.ag-sidebar-wordmark').getAttribute('aria-hidden')).toBe('true');
+    expect(marca.querySelector('.ag-sidebar-wordmark'), 'quedo el placeholder DICO').toBeNull();
+    // Sin la palabra escrita: la marca la dicen el logo y el personaje.
+    expect(marca.textContent, 'quedo el texto DICO en el bloque de marca').not.toMatch(/DICO?/i);
+
+    const dic = [...marca.querySelectorAll('.ag-sidebar-dic')];
+    expect(dic).toHaveLength(2);
+    expect(dic.map(i => i.getAttribute('src'))).toEqual([
+      '/brand/dico/logo/dic-claro.png',
+      '/brand/dico/logo/dic-oscuro.png',
+    ]);
+  });
+
+  it('DIC va antes que Dico: leido de izquierda a derecha dice DIC + O', () => {
+    const { container } = montar({
+      presencia: React.createElement('span', { 'data-presencia': '' }),
+    });
+    const hijos = [...container.querySelector('.ag-sidebar-marca').children];
+    expect(hijos[0]).toHaveClass('ag-sidebar-dic');
+    expect(hijos[hijos.length - 1]).toHaveClass('ag-sidebar-presencia');
+    expect(hijos[hijos.length - 1].querySelector('[data-presencia]')).toBeInTheDocument();
+  });
+
+  it('el logo es MUDO: quien tiene nombre es el control de Dico', () => {
+    const { container } = montar({
+      presencia: React.createElement('button', { 'aria-label': 'Ver lo que dice Dico' }),
+    });
+    for (const img of container.querySelectorAll('.ag-sidebar-dic')) {
+      expect(img.getAttribute('alt'), 'el logo no puede tener texto alternativo').toBe('');
+      expect(img.getAttribute('aria-hidden')).toBe('true');
+      // Dimensiones declaradas: sin ellas la fila salta cuando carga el PNG.
+      expect(img.getAttribute('width')).toBe('240');
+      expect(img.getAttribute('height')).toBe('104');
+    }
+    expect(screen.getByRole('button', { name: 'Ver lo que dice Dico' })).toBeInTheDocument();
+  });
+
+  it('UN SOLO Dico: el logo no monta un segundo personaje', () => {
+    const { container } = montar({
+      presencia: React.createElement('span', { 'data-presencia': '' }),
+    });
+    expect(container.querySelectorAll('[data-presencia]')).toHaveLength(1);
+    const fuentes = [...container.querySelectorAll('img')].map(i => i.getAttribute('src'));
+    expect(fuentes.filter(src => src && src.includes('dico-2d'))).toHaveLength(0);
   });
 });
 
@@ -144,8 +187,18 @@ describe('NavLateral — contrato de layout', () => {
     // Si alguien cambia una de las dos medidas sin la otra, se rompe.
     const item = sidebarCss.match(/\.ag-sidebar-item \{([^}]*)\}/)[1];
     expect(item).toContain('grid-template-columns: var(--ag-sidebar-riel) 1fr');
+
+    // El bloque de marca es la EXCEPCION declarada, y esta es su razon: el
+    // logo entra por una columna nueva a la IZQUIERDA, asi que ahi el
+    // personaje SI se corre —es lo que hace que DIC + O lean DICO—. Lo que
+    // sigue valiendo es que la columna del personaje mida el riel, que es lo
+    // que lo deja centrado cuando esta cerrado.
     const marca = sidebarCss.match(/\.ag-sidebar-marca \{([^}]*)\}/)[1];
-    expect(marca).toContain('grid-template-columns: var(--ag-sidebar-riel) 1fr');
+    expect(marca).toContain('grid-template-columns: var(--ag-dic-col) var(--ag-sidebar-riel)');
+    // El cero por defecto va en la SIDEBAR: declarado en el bloque de marca
+    // le gana a lo que hereda y las reglas de hover/foco no pueden abrirlo.
+    const base = sidebarCss.match(/\.ag-sidebar \{([^}]*)\}/g).join('');
+    expect(base, 'la columna del logo no arranca en cero').toContain('--ag-dic-col: 0px');
   });
 
   it('el workspace se corre el RIEL, nunca el ancho expandido', () => {
@@ -170,6 +223,45 @@ describe('NavLateral — contrato de layout', () => {
     const reglas = sidebarCss.replace(/\/\*[\s\S]*?\*\//g, '');
     expect(reglas, 'una regla expande con el foco a secas: se abre al clickear')
       .not.toContain(':focus-within');
+  });
+
+  it('el DIC tiene una pieza por tema: negra en claro, blanca en oscuro', () => {
+    // No es el mismo PNG recoloreado con un filtro: son dos originales
+    // aprobados, cada uno con su filete azul. El tema elige cual se dibuja.
+    const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
+    expect(desktop).toContain('.ag-sidebar-dic--oscuro { display: none; }');
+    expect(desktop).toContain('.ag-theme-dark .ag-sidebar-dic--claro { display: none; }');
+    expect(desktop).toContain('.ag-theme-dark .ag-sidebar-dic--oscuro { display: block; }');
+  });
+
+  it('el logo solo existe con el riel abierto, y no deforma el dibujo', () => {
+    const desktop = sidebarCss.slice(sidebarCss.indexOf('@media (min-width: 769px)'));
+    const cuerpoDe = (selector) => {
+      const abre = desktop.indexOf(selector + ' {');
+      return abre < 0 ? null : desktop.slice(abre, desktop.indexOf('}', abre));
+    };
+    const marca = cuerpoDe('.ag-sidebar-marca');
+    expect(marca).toContain('grid-template-columns: var(--ag-dic-col) var(--ag-sidebar-riel)');
+    // Colapsado la columna del logo mide 0: Dico queda centrado en el riel.
+    expect(cuerpoDe('.ag-sidebar')).toContain('--ag-dic-col: 0px');
+    // Y el alto del bloque sale del tamanio del personaje, no de un literal.
+    expect(marca).toContain('height: calc(var(--ag-dico-riel) + 12px)');
+
+    const logo = cuerpoDe('.ag-sidebar-dic');
+    expect(logo, 'el logo no declara alto propio').toContain('height: var(--ag-dic-alto)');
+    expect(logo, 'el logo se puede deformar').toContain('object-fit: contain');
+    expect(logo, 'el logo arranca visible y se ve recortado por el riel')
+      .toContain('opacity: 0');
+    // Se abre por hover Y por teclado, igual que los rotulos.
+    expect(desktop).toContain('.ag-sidebar:has(:focus-visible) .ag-sidebar-dic { opacity: 1; }');
+    expect(desktop).toContain('.ag-sidebar:hover .ag-sidebar-dic { opacity: 1; }');
+  });
+
+  it('reduced motion apaga tambien el movimiento del bloque de marca', () => {
+    const bloque = sidebarCss.slice(sidebarCss.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(bloque).toContain('.ag-sidebar-marca');
+    expect(bloque).toContain('.ag-sidebar-dic');
+    expect(bloque).toContain('transition: none');
   });
 
   it('mientras Dico habla, el riel se queda QUIETO y colapsado', () => {

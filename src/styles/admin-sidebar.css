@@ -21,8 +21,27 @@
   /* El personaje. UNA sola medida: Dico mide lo mismo con el riel cerrado y
      con la sidebar abierta. Hubo un tamanio expandido de 88px y se saco —ver
      la regla de `:hover`—: al crecer arrastraba al contador y a la cara justo
-     cuando el mouse pasaba por al lado. */
-  --ag-dico-riel: 60px;
+     cuando el mouse pasaba por al lado.
+
+     56 Y NO 60: la caja no es el dibujo. El PNG trae 10,2% de aire a cada
+     lado, asi que a 60 el aro medido daba 47px de alto contra los 41 de las
+     letras del DIC — el logo se leia como dos cosas pegadas y no como una
+     palabra. A 56 el aro mide 43,7: un pelo mas que la letra, que es el
+     sobrepaso optico que pide cualquier glifo redondo al lado de uno recto.
+     (Se probo 52 y quedaba chico.) */
+  --ag-dico-riel: 56px;
+
+  /* El DIC del logo. `--ag-dic-alto` es el alto del DIBUJO y `--ag-dic-ancho`
+     el de su columna. Van juntas por la misma razon que el riel y el
+     personaje: la marca no puede quedar dispersa en literales sueltos.
+
+     Los numeros salen de MEDIR LA TINTA de los dos PNG, no de tantear: el DIC
+     ocupa el 85,6% de su lienzo de 240x104 y el aro de Dico el 78,1% del suyo.
+     Con el dibujo a 48 las letras miden 41,1 y el aro 40,6: el mismo cuerpo.
+     48 x (240/104) = 110,8 de ancho, y la columna le suma el aire de la
+     izquierda. */
+  --ag-dic-alto: 48px;
+  --ag-dic-ancho: 112px;
 }
 
 /* Nombre accesible para lectores sin ocupar espacio. No existia una utilidad
@@ -56,6 +75,12 @@
   .ag-sidebar {
     --ag-sidebar-ancho: var(--ag-sidebar-riel);
     --ag-dico-tamanio: var(--ag-dico-riel);
+    /* Cuanto se abre la columna del logo. Colapsada, cero.
+       VA ACA Y NO EN `.ag-sidebar-marca`: una custom property declarada en el
+       propio elemento le gana a la que hereda del padre, asi que puesta en el
+       bloque de marca las reglas de hover y foco —que viven en la sidebar— no
+       podian moverla. Medido: el riel se abria y el logo no entraba. */
+    --ag-dic-col: 0px;
 
     position: fixed;
     /* ARRANCA DEBAJO DE LA BARRA. Antes ocupaba desde el borde de arriba y,
@@ -83,7 +108,7 @@
    * producto.
    *
    * Se cambia SOLO la sidebar y solo en claro. Los tokens de tinta se
-   * redefinen aca adentro, asi que los items, el wordmark y todo lo que
+   * redefinen aca adentro, asi que los items y todo lo que
    * cuelga de `--ag-chassis-ink` siguen a esta superficie sin que ninguno
    * tenga que enterarse. La trama `ms-trace` tambien se da vuelta: su tinta
    * es blanca al 55% y sobre papel claro no existiria. */
@@ -128,6 +153,7 @@
    * esto no le saca ninguna capacidad. */
   .ag-sidebar:has(:focus-visible) {
     --ag-sidebar-ancho: var(--ag-sidebar-abierta);
+    --ag-dic-col: var(--ag-dic-ancho);
     box-shadow: 0 0 32px rgba(0, 0, 0, .32);
   }
 
@@ -136,6 +162,7 @@
   @media (hover: hover) and (pointer: fine) {
     .ag-sidebar:hover {
       --ag-sidebar-ancho: var(--ag-sidebar-abierta);
+      --ag-dic-col: var(--ag-dic-ancho);
       box-shadow: 0 0 32px rgba(0, 0, 0, .32);
     }
   }
@@ -159,11 +186,11 @@
   .ag-sidebar:has(.dico-avisos--abierto):hover,
   .ag-sidebar:has(.dico-avisos--abierto):has(:focus-visible) {
     --ag-sidebar-ancho: var(--ag-sidebar-riel);
+    --ag-dic-col: 0px;
     box-shadow: none;
   }
 
-  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-label,
-  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-wordmark {
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-label {
     opacity: 0;
   }
 
@@ -186,63 +213,83 @@
     width: calc(100% + var(--ag-sidebar-riel));
   }
 
-  /* Arriba del todo. La altura es FIJA en los dos estados: si creciera al
-     revelar el wordmark, los iconos de abajo bajarian con ella. */
+  /* Arriba del todo: DIC + Dico, que juntos leen DICO.
+   *
+   * DOS COLUMNAS Y LA PRIMERA SE ABRE. Colapsado la columna del logo mide 0 y
+   * la unica que ocupa lugar es la del riel, con Dico centrado; al expandirse
+   * el DIC entra por izquierda y el personaje se corre a su derecha, a ocupar
+   * el lugar de la O. Antes era al reves —Dico y a su derecha un `DICO` de
+   * texto—, que con el logo real habria dado «ODIC».
+   *
+   * El personaje ES la O: no hay un segundo Dico decorativo, y sigue siendo
+   * el mismo control con el mismo nombre accesible. El DIC es una imagen muda.
+   *
+   * EL ALTO ES EL DEL PERSONAJE Y NADA MAS. Eran 116px, heredados de cuando
+   * Dico crecia a 88 y el contador vivia en un control aparte debajo. Con
+   * Dico fijo en 60 sobraban ~46px repartidos arriba y abajo: el personaje
+   * quedaba flotando solo, lejos de la barra y lejos de los iconos. Ahora
+   * son los 60 del personaje mas 12 de aire para que el contador de la
+   * esquina no toque el borde — sale de las medidas declaradas.
+   *
+   * Fijo en los DOS estados: si creciera al expandirse, los iconos de
+   * navegacion bajarian con el y se rompe la propiedad que mide
+   * `dico-sidebar` en los seis anchos. */
   .ag-sidebar-marca {
     display: grid;
-    grid-template-columns: var(--ag-sidebar-riel) 1fr;
-    align-items: start;
-    /* Alto FIJO en los dos estados. Si creciera al revelar el wordmark, los
-       iconos de abajo bajarian con el. Incluye el lugar del contador.
-     *
-     * 116 es el alto del bloque de marca y se queda como esta aunque el
-     * personaje ahora mida siempre 60: bajarlo subiria toda la navegacion, que
-     * es un cambio de layout que nadie pidio. El aire de mas ya existia en el
-     * estado colapsado, que era el 95% del tiempo.
-     *
-     * Fijo en los DOS estados: si creciera al expandirse, los iconos de
-     * navegacion bajarian con el y se rompe la propiedad que mide
-     * `dico-sidebar` en los seis anchos. */
-    height: 116px;
+    grid-template-columns: var(--ag-dic-col) var(--ag-sidebar-riel);
+    align-items: center;
+    /* Acompania al ancho de la sidebar: el logo y el personaje se mueven como
+       una sola pieza, no uno atras del otro. */
+    transition: grid-template-columns .18s var(--ag-ease);
+    height: calc(var(--ag-dico-riel) + 12px);
     flex-shrink: 0;
-    padding-top: 14px;
+    padding-top: 6px;
   }
+
+  /* El logo entra en su columna, alineado a la derecha: pegado a la O.
+     Alto declarado y `object-fit: contain`, asi que el filete azul no se
+     engrosa ni el dibujo se deforma cuando cambia la columna. */
+  /* EL MARGEN NEGATIVO ES LO QUE JUNTA LA C CON LA O. Los dos PNG traen aire
+     propio —3,3% a la derecha del DIC, 10,2% a la izquierda del aro— y, sumado
+     al centrado de Dico en el riel, quedaban 15px de hueco entre las dos
+     piezas: se leia «DIC» y aparte una carita. El logo invade 10px de la
+     columna del personaje y el hueco optico baja a 3,4px. No se resuelve
+     moviendo a Dico: su columna tiene que seguir midiendo el riel, que es lo
+     que lo deja centrado con la sidebar cerrada. */
+  .ag-sidebar-dic {
+    justify-self: end;
+    margin-right: -10px;
+    width: auto;
+    height: var(--ag-dic-alto);
+    max-width: 100%;
+    object-fit: contain;
+    /* Sin esto, el navegador lo dibuja igual mientras la columna mide 0 y el
+       `overflow: hidden` de la sidebar lo recorta a la mitad. */
+    opacity: 0;
+    transition: opacity .16s var(--ag-ease);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .ag-sidebar:has(:focus-visible) .ag-sidebar-dic { opacity: 1; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ag-sidebar:hover .ag-sidebar-dic { opacity: 1; }
+  }
+
+
+
+  /* Una pieza por tema. No es el mismo PNG recoloreado: el negro y el blanco
+     son dos originales aprobados, cada uno con su filete azul. El que no va
+     no se dibuja —y como los dos estan en el mismo bloque, el navegador ya
+     tiene el otro en cache si el usuario cambia de tema. */
+  .ag-sidebar-dic--oscuro { display: none; }
+  .ag-theme-dark .ag-sidebar-dic--claro { display: none; }
+  .ag-theme-dark .ag-sidebar-dic--oscuro { display: block; }
 
   .ag-sidebar-presencia {
     display: grid;
     place-items: center;
-  }
-
-  /* El wordmark aparece A LA DERECHA de Dico, no en su lugar. Reemplazarlo
-     haria que el mismo pixel sea dos controles distintos segun el estado. */
-  .ag-sidebar-wordmark {
-    align-self: start;
-    margin-top: 18px;
-    /* Aire entre el personaje y el wordmark. Con Dico a 60 centrado sobre el
-       riel de 64 su borde derecho cae en 62, o sea que ya no invade esta
-       columna; los 20px quedan como separacion y no como correccion. */
-    padding-left: 20px;
-    font-family: var(--font-heading, var(--ag-font));
-    font-weight: 800;
-    font-size: 17px;
-    letter-spacing: .14em;
-    color: var(--ag-chassis-ink);
-    opacity: 0;
-    transform: translateX(-6px);
-    transition: opacity .16s var(--ag-ease), transform .18s var(--ag-ease);
-    white-space: nowrap;
-  }
-
-  .ag-sidebar:has(:focus-visible) .ag-sidebar-wordmark {
-    opacity: 1;
-    transform: none;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .ag-sidebar:hover .ag-sidebar-wordmark {
-      opacity: 1;
-      transform: none;
-    }
   }
 
   /* ── Dico dentro del riel ────────────────────────────────────────────
@@ -284,8 +331,8 @@
    * menos de 2: a esa escala Dico era una mancha con aro y los siete estados
    * de B6 no se leian. PASS 3 muestra que 56 tampoco alcanzaba a distancia de
    * monitor. Se fotografiaron tres variantes sobre la pantalla real —56, 88 y
-   * 112— y la elegida es 88: a 112 los ojos se leen igual de bien pero el
-   * personaje le pisa el wordmark.
+   * 112— y la elegida fue 88: a 112 los ojos se leen igual de bien pero el
+   * personaje le pisaba la marca. (Hoy el tamanio es uno solo: 60.)
    *
    * Colapsado queda en 60 y no en 88: el riel mide 64 y el resto es aire a
    * los lados. El tamanio grande es el del riel ABIERTO, que es donde el
@@ -513,6 +560,18 @@
     line-height: 1;
   }
 
+  /* Mientras Dico habla el riel queda colapsado, asi que el logo tampoco
+     entra: si no, quedaria a medio salir del recorte de 64px.
+     VA DESPUES de las reglas de hover y foco —y repitiendolas— porque a
+     igual especificidad gana la ultima: sin los tres selectores, pasar el
+     mouse con un mensaje abierto volvia a dibujar el DIC cortado detras del
+     personaje. Medido en pantalla. */
+  .ag-sidebar:has(.dico-avisos--abierto) .ag-sidebar-dic,
+  .ag-sidebar:has(.dico-avisos--abierto):hover .ag-sidebar-dic,
+  .ag-sidebar:has(.dico-avisos--abierto):has(:focus-visible) .ag-sidebar-dic {
+    opacity: 0;
+  }
+
   /* ── El pie: configuracion, tema y salir ─────────────────────────────
    * No es navegacion —no llevan a una pantalla de trabajo—, asi que va
    * separado de la lista y pegado abajo. Reusa `.ag-sidebar-item`, que ya
@@ -550,8 +609,9 @@
    ancho, sin transicion. */
 @media (prefers-reduced-motion: reduce) {
   .ag-sidebar,
+  .ag-sidebar-marca,
+  .ag-sidebar-dic,
   .ag-sidebar-label,
-  .ag-sidebar-wordmark,
   .ag-sidebar .dico-slot,
   .ag-sidebar .dico-avisos-mensaje,
   .ag-sidebar .dico-native-caja {
